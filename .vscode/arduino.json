@@ -1,0 +1,7 @@
+{
+    "configuration": "cache=on,speed=120,opt=small,maxqspi=50,usbstack=arduino,debug=off",
+    "board": "adafruit:samd:adafruit_grandcentral_m4",
+    "port": "COM3",
+    "sketch": "sunray\\sunray.ino",
+    "programmer": "adafruit_atmel_ice"
+}
