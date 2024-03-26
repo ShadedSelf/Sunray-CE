@@ -376,9 +376,9 @@ void AmMotorDriver::begin(){
   pinMode(pinLift, INPUT_PULLUP);
 
   // enable interrupts
-  attachInterrupt(pinOdometryLeft, OdometryLeftISR, CHANGE);  
-  attachInterrupt(pinOdometryRight, OdometryRightISR, CHANGE);  
-  attachInterrupt(pinMotorMowRpm, OdometryMowISR, CHANGE);  
+  attachInterrupt(pinOdometryLeft, OdometryLeftISR, FALLING);  
+  attachInterrupt(pinOdometryRight, OdometryRightISR, FALLING);  
+  attachInterrupt(pinMotorMowRpm, OdometryMowISR, FALLING);  
     
 	//pinMan.setDebounce(pinOdometryLeft, 100);  // reject spikes shorter than usecs on pin
 	//pinMan.setDebounce(pinOdometryRight, 100);  // reject spikes shorter than usecs on pin	
