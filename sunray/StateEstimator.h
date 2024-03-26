@@ -14,6 +14,7 @@
 #include <vector_type.h>
 
 extern vec3_t forward;
+extern vec3_t right;
 
 extern float stateX;  // position-east (m)
 extern float stateY;  // position-north (m)

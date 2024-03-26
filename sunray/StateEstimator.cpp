@@ -18,6 +18,7 @@
 
 
 vec3_t forward = {0,0,0};
+vec3_t right = {0,0,0};
 
 float stateX = 0;  // position-east (m)
 float stateY = 0;  // position-north (m)
@@ -266,7 +267,7 @@ void computeRobotState(){
   quat_t rot = (z*y*x).norm();
 
   forward = rot.rotate({1,0,0}, GLOBAL_FRAME).norm(); 
-  vec3_t right = rot.rotate({0,-1,0}, GLOBAL_FRAME).norm();
+  right = rot.rotate({0,-1,0}, GLOBAL_FRAME).norm();
   vec3_t up = rot.rotate({0,0,1}, GLOBAL_FRAME).norm();
   
   vec3_t gpsPos = {0,0,0};

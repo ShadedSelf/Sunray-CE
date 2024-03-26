@@ -94,6 +94,7 @@ void Sonar::run() {
       unsigned int d;
       sonarLeftMeasurements.getMedian(d);
       distanceLeft = convertCm(d);
+      DEBUGLN(distanceLeft);
     }
     //center
     else if (sonarIdx == 1) {

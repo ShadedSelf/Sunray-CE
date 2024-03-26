@@ -785,8 +785,19 @@ bool detectObstacle(){
   if (sonar.obstacle() && (maps.wayMode != WAY_DOCK)){
     CONSOLE.println("sonar obstacle!");    
     statMowSonarCounter++;
-    vec3_t checkPoint = vec3_t(stateX, stateY, 0) + forward * (15.0 + SONAR_LEFT_OBSTACLE_CM);
-    if (SONAR_TRIGGER_OBSTACLES){// && maps.isInsidePerimeter(checkPoint.x, checkPoint.y)){
+
+    // check if obstacle is inside perimeter
+    bool isInside = true;
+    for (int i = -1; i <= 1; i++)
+    {
+      vec3_t checkPoint =
+        vec3_t(stateX, stateY, 0)
+        + forward * (12.0 + 2.0 + SONAR_LEFT_OBSTACLE_CM)
+        + right * float(i) * 8.5;
+      isInside = isInside && maps.isInsidePerimeter(checkPoint.x, checkPoint.y);
+    }
+
+    if (SONAR_TRIGGER_OBSTACLES && isInside){
       triggerObstacle();
       return true;
     }        
@@ -993,6 +1004,7 @@ void run(){
         if (stateTemp > DOCK_OVERHEAT_TEMP
         ||  stateTemp < DOCK_TOO_COLD_TEMP)
           activeOp->onTempOutOfRangeTriggered();
+      }
 
       if (RAIN_ENABLE){
         // rain sensor should trigger serveral times to robustly detect rain (robust rain detection)

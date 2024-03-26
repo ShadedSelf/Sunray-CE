@@ -316,6 +316,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define BAT_SWITCH_OFF_IDLE  false         // switch off if idle (JP8 must be set to autom.)
 #define BAT_SWITCH_OFF_UNDERVOLTAGE  true  // switch off if undervoltage (JP8 must be set to autom.)
 
+#define BAT_FULL_CHARGE_RECONNECT 60*60*2 // time in seconds to wait to start charging the battery again once its fullç
+
 
 // ------ GPS ------------------------------------------
 // ------- RTK GPS module -----------------------------------

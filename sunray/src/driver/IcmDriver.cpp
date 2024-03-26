@@ -36,6 +36,7 @@ void IcmDriver::detect(){
 
 bool IcmDriver::begin(){ 
   bool success = true;
+  
   success &= (icm.initializeDMP() == ICM_20948_Stat_Ok);
   
   success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_GAME_ROTATION_VECTOR) == ICM_20948_Stat_Ok);
@@ -91,13 +92,6 @@ bool IcmDriver::isDataAvail(){
             double t3 = +2.0 * (q0 * q3 + q1 * q2);
             double t4 = +1.0 - 2.0 * (q2sqr + q3 * q3);
             yaw = atan2(t3, t4);
-
-            /*if (ayaw != ayaw || apitch != apitch || aroll != aroll)
-              return false;
-
-            yaw = ayaw;
-            pitch = apitch;
-            roll = aroll;*/
             return true;
         }
     }

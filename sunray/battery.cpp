@@ -48,7 +48,7 @@ void Battery::begin()
   // The battery will charge if both battery voltage is below that value and charging current is above that value.
   batFullCurrent  = BAT_FULL_CURRENT;  // 0.2  current flowing when battery is fully charged (A)
   batFullVoltage = BAT_FULL_VOLTAGE;  //28.7  voltage when battery is fully charged (we charge to only 90% to increase battery life time)
-  enableChargingTimeout = 60 * 60 * 2; // if battery is full, wait this time before enabling charging again (seconds)
+  enableChargingTimeout = BAT_FULL_CHARGE_RECONNECT; // if battery is full, wait this time before enabling charging again (seconds)
   batteryVoltage = 0;
   batteryVoltageLast = 0;
   batteryVoltageSlope = 0;
