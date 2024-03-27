@@ -94,21 +94,20 @@ void Sonar::run() {
       unsigned int d;
       sonarLeftMeasurements.getMedian(d);
       distanceLeft = convertCm(d);
-      DEBUGLN(distanceLeft);
     }
     //center
     else if (sonarIdx == 1) {
       sonarCenterMeasurements.add(raw);
       unsigned int d;
       sonarCenterMeasurements.getMedian(d);
-      distanceCenter = convertCm(distanceCenter);
+      distanceCenter = convertCm(d);
     }
     //right
     else {
       sonarRightMeasurements.add(raw);
       unsigned int d;
       sonarRightMeasurements.getMedian(d);
-      distanceRight = convertCm(distanceRight);
+      distanceRight = convertCm(d);
     } 
 
     echoDuration = 0;
@@ -116,16 +115,18 @@ void Sonar::run() {
 
   if (millis() > timeoutTime) {
     if (!added) {
-      if (sonarIdx == 0)      sonarLeftMeasurements.add(MAX_DURATION);
+      if      (sonarIdx == 0) sonarLeftMeasurements.add(MAX_DURATION);
       else if (sonarIdx == 1) sonarCenterMeasurements.add(MAX_DURATION);
       else if (sonarIdx == 2) sonarRightMeasurements.add(MAX_DURATION);
     }
 
     sonarIdx = (sonarIdx + 1) % 3;
     echoDuration = 0;
-    if (sonarIdx == 0)      startHCSR04(pinSonarLeftTrigger, pinSonarLeftEcho);
+
+    if      (sonarIdx == 0) startHCSR04(pinSonarLeftTrigger, pinSonarLeftEcho);
     else if (sonarIdx == 1) startHCSR04(pinSonarCenterTrigger, pinSonarCenterEcho);
     else if (sonarIdx == 2) startHCSR04(pinSonarRightTrigger, pinSonarRightEcho);
+    
     timeoutTime = millis() + 50; // 10
     added = false;
   }
@@ -165,8 +166,9 @@ bool Sonar::obstacle()
 {
 #ifdef SONAR_INSTALLED
   if (!enabled) return false;
-  return (
-     (distanceLeft < triggerLeftBelow)
+
+  return
+  (  (distanceLeft < triggerLeftBelow)
   || (distanceCenter < triggerCenterBelow)
   || (distanceRight < triggerRightBelow));
 #else
