@@ -15,9 +15,6 @@
 class Sonar {
     public:      
 		bool enabled;
-	    float triggerLeftBelow;
-        float triggerCenterBelow;
-        float triggerRightBelow;
 	    void begin();            
         void run();
 	    bool obstacle();	    
@@ -25,7 +22,6 @@ class Sonar {
 		float distanceLeft; // cm
 		float distanceRight;
 		float distanceCenter;  		
-		bool verboseOutput; 
     protected:                 
 		float convertCm(unsigned int echoTime);
 		unsigned long nearObstacleTimeout;

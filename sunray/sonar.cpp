@@ -114,12 +114,14 @@ void Sonar::run() {
   }
 
   if (millis() > timeoutTime) {
+    // add maximun distance if the was no hit
     if (!added) {
       if      (sonarIdx == 0) sonarLeftMeasurements.add(MAX_DURATION);
       else if (sonarIdx == 1) sonarCenterMeasurements.add(MAX_DURATION);
       else if (sonarIdx == 2) sonarRightMeasurements.add(MAX_DURATION);
     }
 
+    // send next ping
     sonarIdx = (sonarIdx + 1) % 3;
     echoDuration = 0;
 
@@ -137,9 +139,6 @@ void Sonar::begin()
 {
 #ifdef SONAR_INSTALLED
   enabled = SONAR_ENABLE;
-  triggerLeftBelow = SONAR_LEFT_OBSTACLE_CM;
-  triggerCenterBelow = SONAR_CENTER_OBSTACLE_CM;
-  triggerRightBelow = SONAR_RIGHT_OBSTACLE_CM;
 
   pinMode(pinSonarLeftTrigger , OUTPUT);
   pinMode(pinSonarCenterTrigger , OUTPUT);
@@ -156,7 +155,7 @@ void Sonar::begin()
   //pinMan.setDebounce(pinSonarCenterEcho, 100);  // reject spikes shorter than usecs on pin
   //pinMan.setDebounce(pinSonarRightEcho, 100);  // reject spikes shorter than usecs on pin
   //pinMan.setDebounce(pinSonarLeftEcho, 100);  // reject spikes shorter than usecs on pin
-  verboseOutput = false;
+  
   nearObstacleTimeout = 0;
 #endif
 }
@@ -168,9 +167,9 @@ bool Sonar::obstacle()
   if (!enabled) return false;
 
   return
-  (  (distanceLeft < triggerLeftBelow)
-  || (distanceCenter < triggerCenterBelow)
-  || (distanceRight < triggerRightBelow));
+  (  (distanceLeft < SONAR_LEFT_OBSTACLE_CM)
+  || (distanceCenter < SONAR_CENTER_OBSTACLE_CM)
+  || (distanceRight < SONAR_RIGHT_OBSTACLE_CM));
 #else
   return false;
 #endif
@@ -181,18 +180,19 @@ bool Sonar::nearObstacle()
 #ifdef SONAR_INSTALLED
   if (!enabled) return false;
   
-  float nearZone = SONAR_OBSTACLE_SLOW_CM; // cm
   if ((nearObstacleTimeout != 0) && (millis() < nearObstacleTimeout))
     return true;
 
   nearObstacleTimeout = 0;
-  bool res =
-  (  (distanceLeft < triggerLeftBelow + nearZone)
-  || (distanceCenter < triggerCenterBelow + nearZone)
-  || (distanceRight < triggerRightBelow + nearZone));
-  if (res)
+  bool isNearObstacle =
+  (  (distanceLeft < SONAR_LEFT_OBSTACLE_CM + SONAR_OBSTACLE_SLOW_CM)
+  || (distanceCenter < SONAR_CENTER_OBSTACLE_CM + SONAR_OBSTACLE_SLOW_CM)
+  || (distanceRight < SONAR_RIGHT_OBSTACLE_CM + SONAR_OBSTACLE_SLOW_CM));
+
+  if (isNearObstacle)
     nearObstacleTimeout = millis() + 5000;
-  return res;
+
+  return isNearObstacle;
 #else
   return false;
 #endif
