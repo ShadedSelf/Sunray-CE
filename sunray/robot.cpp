@@ -972,14 +972,6 @@ void run(){
       lastGPSMotionY = 0;
     }
 
-    /*if (gpsJump) {
-      // gps jump: restart current operation from new position (restart path planning)
-      CONSOLE.println("restarting operation (gps jump)");
-      gpsJump = false;
-      motor.stopImmediately(true);
-      setOperation(stateOp, true);    // restart current operation
-    }*/
-    
     if (battery.chargerConnected() != stateChargerConnected) {    
       stateChargerConnected = battery.chargerConnected(); 
       if (stateChargerConnected){      
