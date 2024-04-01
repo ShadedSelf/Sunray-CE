@@ -156,10 +156,10 @@ unsigned long nextTimetableTime = 0;
 
 //##################################################################################
 unsigned long loopTime = millis();
-int loopTimeNow = 0;
-int loopTimeMax = 0;
+float loopTimeNow = 0;
+float loopTimeMax = 0;
 float loopTimeMean = 0;
-int loopTimeMin = 99999;
+float loopTimeMin = 99999;
 unsigned long loopTimeTimer = 0;
 unsigned long wdResetTimer = millis();
 //##################################################################################
@@ -1071,26 +1071,26 @@ void run(){
     watchdogReset();
   }   
 
-  loopTimeNow = millis() - loopTime;
+  loopTimeNow = (micros() - loopTime) / 1000.0;
   loopTimeMin = min(loopTimeNow, loopTimeMin); 
   loopTimeMax = max(loopTimeNow, loopTimeMax);
   loopTimeMean = 0.99 * loopTimeMean + 0.01 * loopTimeNow; 
-  loopTime = millis();
+  loopTime = micros();
 
   if(millis() > loopTimeTimer + 10000){
     if(loopTimeMax > 500){
       CONSOLE.print("WARNING - LoopTime: ");
     }else{
-      CONSOLE.print("Info - LoopTime: ");
+      CONSOLE.print("Info - LoopTime: now: ");
     }
     CONSOLE.print(loopTimeNow);
-    CONSOLE.print(" - ");
+    CONSOLE.print(" - min: ");
     CONSOLE.print(loopTimeMin);
-    CONSOLE.print(" - ");
+    CONSOLE.print(" - mean: ");
     CONSOLE.print(loopTimeMean);
-    CONSOLE.print(" - ");
+    CONSOLE.print(" - max: ");
     CONSOLE.print(loopTimeMax);
-    CONSOLE.println("ms");
+    CONSOLE.println(" (ms)");
     loopTimeMin = 99999; 
     loopTimeMax = 0;
     loopTimeTimer = millis();

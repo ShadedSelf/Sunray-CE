@@ -99,12 +99,21 @@ float AmRobotDriver::getCpuTemperature(){
 
 // odometry signal change interrupt
 
+#if FILTER_ODOMETRY 
+  #include "../../RunningMedian.h"
+  RunningMedianISR<volatile unsigned long, 6> leftOdo;
+  RunningMedianISR<volatile unsigned long, 6> rightOdo;
+  RunningMedianISR<volatile unsigned long, 6> mowOdo;
+#endif
+
 void OdometryMowISR(){			  
   unsigned long now = micros();
-  //if (digitalRead(pinMotorMowRpm) == LOW) return;
   if (now - motorMowThen < motorMowTicksTimeout) return; // eliminate spikes 
   motorMowTickTime = now - motorMowThen;
   motorMowThen = now; 
+  #if FILTER_ODOMETRY
+    mowOdo.add(motorMowTickTime);
+  #endif
   #ifdef SUPER_SPIKE_ELIMINATOR
     unsigned long duration = motorMowTickTime;
     if (duration > 5000) duration = 0;
@@ -118,10 +127,12 @@ void OdometryMowISR(){
 
 void OdometryLeftISR(){
   unsigned long now = micros();
-  //if (digitalRead(pinOdometryLeft) == LOW) return;
   if (now - motorLeftThen < motorLeftTicksTimeout) return; // eliminate spikes 
   motorLeftTickTime = now - motorLeftThen;
   motorLeftThen = now; 
+  #if FILTER_ODOMETRY
+    leftOdo.add(motorLeftTickTime);
+  #endif
   #ifdef SUPER_SPIKE_ELIMINATOR
     unsigned long duration = motorLeftTickTime;
     if (duration > 5000) duration = 0;
@@ -134,10 +145,12 @@ void OdometryLeftISR(){
 
 void OdometryRightISR(){			
   unsigned long now = micros();
-  //if (digitalRead(pinOdometryRight) == LOW) return;  
   if (now - motorRightThen < motorRightTicksTimeout) return; // eliminate spikes
   motorRightTickTime = now - motorRightThen;
   motorRightThen = now;
+  #if FILTER_ODOMETRY
+    rightOdo.add(motorRightTickTime);
+  #endif
   #ifdef SUPER_SPIKE_ELIMINATOR
     unsigned long duration = motorRightTickTime;
     if (duration > 5000) duration = 0;  
@@ -146,11 +159,6 @@ void OdometryRightISR(){
     motorRightTicksTimeout = 1000;
   #endif
   odomTicksRight++;        
-  
-  #ifdef TEST_PIN_ODOMETRY
-    testValue = !testValue;
-    digitalWrite(pinKeyArea2, testValue);  
-  #endif
 }
 
 
@@ -376,9 +384,9 @@ void AmMotorDriver::begin(){
   pinMode(pinLift, INPUT_PULLUP);
 
   // enable interrupts
-  attachInterrupt(pinOdometryLeft, OdometryLeftISR, FALLING);  
-  attachInterrupt(pinOdometryRight, OdometryRightISR, FALLING);  
-  attachInterrupt(pinMotorMowRpm, OdometryMowISR, FALLING);  
+  attachInterrupt(pinOdometryLeft, OdometryLeftISR, CHANGE);  
+  attachInterrupt(pinOdometryRight, OdometryRightISR, CHANGE);  
+  attachInterrupt(pinMotorMowRpm, OdometryMowISR, CHANGE);  
     
 	//pinMan.setDebounce(pinOdometryLeft, 100);  // reject spikes shorter than usecs on pin
 	//pinMan.setDebounce(pinOdometryRight, 100);  // reject spikes shorter than usecs on pin	
@@ -559,9 +567,23 @@ void AmMotorDriver::getMotorEncoderTicks(int &leftTicks, int &rightTicks, int &m
 void AmMotorDriver::getMotorTickTime(unsigned long &leftTime, unsigned long &rightTime, unsigned long &mowTime){
   // estimate deceleration
   unsigned long now = micros();
+
+#if FILTER_ODOMETRY
+  float time;
+
+  leftOdo.getAverage(time);
+  leftTime = max((unsigned long)time, now - motorLeftThen);
+
+  rightOdo.getAverage(time);
+  rightTime = max((unsigned long)time, now - motorRightThen);
+
+  mowOdo.getAverage(time);
+  mowTime = max((unsigned long)time, now - motorMowThen);
+#else
   leftTime = max(motorLeftTickTime, now - motorLeftThen);
   rightTime = max(motorRightTickTime, now - motorRightThen);
   mowTime = max(motorMowTickTime, now - motorMowThen);
+#endif
 }    
 
 

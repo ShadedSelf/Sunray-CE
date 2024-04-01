@@ -211,7 +211,7 @@ void Motor::stopImmediately(bool includeMowerMotor){
   motorRightRpmSet = 0;
   motorLeftRpmSet = 0;      
   motorLeftPWMCurr = 0;
-  motorRightPWMCurr = 0;   
+  motorRightPWMCurr = 0;  
   if (includeMowerMotor) {
     motorMowPWMSet = 0;
     motorMowPWMCurr = 0;    
@@ -323,13 +323,7 @@ void Motor::run() {
   motorLeftRpmCurr = 60.0 * ( ((float)ticksLeft) / ((float)ticksPerRevolution) ) / deltaControlTimeSec;
   motorRightRpmCurr = 60.0 * ( ((float)ticksRight) / ((float)ticksPerRevolution) ) / deltaControlTimeSec;
   motorMowRpmCurr = 60.0 * ( ((float)ticksMow) / ((float)6.0) ) / deltaControlTimeSec; // assuming 6 ticks per revolution
-#endif
 
-  float lp = 0.9; // 0.995
-  motorLeftRpmCurrLP = lp * motorLeftRpmCurrLP + (1.0-lp) * motorLeftRpmCurr;
-  motorRightRpmCurrLP = lp * motorRightRpmCurrLP + (1.0-lp) * motorRightRpmCurr;
-  motorMowRpmCurrLP = lp * motorMowRpmCurrLP + (1.0-lp) * motorMowRpmCurr;
-  
   if (ticksLeft == 0) {
     motorLeftTicksZero++;
     if (motorLeftTicksZero > 2) motorLeftRpmCurr = 0;
@@ -339,6 +333,12 @@ void Motor::run() {
     motorRightTicksZero++;
     if (motorRightTicksZero > 2) motorRightRpmCurr = 0;
   } else motorRightTicksZero = 0;
+#endif
+
+  float lp = 0.9; // 0.995
+  motorLeftRpmCurrLP = lp * motorLeftRpmCurrLP + (1.0-lp) * motorLeftRpmCurr;
+  motorRightRpmCurrLP = lp * motorRightRpmCurrLP + (1.0-lp) * motorRightRpmCurr;
+  motorMowRpmCurrLP = lp * motorMowRpmCurrLP + (1.0-lp) * motorMowRpmCurr;
 
   // speed controller
   control();    
@@ -506,24 +506,19 @@ float mrpwm = 0.0;
 float mmpwm = 0.0;
 void Motor::control(){  
     
-  /*DEBUG(motorLeftRpmSet);
-  DEBUG(" ");
-  DEBUGLN(motorLeftRpmCurr);*/
-
-  if (abs(mlpwm - motorLeftPWMCurr) > 2.0) mlpwm = motorLeftPWMCurr;
-  if (abs(mrpwm - motorRightPWMCurr) > 2.0) mrpwm = motorRightPWMCurr;
-  if (abs(mmpwm - motorMowPWMCurr) > 2.0) mmpwm = motorMowPWMCurr;
+  if (abs((int)mlpwm - motorLeftPWMCurr) > 0) mlpwm = (float)motorLeftPWMCurr;
+  if (abs((int)mrpwm - motorRightPWMCurr) > 0) mrpwm = (float)motorRightPWMCurr;
+  if (abs((int)mmpwm - motorMowPWMCurr) > 0) mmpwm = (float)motorMowPWMCurr;
 
   //########################  Calculate PWM for left driving motor ############################
 
   motorLeftPID.TaMax = 0.1;
   motorLeftPID.x = motorLeftRpmCurr;
-  motorLeftPID.w  = motorLeftRpmSet;
+  motorLeftPID.w = motorLeftRpmSet;
   motorLeftPID.y_min = -pwmMax;
   motorLeftPID.y_max = pwmMax;
   motorLeftPID.max_output = pwmMax;
   motorLeftPID.compute();
-  //motorLeftPWMCurr = motorLeftPWMCurr + motorLeftPID.y;
   mlpwm += motorLeftPID.y;
   if (motorLeftRpmSet >= 0) motorLeftPWMCurr = min( max(0, (int)mlpwm), pwmMax); // 0.. pwmMax
   if (motorLeftRpmSet < 0) motorLeftPWMCurr = max(-pwmMax, min(0, (int)mlpwm));  // -pwmMax..0
@@ -537,7 +532,6 @@ void Motor::control(){
   motorRightPID.y_max = pwmMax;
   motorRightPID.max_output = pwmMax;
   motorRightPID.compute();
-  //motorRightPWMCurr = motorRightPWMCurr + motorRightPID.y;
   mrpwm += motorRightPID.y;
   if (motorRightRpmSet >= 0) motorRightPWMCurr = min( max(0, (int)mrpwm), pwmMax);  // 0.. pwmMax
   if (motorRightRpmSet < 0) motorRightPWMCurr = max(-pwmMax, min(0, (int)mrpwm));   // -pwmMax..0  

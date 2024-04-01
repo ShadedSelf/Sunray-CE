@@ -30,9 +30,10 @@ void PID::reset(void) {
 float PID::compute() {
   unsigned long now = millis();
   Ta = ((float)(now - lastControlTime)) / 1000.0;
-  //printf("%.3f\n", Ta);
   lastControlTime = now;
-  if (Ta > TaMax) {
+
+  Ta = 50.0 / 1000.0;
+  /*if (Ta > TaMax) {
     if (millis() > consoleWarnTimeout){
       consoleWarnTimeout = millis() + 1000;
       CONSOLE.print("WARN: PID unmet cycle time Ta=");
@@ -41,7 +42,7 @@ float PID::compute() {
       CONSOLE.println(TaMax);
     }
     Ta = TaMax;   // should only happen for the very first call
-  }
+  }*/
 
   // compute error
   float e = (w - x);
@@ -51,7 +52,7 @@ float PID::compute() {
   if (esum < -max_output)  esum = -max_output;
   if (esum > max_output)  esum = max_output;
   y = Kp * e
-      + Ki * Ta * esum
+      + Ki * Ta * esum;
       + Kd/Ta * (e - eold);
   eold = e;
   // restrict output to min/max

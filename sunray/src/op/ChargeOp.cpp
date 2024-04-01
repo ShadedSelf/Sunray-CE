@@ -36,7 +36,6 @@ void ChargeOp::end(){
 }
 
 void ChargeOp::run(){
-
     if ((retryTouchDock) || (betterTouchDock)){
         if (millis() > retryTouchDockSpeedTime){                            
             retryTouchDockSpeedTime = millis() + 1000;

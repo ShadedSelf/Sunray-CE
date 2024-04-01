@@ -24,9 +24,9 @@ volatile unsigned long startTime = 0;
 volatile unsigned long echoTime = 0;
 volatile unsigned long echoDuration = 0;
 volatile byte sonarIdx = 0;
+
 bool added = false;
 unsigned long timeoutTime = 0;
-unsigned long nextEvalTime = 0;
 
 
 #ifdef SONAR_INSTALLED
