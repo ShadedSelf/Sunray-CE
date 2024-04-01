@@ -792,8 +792,8 @@ bool detectObstacle(){
     {
       vec3_t checkPoint =
         vec3_t(stateX, stateY, 0)
-        + forward * (12.0 + 2.0 + SONAR_LEFT_OBSTACLE_CM)
-        + right * float(i) * 8.5;
+        + forward * (12.0 + 2.0 + SONAR_LEFT_OBSTACLE_CM) / 100.0
+        + right * float(i) * 8.5 / 100.0;
       isInside = isInside && maps.isInsidePerimeter(checkPoint.x, checkPoint.y);
     }
 
@@ -896,7 +896,7 @@ void run(){
   rcmodel.run();
   bumper.run();
 
-  
+    
   // state saving
   if (millis() >= nextSaveTime){  
     nextSaveTime = millis() + 5000;

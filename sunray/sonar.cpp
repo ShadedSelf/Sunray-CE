@@ -87,27 +87,25 @@ void Sonar::run() {
     added = true;
     unsigned long raw = echoDuration;
     if (raw > MAX_DURATION) raw = MAX_DURATION;
-    
+
+    unsigned int td;
     //left
     if (sonarIdx == 0) {
       sonarLeftMeasurements.add(raw);
-      unsigned int d;
-      sonarLeftMeasurements.getMedian(d);
-      distanceLeft = convertCm(d);
+      sonarLeftMeasurements.getMedian(td);
+      distanceLeft = convertCm(td);
     }
     //center
     else if (sonarIdx == 1) {
       sonarCenterMeasurements.add(raw);
-      unsigned int d;
-      sonarCenterMeasurements.getMedian(d);
-      distanceCenter = convertCm(d);
+      sonarCenterMeasurements.getMedian(td);
+      distanceCenter = convertCm(td);
     }
     //right
     else {
       sonarRightMeasurements.add(raw);
-      unsigned int d;
-      sonarRightMeasurements.getMedian(d);
-      distanceRight = convertCm(d);
+      sonarRightMeasurements.getMedian(td);
+      distanceRight = convertCm(td);
     } 
 
     echoDuration = 0;
@@ -115,22 +113,34 @@ void Sonar::run() {
 
   if (millis() > timeoutTime) {
     // add maximun distance if the was no hit
+    unsigned int td;
     if (!added) {
-      if      (sonarIdx == 0) sonarLeftMeasurements.add(MAX_DURATION);
-      else if (sonarIdx == 1) sonarCenterMeasurements.add(MAX_DURATION);
-      else if (sonarIdx == 2) sonarRightMeasurements.add(MAX_DURATION);
+      if (sonarIdx == 0) {
+        sonarLeftMeasurements.add(MAX_DURATION);
+        sonarLeftMeasurements.getMedian(td);
+        distanceLeft = convertCm(td);
+      }
+      else if (sonarIdx == 1) {
+        sonarCenterMeasurements.add(MAX_DURATION);
+        sonarCenterMeasurements.getMedian(td);
+        distanceCenter = convertCm(td);
+      }
+      else if (sonarIdx == 2) {
+        sonarRightMeasurements.add(MAX_DURATION);
+        sonarRightMeasurements.getMedian(td);
+        distanceRight = convertCm(td);
+      }
     }
+    added = false;
 
     // send next ping
     sonarIdx = (sonarIdx + 1) % 3;
     echoDuration = 0;
-
     if      (sonarIdx == 0) startHCSR04(pinSonarLeftTrigger, pinSonarLeftEcho);
     else if (sonarIdx == 1) startHCSR04(pinSonarCenterTrigger, pinSonarCenterEcho);
     else if (sonarIdx == 2) startHCSR04(pinSonarRightTrigger, pinSonarRightEcho);
     
     timeoutTime = millis() + 50; // 10
-    added = false;
   }
 #endif
 }
