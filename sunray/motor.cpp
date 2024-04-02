@@ -159,9 +159,10 @@ void Motor::setLinearAngularSpeed(float linear, float angular, bool useLinearRam
 
   // angular
   //if (fabsf(linearSpeedSet) < 0.05)
-    angularSpeedSet = 0.95 * angularSpeedSet + 0.05 * angular;
+  //if (fabsf(angular) > fabsf(angularSpeedSet))
+    //angularSpeedSet = 0.95 * angularSpeedSet + 0.05 * angular;
   //else
-    //angularSpeedSet = angular;   
+    angularSpeedSet = angular;   
    
   float rspeed = linearSpeedSet + angularSpeedSet * (wheelBaseCm /100.0 / 2.0);          
   float lspeed = linearSpeedSet - angularSpeedSet * (wheelBaseCm /100.0 / 2.0);   
