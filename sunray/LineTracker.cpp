@@ -85,12 +85,25 @@ int get_turn_direction_preference() {
 // uses a stanley controller for line tracking
 // https://medium.com/@dingyan7361/three-methods-of-vehicle-lateral-control-pure-pursuit-stanley-and-mpc-db8cc1d32081
 void trackLine(bool runControl){  
+
+  bool targetReached =
+    maps.distanceToTargetPoint(stateX, stateY) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE);
+
+  if (targetReached){
+    rotateLeft = false;
+    rotateRight = false;
+    activeOp->onTargetReached();
+    if (!maps.nextPoint(false,stateX,stateY)){
+      // finish        
+      activeOp->onNoFurtherWaypoints();      
+    }
+  }  
+  
   Point target = maps.targetPoint;
   Point lastTarget = maps.lastTargetPoint;
 
-  float linear = 1.0;  
-  float angular = 0; 
-  bool targetReached = true; 
+  float linear = 0.0;  
+  float angular = 0.0; 
   bool mow = true;
   if (stateOp == OP_DOCK) mow = false;
 
@@ -98,16 +111,11 @@ void trackLine(bool runControl){
   if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, stateDelta);
   float trackerDiffDelta = distancePI(stateDelta, targetDelta);                         
-  float lateralError = distanceLineInfinite(stateX, stateY, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
+  lateralError = distanceLineInfinite(stateX, stateY, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
   
   float distToPath = distanceLine(stateX, stateY, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
   float targetDist = maps.distanceToTargetPoint(stateX, stateY);
   float lastTargetDist = maps.distanceToLastTargetPoint(stateX, stateY);  
-
-  if (SMOOTH_CURVES)
-    targetReached = (targetDist < 0.2);    
-  else 
-    targetReached = (targetDist < TARGET_REACHED_TOLERANCE);
 
   if ( (last_rotation_target.x() != target.x() || last_rotation_target.y() != target.y()) &&
         (rotateLeft || rotateRight ) ) {
@@ -132,23 +140,20 @@ void trackLine(bool runControl){
   }
 
   // rover angle too far away from target angle, rotate rover
-  if (!angleToTargetFits ){
+  if (!angleToTargetFits){
     // angular control (if angle to far away, rotate to next waypoint)
     linear = 0;
     angular = 29.0 / 180.0 * PI * 1.25; //  29 degree/s (0.5 rad/s);               
     if ((!rotateLeft) && (!rotateRight)){ // decide for one rotation direction (and keep it)
       int r = 0;
       // no idea but don't work in reverse mode...
-      if (!maps.trackReverse) {
+      if (!maps.trackReverse)
         r = get_turn_direction_preference();
-      }
       // store last_rotation_target point
       last_rotation_target.setXY(target.x(), target.y());
       
-      if (r == 1)
-        rotateRight = true;
-      else if (r == -1)
-        rotateLeft = true;
+      if      (r == 1) rotateRight = true;
+      else if (r == -1) rotateLeft = true;
       else if (trackerDiffDelta < 0)
         rotateRight = true;
       else
@@ -172,41 +177,39 @@ void trackLine(bool runControl){
         maps.getDockingPos(dockX, dockY, dockDelta);
         float dist_dock = distance(dockX, dockY, stateX, stateY);
         // only allow trackslow if we are near dock (below DOCK_UNDOCK_TRACKSLOW_DISTANCE)
-        if (dist_dock > DOCK_UNDOCK_TRACKSLOW_DISTANCE) {
+        if (dist_dock > DOCK_UNDOCK_TRACKSLOW_DISTANCE)
             trackslow_allowed = false;
-        }
     }
 
-    if (maps.trackSlow && trackslow_allowed) {
-      // planner forces slow tracking (e.g. docking etc)
-      linear = 0.1;           
-    } else if (((setSpeed > 0.2) 
-      && (targetDist < 0.25 || lastTargetDist < 0.25) && (!straight))   // approaching or leaving 
-         // || ((linearMotionStartTime != 0) && (millis() < linearMotionStartTime + 3000))                      // leaving  
-       ) 
-    {
-      linear = 0.15; // reduce speed when approaching/leaving waypoints          
-    } 
+    // planner forces slow tracking (e.g. docking etc)
+    if (maps.trackSlow && trackslow_allowed)
+      linear = 0.1;   
+    // reduce speed when approaching/leaving waypoints         
+    else if (
+      (setSpeed > 0.2) 
+      && (targetDist < 0.25 && (!straight)) //approaching
+      || (lastTargetDist < 0.25))           //leaving  
+        linear = 0.15;         
     else {
       if (gps.solution == SOL_FLOAT)        
         linear = min(setSpeed, 0.1); // reduce speed for float solution
       else
         linear = setSpeed;         // desired speed
-      if (sonar.nearObstacle()) linear = 0.1; // slow down near obstacles
+      if (sonar.nearObstacle())
+        linear = 0.1; // slow down near obstacles
     }     
 
     // slow down speed in case of overload and overwrite all prior speed 
     if ( (motor.motorLeftOverload) || (motor.motorRightOverload) || (motor.motorMowOverload) ){
-      if (!printmotoroverload) {
+      if (!printmotoroverload)
           CONSOLE.println("motor overload detected: reduce linear speed to 0.1");
-      }
       printmotoroverload = true;
       linear = 0.1;  
-    } else {
-      printmotoroverload = false;
-    }   
+    } 
+    else
+      printmotoroverload = false; 
           
-    //angular = 3.0 * trackerDiffDelta + 3.0 * lateralError;       // correct for path errors 
+    // correct for path errors 
     float k = stanleyTrackingNormalK; // STANLEY_CONTROL_K_NORMAL;
     float p = stanleyTrackingNormalP; // STANLEY_CONTROL_P_NORMAL;    
     /*if (maps.trackSlow && trackslow_allowed) {
@@ -220,26 +223,19 @@ void trackLine(bool runControl){
   }
   
   // check some pre-conditions that can make linear+angular speed zero
-  if (fixTimeout != 0){
-    if (millis() > lastFixTime + fixTimeout * 1000.0){
-      activeOp->onGpsFixTimeout();        
-    }       
-  }     
+  if (fixTimeout != 0)
+    if (millis() > lastFixTime + fixTimeout * 1000.0)
+      activeOp->onGpsFixTimeout();            
 
-  if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT)){        
-    if (abs(linear) > 0.06) {
-      if ((millis() > linearMotionStartTime + 5000) && (stateGroundSpeed < 0.03)){
+  if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT))       
+    if (abs(linear) > 0.06)
+      if ((millis() > linearMotionStartTime + 5000) && (stateGroundSpeed < 0.03))
         // if in linear motion and not enough ground speed => obstacle
-        //if ( (GPS_SPEED_DETECTION) && (!maps.isUndocking()) ) { 
         if (GPS_SPEED_DETECTION) {         
           CONSOLE.println("gps no speed => obstacle!");
           triggerObstacle();
-          return;
-        }
-      }
-    }  
-  } else {
-    // no gps solution
+          return; }
+  else { // no gps solution
     if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking()){
       CONSOLE.println("WARN: no gps solution!");
       activeOp->onGpsNoSignal();
@@ -256,17 +252,16 @@ void trackLine(bool runControl){
         maps.getDockingPos(dockX, dockY, dockDelta);
         float dist = distance(dockX, dockY, stateX, stateY);
         // check if current distance to docking station is below
-        // KIDNAP_DETECT_DISTANCE_DOCK_UNDOCK to trigger KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE_DOCK_UNDOCK
-        if (dist < KIDNAP_DETECT_DISTANCE_DOCK_UNDOCK) {
+        if (dist < KIDNAP_DETECT_DISTANCE_DOCK_UNDOCK)
             allowedPathTolerance = KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE_DOCK_UNDOCK;
-        }
     }
     if (fabs(distToPath) > allowedPathTolerance){ // actually, this should not happen (except on false GPS fixes or robot being kidnapped...)
       if (!stateKidnapped){
         stateKidnapped = true;
         activeOp->onKidnapped(stateKidnapped);
       }            
-    } else {
+    }
+    else {
       if (stateKidnapped) {
         stateKidnapped = false;
         activeOp->onKidnapped(stateKidnapped);        
@@ -278,7 +273,7 @@ void trackLine(bool runControl){
   // also, if lifted, do not turn on mowing motor so that the robot will drive and can do obstacle avoidance 
   if (detectLift()) mow = false;
    
-  if (mow)  { 
+  if (mow) { 
     if (millis() < motor.motorMowSpinUpTime + 3000){
        // wait until mowing motor is running
       if (!buzzer.isPlaying()) buzzer.sound(SND_WARNING, true);
@@ -291,20 +286,6 @@ void trackLine(bool runControl){
     motor.setLinearAngularSpeed(linear, angular);      
     motor.setMowState(mow);    
   }
-
-  if (targetReached){
-    rotateLeft = false;
-    rotateRight = false;
-    activeOp->onTargetReached();
-    bool straight = maps.nextPointIsStraight();
-    if (!maps.nextPoint(false,stateX,stateY)){
-      // finish        
-      activeOp->onNoFurtherWaypoints();      
-    } else {      
-      // next waypoint          
-      //if (!straight) angleToTargetFits = false;      
-    }
-  }  
 }
 
 
