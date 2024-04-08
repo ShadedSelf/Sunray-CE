@@ -107,7 +107,7 @@ void trackLine(bool runControl){
   bool mow = true;
   if (stateOp == OP_DOCK) mow = false;
 
-  float targetDelta = pointsAngle(stateX, stateY, target.x(), target.y());      
+  float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());      
   if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, stateDelta);
   float trackerDiffDelta = distancePI(stateDelta, targetDelta);                         
