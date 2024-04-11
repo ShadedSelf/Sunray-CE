@@ -107,7 +107,8 @@ void trackLine(bool runControl){
   bool mow = true;
   if (stateOp == OP_DOCK) mow = false;
 
-  float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());      
+  //float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());   
+  float targetDelta = pointsAngle(stateX, stateY, target.x(), target.y());    
   if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, stateDelta);
   float trackerDiffDelta = distancePI(stateDelta, targetDelta);                         
@@ -211,13 +212,12 @@ void trackLine(bool runControl){
           
     // correct for path errors 
     float k = stanleyTrackingNormalK; // STANLEY_CONTROL_K_NORMAL;
-    float p = stanleyTrackingNormalP; // STANLEY_CONTROL_P_NORMAL;    
+    float p = stanleyTrackingNormalP; // STANLEY_CONTROL_P_NORMAL;  
     /*if (maps.trackSlow && trackslow_allowed) {
       k = stanleyTrackingSlowK; //STANLEY_CONTROL_K_SLOW;   
       p = stanleyTrackingSlowP; //STANLEY_CONTROL_P_SLOW;          
     }*/         
-    //angular = p * trackerDiffDelta + atan(k * lateralError); // correct for path errors
-    angular = p * trackerDiffDelta + atan(k * lateralError * fabs(motor.linearSpeedSet)); // correct for path errors       
+    angular = p * trackerDiffDelta + atan(k * lateralError); // correct for path errors       
     angular = max(-PI/4, min(PI/4, angular));
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
   }
