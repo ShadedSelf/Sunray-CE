@@ -122,30 +122,13 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define MOWER_SIZE            63         // mower / chassis size / length in cm
 
 #define ENABLE_ODOMETRY_ERROR_DETECTION  true    // use this to detect odometry erros
-//#define ENABLE_ODOMETRY_ERROR_DETECTION  false
 
-// choose ticks per wheel revolution :
-// ...for the 36mm diameter motor (blue cap)  https://www.marotronics.de/2-x-36er-DC-Planeten-Getriebemotor-24-Volt-mit-HallIC-30-33-RPM-8mm-Welle
-//#define TICKS_PER_REVOLUTION  1310 / 2    // odometry ticks per wheel revolution 
+#define TICKS_PER_REVOLUTION  570     // odometry ticks per wheel revolution
 
-// ...for the 36mm diameter motor (black cap)  https://www.marotronics.de/MA36-DC-Planeten-Getriebemotor-24-Volt-mit-HallIC-30-33-RPM-8mm-Welle-ab-2-Stueck-Staffelpreis
-// #define TICKS_PER_REVOLUTION 975 / 2
+#define RESPONSIVE_RPM false // use tick time for odometry RPM calculations
+#define FILTER_ODOMETRY false //rolling average for odometry tick time
 
-// ...for the newer 42mm diameter motor (green connector) https://www.marotronics.de/MA42-DC-Planeten-Getriebemotor-24-Volt-mit-HallIC-30-33-RPM-8mm-Welle-ab-2-Stueck-Staffelpreis
-// #define TICKS_PER_REVOLUTION  696 / 2    // odometry ticks per wheel revolution 
-
-// ...for the older 42mm diameter motor (white connector)  https://wiki.ardumower.de/images/d/d6/Ardumower_chassis_inside_ready.jpg
-//#define TICKS_PER_REVOLUTION  1050 / 2    // odometry ticks per wheel revolution 
-//#define TICKS_PER_REVOLUTION  750    // odometry ticks per wheel revolution 
-
-// ...for the brushless motor april 2021   https://wiki.ardumower.de/index.php?title=Datei:BLUnit.JPG
-//#define TICKS_PER_REVOLUTION  150     // 1194/2  odometry ticks per wheel revolution
-//#define TICKS_PER_REVOLUTION  1194/2     // 1194/2  odometry ticks per wheel revolution
-#define TICKS_PER_REVOLUTION  570     // 1194/2  odometry ticks per wheel revolution
-
-// #define TICKS_PER_REVOLUTION  304     // odometry ticks per wheel revolution (RM18)
-
-#define RESPONSIVE_RPM true // use tick time for odometry RPM calculations
+#define ODOMETRY_DIVIDER false // set to true if using hardware odometry divider
 
 
 // ----- gear motors --------------------------------------------------
@@ -514,7 +497,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 
 // ------- PCB1.3/Due settings -------------------------
-#define IOREF 3.35   // I/O reference voltage 
+#define IOREF 3.3   // I/O reference voltage 
 
 // ------ hardware pins---------------------------------------
 // no configuration needed here

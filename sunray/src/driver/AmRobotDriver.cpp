@@ -99,7 +99,7 @@ float AmRobotDriver::getCpuTemperature(){
 
 // odometry signal change interrupt
 
-#if FILTER_ODOMETRY 
+#if (FILTER_ODOMETRY && RESPONSIVE_RPM)
   #include "../../RunningMedian.h"
   RunningMedianISR<volatile unsigned long, 6> leftOdo;
   RunningMedianISR<volatile unsigned long, 6> rightOdo;
@@ -111,7 +111,7 @@ void OdometryMowISR(){
   if (now - motorMowThen < motorMowTicksTimeout) return; // eliminate spikes 
   motorMowTickTime = now - motorMowThen;
   motorMowThen = now; 
-  #if FILTER_ODOMETRY
+  #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
     mowOdo.add(motorMowTickTime);
   #endif
   #ifdef SUPER_SPIKE_ELIMINATOR
@@ -130,7 +130,7 @@ void OdometryLeftISR(){
   if (now - motorLeftThen < motorLeftTicksTimeout) return; // eliminate spikes 
   motorLeftTickTime = now - motorLeftThen;
   motorLeftThen = now; 
-  #if FILTER_ODOMETRY
+  #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
     leftOdo.add(motorLeftTickTime);
   #endif
   #ifdef SUPER_SPIKE_ELIMINATOR
@@ -148,7 +148,7 @@ void OdometryRightISR(){
   if (now - motorRightThen < motorRightTicksTimeout) return; // eliminate spikes
   motorRightTickTime = now - motorRightThen;
   motorRightThen = now;
-  #if FILTER_ODOMETRY
+  #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
     rightOdo.add(motorRightTickTime);
   #endif
   #ifdef SUPER_SPIKE_ELIMINATOR
@@ -384,9 +384,9 @@ void AmMotorDriver::begin(){
   pinMode(pinLift, INPUT_PULLUP);
 
   // enable interrupts
-  attachInterrupt(pinOdometryLeft, OdometryLeftISR, CHANGE);  
-  attachInterrupt(pinOdometryRight, OdometryRightISR, CHANGE);  
-  attachInterrupt(pinMotorMowRpm, OdometryMowISR, CHANGE);  
+  attachInterrupt(pinOdometryLeft, OdometryLeftISR, ODOMETRY_DIVIDER ? FALLING : CHANGE);  
+  attachInterrupt(pinOdometryRight, OdometryRightISR, ODOMETRY_DIVIDER ? FALLING : CHANGE);  
+  attachInterrupt(pinMotorMowRpm, OdometryMowISR, ODOMETRY_DIVIDER ? FALLING : CHANGE);  
     
 	//pinMan.setDebounce(pinOdometryLeft, 100);  // reject spikes shorter than usecs on pin
 	//pinMan.setDebounce(pinOdometryRight, 100);  // reject spikes shorter than usecs on pin	
