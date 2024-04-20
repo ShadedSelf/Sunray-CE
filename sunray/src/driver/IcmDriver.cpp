@@ -3,7 +3,8 @@
 #include "../../config.h"
 #include "../../i2c.h"
 
-
+#include <quaternion_type.h>
+#include <vector_type.h>
 
 IcmDriver::IcmDriver(){    
 }
@@ -33,23 +34,35 @@ void IcmDriver::detect(){
   CONSOLE.println(F("ICM 20948 not found"));        
 }
 
-
 bool IcmDriver::begin(){ 
   bool success = true;
-  
+
   success &= (icm.initializeDMP() == ICM_20948_Stat_Ok);
   
+#if USE_MAGNOMETER
+  success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) == ICM_20948_Stat_Ok);
+  success &= (icm.setDMPODRrate(DMP_ODR_Reg_Quat9, 2) == ICM_20948_Stat_Ok);
+#else
   success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_GAME_ROTATION_VECTOR) == ICM_20948_Stat_Ok);
   success &= (icm.setDMPODRrate(DMP_ODR_Reg_Quat6, 2) == ICM_20948_Stat_Ok);
-  //success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) == ICM_20948_Stat_Ok);
-  //success &= (icm.setDMPODRrate(DMP_ODR_Reg_Quat9, 2) == ICM_20948_Stat_Ok);
+#endif
   
   success &= (icm.enableFIFO() == ICM_20948_Stat_Ok);
   success &= (icm.enableDMP() == ICM_20948_Stat_Ok);
   success &= (icm.resetDMP() == ICM_20948_Stat_Ok);
   success &= (icm.resetFIFO() == ICM_20948_Stat_Ok);
-  success &= (icm.lowPower(false) == ICM_20948_Stat_Ok);
-  //20hzt and biases here
+
+  // sensor biases
+  success &= (icm.setBiasGyroX(24192) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasGyroY(113088) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasGyroZ(-171744) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasAccelX(0) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasAccelY(0) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasAccelZ(0) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasCPassX(-460384) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasCPassY(-124864) == ICM_20948_Stat_Ok);
+  success &= (icm.setBiasCPassZ(-2686144) == ICM_20948_Stat_Ok);
+
   CONSOLE.println("using imu driver: IcmDriver");
   return success;
 }
@@ -58,7 +71,6 @@ bool IcmDriver::begin(){
 void IcmDriver::run(){
 }
 
-
 bool IcmDriver::isDataAvail(){
 
     icm_20948_DMP_data_t data;
@@ -66,12 +78,19 @@ bool IcmDriver::isDataAvail(){
 
     if ((icm.status == ICM_20948_Stat_Ok) || (icm.status == ICM_20948_Stat_FIFOMoreDataAvail))
     {
+      #if USE_MAGNOMETER
+        if ((data.header & DMP_header_bitmap_Quat9) > 0)
+        {
+            double q1 = ((double)data.Quat9.Data.Q1) / 1073741824.0;
+            double q2 = ((double)data.Quat9.Data.Q2) / 1073741824.0;
+            double q3 = ((double)data.Quat9.Data.Q3) / 1073741824.0;
+      #else
         if ((data.header & DMP_header_bitmap_Quat6) > 0)
-        //if ((data.header & DMP_header_bitmap_Quat9) > 0)
         {
             double q1 = ((double)data.Quat6.Data.Q1) / 1073741824.0;
             double q2 = ((double)data.Quat6.Data.Q2) / 1073741824.0;
             double q3 = ((double)data.Quat6.Data.Q3) / 1073741824.0;
+      #endif
 
             double q0 = sqrt(1.0 - min((q1 * q1) + (q2 * q2) + (q3 * q3), 1.0));
 
@@ -92,11 +111,14 @@ bool IcmDriver::isDataAvail(){
             double t3 = +2.0 * (q0 * q3 + q1 * q2);
             double t4 = +1.0 - 2.0 * (q2sqr + q3 * q3);
             yaw = atan2(t3, t4);
+
+            orientation = quat_t(q0, q1, q2, q3).norm();
+
             return true;
         }
     }
     return false;
-}         
+}       
     
 void IcmDriver::resetData(){
     icm.resetFIFO();

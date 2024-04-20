@@ -59,15 +59,15 @@ bool MpuDriver::begin(){
     //mpu.setAccelFSR(2);	      
     mpu.dmpBegin(DMP_FEATURE_6X_LP_QUAT  // Enable 6-axis quat
                | DMP_FEATURE_GYRO_CAL // Use gyro calibration
-               | DMP_FEATURE_SEND_RAW_ACCEL
-               | DMP_FEATURE_SEND_CAL_GYRO
+               //| DMP_FEATURE_SEND_RAW_ACCEL
+               //| DMP_FEATURE_SEND_CAL_GYRO
               , 20); // Set DMP FIFO rate to 5 Hz
     // DMP_FEATURE_LP_QUAT can also be used. It uses the 
     // accelerometer in low-power mode to estimate quat's.
     // DMP_FEATURE_LP_QUAT and 6X_LP_QUAT are mutually exclusive    
     //mpu.dmpSetOrientation(orientationMatrix);
-    long accBias[3] = {55, 22, -24};
-    mpu.dmpSetAccelBias(accBias);
+    //long accBias[3] = {55, 22, -24};
+    //mpu.dmpSetAccelBias(accBias);
     return true;
 }
 
@@ -95,12 +95,7 @@ bool MpuDriver::isDataAvail(){
     roll = mpu.roll;
     pitch = mpu.pitch;
     yaw = mpu.yaw;   
-    ax = ax * 0.0 + mpu.calcAccel(mpu.ax) * 1.0; 
-    ay = ay * 0.0 + mpu.calcAccel(mpu.ay) * 1.0; 
-    az = az * 0.0 + mpu.calcAccel(mpu.az) * 1.0; 
-    gx = mpu.calcGyro(mpu.gx);
-    gy = mpu.calcGyro(mpu.gy);
-    gz = mpu.calcGyro(mpu.gz);
+
     return true;
 }         
     

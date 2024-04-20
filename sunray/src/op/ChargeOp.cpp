@@ -8,6 +8,7 @@
 #include "../../robot.h"
 #include "../../StateEstimator.h"
 #include "../../map.h"
+#include "../../helper.h"
 
 
 String ChargeOp::name(){
@@ -62,16 +63,16 @@ void ChargeOp::run(){
     
     battery.resetIdle();
     if (battery.chargerConnected()){        
-        //CONSOLE.println("Op::onChargerConnected");
-        maps.setIsDocked(true);               
+        maps.setIsDocked(true);    
+
         // get robot position and yaw from docking pos
         // sensing charging contacts means we are in docking station - we use docking point coordinates to get rid of false fix positions in
         // docking station
-        maps.getDockingPos(stateX, stateY, stateDelta);
-        // get robot yaw orientation from map 
-        //float tempX;
-        //float tempY;
-        //maps.setRobotStatePosToDockingPos(tempX, tempY, stateDelta);                                            
+        float dockHeading;
+        maps.getDockingPos(stateX, stateY, dockHeading);
+        float err = distancePI(imuDriver.yaw, dockHeading);
+        headingOffset = err;
+                                           
         if (battery.chargingHasCompleted()){
             if (millis() > nextConsoleDetailsTime){
                 nextConsoleDetailsTime = millis() + 30000;

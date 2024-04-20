@@ -78,9 +78,11 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 //#define MPU9150
 //#define MPU9250   // also choose this for MPU9255
 //#define BNO055
-#define ICM20948
+//#define ICM20948
 
 #define MPU_ADDR 0x69  // I2C address (0x68 if AD0=LOW, 0x69 if AD0=HIGH)
+
+#define USE_MAGNOMETER false  // use IMUs magnometer (only ICM)
 
 // should the mower turn off if IMU is tilt over? (yes: uncomment line, no: comment line)
 #define ENABLE_TILT_DETECTION  1
@@ -345,7 +347,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define GPS_POSITION_OFFSET_ENABLED true // enable gps antenna position correction offset?
 #define GPS_POSITION_OFFSET_FORWARD 0.0 // offset to add fordwards (cm)
 #define GPS_POSITION_OFFSET_RIGHT 0.0 // offset to add to the right (cm)
-#define GPS_POSITION_OFFSET_UP -24.0 // offse to add upwards (cm), set to ground level for tilt compensation (-24 cm for standard ardumower)
+#define GPS_POSITION_OFFSET_UP 0.0 // offse to add upwards (cm), set to ground level for tilt compensation (-24 cm for standard ardumower)
 
 #define INVALID_GPS_TIMEOUT 30.0 // time in seconds to navigate with invalid GPS
 

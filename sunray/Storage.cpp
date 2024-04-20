@@ -140,7 +140,8 @@ bool loadState(){
   OperationType savedOp;
   res &= (stateFile.read((uint8_t*)&stateX, sizeof(stateX)) != 0);
   res &= (stateFile.read((uint8_t*)&stateY, sizeof(stateY)) != 0);
-  res &= (stateFile.read((uint8_t*)&stateDelta, sizeof(stateDelta)) != 0);
+  //res &= (stateFile.read((uint8_t*)&stateDelta, sizeof(stateDelta)) != 0);
+    res &= (stateFile.read((uint8_t*)&headingOffset, sizeof(headingOffset)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.mowPointsIdx, sizeof(maps.mowPointsIdx)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.dockPointsIdx, sizeof(maps.dockPointsIdx)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.freePointsIdx, sizeof(maps.freePointsIdx)) != 0);
@@ -196,7 +197,8 @@ bool saveState(){
 
   res &= (stateFile.write((uint8_t*)&stateX, sizeof(stateX)) != 0);
   res &= (stateFile.write((uint8_t*)&stateY, sizeof(stateY)) != 0);
-  res &= (stateFile.write((uint8_t*)&stateDelta, sizeof(stateDelta)) != 0);
+  //res &= (stateFile.write((uint8_t*)&stateDelta, sizeof(stateDelta)) != 0);
+  res &= (stateFile.write((uint8_t*)&headingOffset, sizeof(headingOffset)) != 0);
   res &= (stateFile.write((uint8_t*)&maps.mowPointsIdx, sizeof(maps.mowPointsIdx)) != 0);
   res &= (stateFile.write((uint8_t*)&maps.dockPointsIdx, sizeof(maps.dockPointsIdx)) != 0);
   res &= (stateFile.write((uint8_t*)&maps.freePointsIdx, sizeof(maps.freePointsIdx)) != 0);

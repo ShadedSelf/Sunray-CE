@@ -53,7 +53,8 @@ static inline int reg_int_cb(struct int_param_s *int_param)
 }
 
 #if !defined MPU6050 && !defined MPU9150 && !defined MPU6500 && !defined MPU9250
-#error  Which gyro are you using? Define MPUxxxx in your compiler options.
+//#error  Which gyro are you using? Define MPUxxxx in your compiler options.4
+#define MPU6050
 #endif
 
 /* Time for some messy macro work. =]

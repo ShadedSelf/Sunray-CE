@@ -8,6 +8,7 @@
 #include "RobotDriver.h"
 #include "../icm/ICM_20948.h"
 
+//#define ICM_20948_USE_DMP
 
 class IcmDriver: public ImuDriver {    
   public:    

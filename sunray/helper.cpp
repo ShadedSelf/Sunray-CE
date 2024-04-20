@@ -101,13 +101,16 @@ float distanceLine(float px, float py, float x1, float y1, float x2, float y2) {
 // weight fusion (w=0..1) of two radiant values (a,b)
 float fusionPI(float w, float a, float b)
 {
-  float c;
+  /*float c;
   if ((b >= PI/2) && (a <= -PI/2)){
     c = w * a + (1.0-w) * (b-2*PI);
   } else if ((b <= -PI/2) && (a >= PI/2)){
     c = w * (a-2*PI) + (1.0-w) * b;
   } else c = w * a + (1.0-w) * b;
-  return scalePI(c);
+  return scalePI(c);*/
+  float cs = (1-w)*cos(a) + w*cos(b);
+  float sn = (1-w)*sin(a) + w*sin(b);
+  return atan2(sn, cs);
 }
 
 

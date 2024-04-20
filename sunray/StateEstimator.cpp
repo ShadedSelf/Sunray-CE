@@ -25,7 +25,6 @@ float stateY = 0;  // position-north (m)
 float stateDelta = 0;  // direction (rad)
 float stateRoll = 0;
 float statePitch = 0;
-float stateDeltaGPS = 0;
 float stateDeltaIMU = 0;
 float stateGroundSpeed = 0; // m/s
 
@@ -97,47 +96,48 @@ bool startIMU(bool forceIMU){
   uint8_t data = 0;
   int counter = 0;  
   while ((forceIMU) || (counter < 1)){          
-     imuDriver.detect();
-     if (imuDriver.imuFound){
-       break;
-     }
-     I2Creset();  
-     Wire.begin();    
-     #ifdef I2C_SPEED
-       Wire.setClock(I2C_SPEED);   
-     #endif
-     counter++;
-     if (counter > 5){    
-       // no I2C recovery possible - this should not happen (I2C module error)
-       CONSOLE.println("ERROR IMU not found");
-       //stateSensor = SENS_IMU_TIMEOUT;
-       activeOp->onImuError();
-       //setOperation(OP_ERROR);      
-       //buzzer.sound(SND_STUCK, true);            
-       return false;
-     }
-     watchdogReset();          
+    imuDriver.detect();
+    if (imuDriver.imuFound)
+      break;
+
+    I2Creset();  
+    Wire.begin();    
+    #ifdef I2C_SPEED
+      Wire.setClock(I2C_SPEED);   
+    #endif
+    
+    counter++;
+    if (counter > 5){    
+      // no I2C recovery possible - this should not happen (I2C module error)
+      CONSOLE.println("ERROR IMU not found");
+      activeOp->onImuError();            
+      return false;
+    }
+    watchdogReset();          
   }  
 
-  if (!imuDriver.imuFound) return false; 
+  if (!imuDriver.imuFound)
+    return false; 
    
   counter = 0;  
   while (true){    
-    if (imuDriver.begin()) break;
+    if (imuDriver.begin())
+      break;
+
     CONSOLE.print("Unable to communicate with IMU.");
     CONSOLE.print("Check connections, and try again.");
     CONSOLE.println();
-    delay(1000);    
+
+    delay(1000);   
+
     counter++;
     if (counter > 5){
-      //stateSensor = SENS_IMU_TIMEOUT;
-      activeOp->onImuError();
-      //setOperation(OP_ERROR);      
-      //buzzer.sound(SND_STUCK, true);            
+      activeOp->onImuError();        
       return false;
     }
     watchdogReset();     
   }              
+
   imuIsCalibrating = true;   
   nextImuCalibrationSecond = millis() + 1000;
   imuCalibrationSeconds = 0;
@@ -171,12 +171,13 @@ void readIMU(){
   if (!imuDriver.imuFound) return;
   // Check for new data in the FIFO  
   unsigned long startTime = millis();
-  bool avail = (imuDriver.isDataAvail());
+  bool avail = imuDriver.isDataAvail();
   // check time for I2C access : if too long, there's an I2C issue and we need to restart I2C bus...
   unsigned long duration = millis() - startTime;    
-  if (avail) imuDataTimeout = millis() + 10000; // reset IMU data timeout, if IMU data available
-  //CONSOLE.print("duration:");
-  //CONSOLE.println(duration);  
+
+  if (avail)
+    imuDataTimeout = millis() + 10000; // reset IMU data timeout, if IMU data available
+
   if ((duration > 60) || (millis() > imuDataTimeout)) {
     if (millis() > imuDataTimeout){
       CONSOLE.print("ERROR IMU data timeout: ");
@@ -197,7 +198,6 @@ void readIMU(){
   } 
   
   if (avail) {        
-    //CONSOLE.println("fifoAvailable");
     // Use dmpUpdateFifo to update the ax, gx, mx, etc. values
     #ifdef ENABLE_TILT_DETECTION
       rollChange += (imuDriver.roll-stateRoll);
@@ -214,8 +214,6 @@ void readIMU(){
       {
         dumpImuTilt();
         activeOp->onImuTilt();
-        //stateSensor = SENS_IMU_TILT;
-        //setOperation(OP_ERROR);
       }           
     #endif
 
@@ -224,7 +222,7 @@ void readIMU(){
     float currentIMUYaw = scalePI(imuDriver.yaw);
     lastIMUYaw = scalePIangles(lastIMUYaw, currentIMUYaw);
     stateDeltaIMU = -scalePI( distancePI(currentIMUYaw, lastIMUYaw) );  
-    lastIMUYaw = currentIMUYaw;      
+    lastIMUYaw = currentIMUYaw;
     imuDataTimeout = millis() + 10000;   
   }     
 }
@@ -233,6 +231,8 @@ void resetImuTimeout(){
   imuDataTimeout = millis() + 10000;  
 }
 
+
+float headingOffset = 0.0;
 
 // compute robot state (x,y,delta)
 // uses complementary filter ( https://gunjanpatel.wordpress.com/2016/07/07/complementary-filter-design/ )
@@ -254,13 +254,15 @@ void computeRobotState(){
 
   vec3_t rpy;
   if ((imuDriver.imuFound) && (maps.useIMU)) {     // IMU available and should be used by planner
-    stateDelta = scalePI(stateDelta + stateDeltaIMU );
-    rpy = vec3_t(imuDriver.roll, imuDriver.pitch, stateDelta);
-  } else {     // odometry
+      stateDelta = scalePI(imuDriver.yaw + headingOffset);
+      rpy = vec3_t(imuDriver.roll, imuDriver.pitch, stateDelta);
+  }
+  else {     // odometry
     stateDelta = scalePI(stateDelta + deltaOdometry);  
     rpy = vec3_t(0.0, 0.0, stateDelta);
   }
-
+  
+  // corrected orientation quaternion and vectors
   quat_t x; x.setRotation({1,0,0}, rpy.x, false);  
   quat_t y; y.setRotation({0,1,0}, rpy.y, false);  
   quat_t z; z.setRotation({0,0,1}, rpy.z, false);
@@ -270,6 +272,7 @@ void computeRobotState(){
   right = rot.rotate({0,-1,0}, GLOBAL_FRAME).norm();
   vec3_t up = rot.rotate({0,0,1}, GLOBAL_FRAME).norm();
   
+  // gps position
   vec3_t gpsPos = {0,0,0};
   if (absolutePosSource){
     relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, gpsPos.y, gpsPos.x);    
@@ -322,8 +325,8 @@ void computeRobotState(){
       dockGPS = false;
   #endif
 
-  if (
-    gps.solutionAvail
+  // gps heading and position
+  if (gps.solutionAvail
     && ((gps.solution == SOL_FIXED || (gps.solution == SOL_FLOAT)) 
       && millis() > lastInvalidTime + IGNORE_GPS_AFTER_INVALID * 1000.0
       && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
@@ -348,25 +351,23 @@ void computeRobotState(){
     {       
       float diffLastPosDelta = distancePI(stateDelta, lastPosDelta);                 
       if (fabs(diffLastPosDelta) /PI * 180.0 < 10
-      && (fabs(motor.linearSpeedSet) > 0)
+      //&& (fabs(motor.linearSpeedSet) > 0)
       && (fabs(motor.angularSpeedSet) /PI *180.0 < 45) ) // make sure robot is not turning
       {  
-        stateDeltaGPS = scalePI(atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x));  
+        float stateDeltaGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);  
         if (motor.linearSpeedSet < 0)
           stateDeltaGPS = scalePI(stateDeltaGPS + PI); // consider if driving reverse
 
         if (((gps.solution == SOL_FIXED) && (maps.useGPSfixForDeltaEstimation ))
-        || ((gps.solution == SOL_FLOAT) && false) ) // allows planner to use float solution?     
+        || ((gps.solution == SOL_FLOAT) && false)) // allows planner to use float solution?     
         {    
-          float diffDelta = distancePI(stateDelta, stateDeltaGPS);                 
-          if (fabs(diffDelta/PI*180) > 45){ // IMU-based heading too far away => use GPS heading
-            stateDelta = stateDeltaGPS;
-            stateDeltaIMU = 0;
-          } else {
-            // delta fusion (complementary filter, see above comment)
-            stateDeltaGPS = scalePIangles(stateDeltaGPS, stateDelta);
-            stateDelta = fusionPI(GPS_IMU_FUSION, stateDelta, stateDeltaGPS);               
-          }            
+          // imu-gps heading difference
+          float headingDiff = distancePI(imuDriver.yaw, stateDeltaGPS);  
+
+          if (fabs(distancePI(stateDelta, stateDeltaGPS)/PI*180) > 45) // IMU-based heading too far away => use GPS heading
+            headingOffset = headingDiff;
+          else // delta fusion (complementary filter, see above comment)
+            headingOffset = fusionPI(0.99, headingDiff, headingOffset);              
         }
       }
       lastGpsPos = gpsPos;
@@ -397,6 +398,7 @@ void computeRobotState(){
   }
   
   if (stateOp == OP_MOW) statMowDistanceTraveled += distOdometry/100.0;
+  
   
   if (imuDriver.imuFound)
     stateDeltaSpeedIMU = 0.99 * stateDeltaSpeedIMU + 0.01 * stateDeltaIMU / 0.02; // IMU yaw rotation speed (20ms timestep)
