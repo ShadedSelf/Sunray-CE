@@ -652,7 +652,7 @@ void start(){
     ntrip.begin();  
   #endif
   
-  watchdogEnable(15000L);   // 15 seconds  
+  watchdogEnable(5000L);   // 5 seconds  
   
   startIMU(false);        
   

@@ -24,7 +24,8 @@ extern float statePitch;
 extern float stateDeltaIMU;
 extern float stateGroundSpeed; // m/s
 extern float lateralError; // lateral error
-extern float headingOffset;
+
+extern double headingOffset;
 
 extern float stateDeltaLast;
 extern float stateDeltaSpeed;

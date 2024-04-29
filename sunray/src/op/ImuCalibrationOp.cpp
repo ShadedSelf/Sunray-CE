@@ -46,7 +46,7 @@ void ImuCalibrationOp::run(){
             imuIsCalibrating = false;
             lastIMUYaw = 0;          
             imuDriver.resetData();
-            imuDataTimeout = millis() + 10000;
+            resetImuTimeout();
             Op::changeOp(*nextOp);
         }
     }           

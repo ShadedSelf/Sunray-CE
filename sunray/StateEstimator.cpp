@@ -93,7 +93,6 @@ vec3_t quaternion_to_euler(quat_t q)
 // start IMU sensor and calibrate
 bool startIMU(bool forceIMU){    
   // detect IMU
-  uint8_t data = 0;
   int counter = 0;  
   while ((forceIMU) || (counter < 1)){          
     imuDriver.detect();
@@ -113,12 +112,14 @@ bool startIMU(bool forceIMU){
       activeOp->onImuError();            
       return false;
     }
+
     watchdogReset();          
   }  
 
   if (!imuDriver.imuFound)
     return false; 
    
+  // initialize IMU
   counter = 0;  
   while (true){    
     if (imuDriver.begin())
@@ -135,12 +136,14 @@ bool startIMU(bool forceIMU){
       activeOp->onImuError();        
       return false;
     }
+
     watchdogReset();     
   }              
 
   imuIsCalibrating = true;   
   nextImuCalibrationSecond = millis() + 1000;
   imuCalibrationSeconds = 0;
+  
   return true;
 }
 
@@ -169,16 +172,17 @@ void dumpImuTilt(){
 // https://learn.sparkfun.com/tutorials/9dof-razor-imu-m0-hookup-guide/using-the-mpu-9250-dmp-arduino-library
 void readIMU(){
   if (!imuDriver.imuFound) return;
+
   // Check for new data in the FIFO  
+  // check time for I2C access : if too long, there's an I2C issue and we need to restart I2C bus...
   unsigned long startTime = millis();
   bool avail = imuDriver.isDataAvail();
-  // check time for I2C access : if too long, there's an I2C issue and we need to restart I2C bus...
   unsigned long duration = millis() - startTime;    
 
   if (avail)
-    imuDataTimeout = millis() + 10000; // reset IMU data timeout, if IMU data available
+    resetImuTimeout(); // reset IMU data timeout, if IMU data available
 
-  if ((duration > 60) || (millis() > imuDataTimeout)) {
+  if ((duration > 30) || (millis() > imuDataTimeout)) {
     if (millis() > imuDataTimeout){
       CONSOLE.print("ERROR IMU data timeout: ");
       CONSOLE.print(millis()-imuDataTimeout);
@@ -223,16 +227,17 @@ void readIMU(){
     lastIMUYaw = scalePIangles(lastIMUYaw, currentIMUYaw);
     stateDeltaIMU = -scalePI( distancePI(currentIMUYaw, lastIMUYaw) );  
     lastIMUYaw = currentIMUYaw;
-    imuDataTimeout = millis() + 10000;   
+
+    //resetImuTimeout();
   }     
 }
 
 void resetImuTimeout(){
-  imuDataTimeout = millis() + 10000;  
+  imuDataTimeout = millis() + 500;  
 }
 
 
-float headingOffset = 0.0;
+double headingOffset = 0.0;
 
 // compute robot state (x,y,delta)
 // uses complementary filter ( https://gunjanpatel.wordpress.com/2016/07/07/complementary-filter-design/ )
@@ -274,9 +279,9 @@ void computeRobotState(){
   
   // gps position
   vec3_t gpsPos = {0,0,0};
-  if (absolutePosSource){
+  if (absolutePosSource)
     relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, gpsPos.y, gpsPos.x);    
-  } else {
+  else {
     gpsPos.y = gps.relPosN;  
     gpsPos.x = gps.relPosE;     
   }   
@@ -291,16 +296,12 @@ void computeRobotState(){
   }
 
   
-  if (fabs(motor.linearSpeedSet) < 0.001)  
-    resetLastPos = true;
-
   float distGPS = (gpsPos-lastGpsPos).mag();
 
   // detect fix jumps before heading fusion
   if (gps.solutionAvail && gps.solution == SOL_FIXED
   && distGPS > 0.2
-  && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0
-  )
+  && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
   {
     gps.solutionAvail = false;
     lastFixJumpTime = millis();
@@ -325,13 +326,16 @@ void computeRobotState(){
       dockGPS = false;
   #endif
 
+
+  if (fabs(motor.linearSpeedSet) < 0.001)  
+    resetLastPos = true;
+
   // gps heading and position
   if (gps.solutionAvail
-    && ((gps.solution == SOL_FIXED || (gps.solution == SOL_FLOAT)) 
-      && millis() > lastInvalidTime + IGNORE_GPS_AFTER_INVALID * 1000.0
-      && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
-    && dockGPS  
-  )
+  && ((gps.solution == SOL_FIXED || (gps.solution == SOL_FLOAT)) 
+    && millis() > lastInvalidTime + IGNORE_GPS_AFTER_INVALID * 1000.0
+    && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
+  && dockGPS)
   {
     gps.solutionAvail = false;
     stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * abs(gps.groundSpeed);    
@@ -351,7 +355,7 @@ void computeRobotState(){
     {       
       float diffLastPosDelta = distancePI(stateDelta, lastPosDelta);                 
       if (fabs(diffLastPosDelta) /PI * 180.0 < 10
-      //&& (fabs(motor.linearSpeedSet) > 0)
+      && (fabs(motor.linearSpeedSet) > 0)
       && (fabs(motor.angularSpeedSet) /PI *180.0 < 45) ) // make sure robot is not turning
       {  
         float stateDeltaGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);  
@@ -367,7 +371,8 @@ void computeRobotState(){
           if (fabs(distancePI(stateDelta, stateDeltaGPS)/PI*180) > 45) // IMU-based heading too far away => use GPS heading
             headingOffset = headingDiff;
           else // delta fusion (complementary filter, see above comment)
-            headingOffset = fusionPI(0.99, headingDiff, headingOffset);              
+            //headingOffset = fusionPI(0.95, headingDiff, headingOffset);     
+            headingOffset = headingOffset * GPS_IMU_FUSION + headingDiff * (1.0 - GPS_IMU_FUSION);          
         }
       }
       lastGpsPos = gpsPos;
@@ -385,7 +390,7 @@ void computeRobotState(){
     }
     else if (maps.useGPSfloatForPosEstimation){ // allows planner to use float solution?
       vec3_t pos = (vec3_t(stateX, stateY, 0.0) + forward * (distOdometry/100.0)) * IMU_FLOAT_FUSION
-                  + gpsPos * (1.0-IMU_FLOAT_FUSION);
+                  + gpsPos * (1.0 - IMU_FLOAT_FUSION);
       stateX = pos.x;
       stateY = pos.y;           
     }
