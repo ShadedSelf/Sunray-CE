@@ -53,16 +53,16 @@ float distancePI(float x, float w)
   // w=0   degree, x=190 degree => 170 degree
   // w=190 degree, x=0   degree => -170 degree
   float d = scalePI(w - x);
-  if (d < -PI) d = d + 2*PI;
-  else if (d > PI) d = d - 2*PI;
+  //if (d < -PI) d = d + 2*PI;
+  //else if (d > PI) d = d - 2*PI;
   return d;
 }
 
 float distance180(float x, float w)
 {
   float d = scale180(w - x);
-  if (d < -180) d = d + 2*180;
-  else if (d > 180) d = d - 2*180;
+  //if (d < -180) d = d + 2*180;
+  //else if (d > 180) d = d - 2*180;
   return d;
 }
 

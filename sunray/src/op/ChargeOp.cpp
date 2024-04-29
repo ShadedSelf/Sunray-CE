@@ -27,7 +27,7 @@ void ChargeOp::begin(){
     CONSOLE.println(dockOp.dockReasonRainTriggered);
 
     //motor.stopImmediately(true); // do not use PID to get to stop 
-    motor.setLinearAngularSpeed(0,0, false); 
+    motor.setLinearAngularSpeed(0, 0, false); 
     motor.setMowState(false);     
     //motor.enableTractionMotors(false); // keep traction motors off (motor drivers tend to generate some incorrect encoder values when stopped while not turning)                 
 }
@@ -41,7 +41,7 @@ void ChargeOp::run(){
         if (millis() > retryTouchDockSpeedTime){                            
             retryTouchDockSpeedTime = millis() + 1000;
             motor.enableTractionMotors(true); // allow traction motors to operate                               
-            motor.setLinearAngularSpeed(0.05, 0);
+            motor.setLinearAngularSpeed(0.1, 0);
         }
         if (retryTouchDock){
             if (millis() > retryTouchDockStopTime) {

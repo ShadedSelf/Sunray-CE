@@ -27,9 +27,6 @@ void Motor::begin() {
     pwmMaxMow = 255;
   #endif
   
-  pwmSpeedOffset = 1.0;
-  
-  //ticksPerRevolution = 1060/2;
   ticksPerRevolution = TICKS_PER_REVOLUTION;
 	wheelBaseCm = WHEEL_BASE_CM;    // wheel-to-wheel distance (cm) 36
   wheelDiameter = WHEEL_DIAMETER; // wheel diameter (mm)
@@ -184,11 +181,20 @@ void Motor::enableTractionMotors(bool enable){
 
 
 void Motor::setMowState(bool switchOn){
-  if ((enableMowMotor) && (switchOn)){
-    if (abs(motorMowPWMSet) > 0) return; // mowing motor already switch ON
+  if (enableMowMotor && switchOn)
+  {
+    if (abs(motorMowPWMSet) > 0)
+      return; // mowing motor already switch ON
    
+    bool rnd = true;
+    /*if (RANDOM_MOW_MOTOR_DIRECTION)
+    {
+      randomSeed(gps.iTOW);
+      rnd = random(0, 2) == 1;
+    }*/
+
     motorMowSpinUpTime = millis();
-    if (toggleMowDir){
+    if (toggleMowDir && rnd){
       // toggle mowing motor direction each mow motor start
       motorMowForwardSet = !motorMowForwardSet;
       motorMowPWMSet = (motorMowForwardSet) ? pwmMaxMow : -pwmMaxMow; 
@@ -201,8 +207,6 @@ void Motor::setMowState(bool switchOn){
     motorMowPWMSet = 0;  
     motorMowPWMCurr = 0;
   }
-
-   pwmSpeedOffset = 1.0; // reset Mow SpeedOffset
 }
 
 
@@ -324,6 +328,7 @@ void Motor::run() {
   motorLeftRpmCurr = 60.0 * ( ((float)ticksLeft) / ((float)ticksPerRevolution) ) / deltaControlTimeSec;
   motorRightRpmCurr = 60.0 * ( ((float)ticksRight) / ((float)ticksPerRevolution) ) / deltaControlTimeSec;
   motorMowRpmCurr = 60.0 * ( ((float)ticksMow) / ((float)6.0) ) / deltaControlTimeSec; // assuming 6 ticks per revolution
+#endif
 
   if (ticksLeft == 0) {
     motorLeftTicksZero++;
@@ -334,7 +339,6 @@ void Motor::run() {
     motorRightTicksZero++;
     if (motorRightTicksZero > 2) motorRightRpmCurr = 0;
   } else motorRightTicksZero = 0;
-#endif
 
   float lp = 0.9; // 0.995
   motorLeftRpmCurrLP = lp * motorLeftRpmCurrLP + (1.0-lp) * motorLeftRpmCurr;
