@@ -17,69 +17,9 @@ float stanleyTrackingSlowK = STANLEY_CONTROL_K_SLOW;
 float stanleyTrackingSlowP = STANLEY_CONTROL_P_SLOW;    
 
 float setSpeed = 0.1; // linear speed (m/s)
-Point last_rotation_target;
-bool rotateLeft = false;
-bool rotateRight = false;
 bool stateKidnapped = false;
 bool printmotoroverload = false;
 
-int get_turn_direction_preference() {
-  Point target = maps.targetPoint;
-  float targetDelta = pointsAngle(stateX, stateY, target.x(), target.y());
-  float r = (MOWER_SIZE / 100);
-  float cur_angle = stateDelta;
-
-  if (FREEWHEEL_IS_AT_BACKSIDE) {
-	  cur_angle = scalePI(stateDelta + PI);
-	  targetDelta = scalePI(targetDelta + PI);
-  }
-
-  int right = 0;
-  int left = 0;
-  int samples = 16;
-  for(int i = 1; i < samples; ++i)
-  {
-    float a = 2.0 * PI / (float)samples * (float)i;
-    float px = stateX + cos(a) * r;
-    float py = stateY + sin(a) * r;
-    float angle = pointsAngle(stateX, stateY, px, py);
-
-    if (!maps.isInsidePerimeter(px, py)) {
-      // skip points in front of us
-      if (fabs(angle-cur_angle) < 0.05)
-        continue;
-
-      if (cur_angle < targetDelta) {
-        if (angle >= cur_angle && angle <= targetDelta)
-          left++;
-        else
-          right++;
-      } else {
-        if (angle <= cur_angle && angle >= targetDelta)
-          right++;
-        else
-          left++;
-      }
-    
-      /*float a = scalePI(cur_angle + 2.0 * (PI / (float)samples * (float)i));
-      float px = stateX + cos(a) * r;
-      float py = stateY + sin(a) * r;
-      //float angle = pointsAngle(stateX, stateY, px, py);
-
-      if (a > targetDelta && maps.checkpoint(px, py))
-        right++;
-      if (a <= targetDelta && maps.checkpoint(px, py))
-        left++;*/
-    }
-  }
-
-  if (right < left)
-    return 1;
-  if (left < right)
-    return -1;
-
-  return 0;
-}
 
 // control robot velocity (linear,angular) to track line to next waypoint (target)
 // uses a stanley controller for line tracking
@@ -90,27 +30,19 @@ void trackLine(bool runControl){
     maps.distanceToTargetPoint(stateX, stateY) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE);
 
   if (targetReached){
-    rotateLeft = false;
-    rotateRight = false;
     activeOp->onTargetReached();
-    if (!maps.nextPoint(false,stateX,stateY)){
-      // finish        
-      activeOp->onNoFurtherWaypoints();      
-    }
+    if (!maps.nextPoint(false,stateX,stateY))   
+      activeOp->onNoFurtherWaypoints(); // finish    
   }  
   
   Point target = maps.targetPoint;
   Point lastTarget = maps.lastTargetPoint;
 
-  float linear = 0.0;  
-  float angular = 0.0; 
-  bool mow = true;
-  if (stateOp == OP_DOCK) mow = false;
-
   //float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());   
   float targetDelta = pointsAngle(stateX, stateY, target.x(), target.y());    
   if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, stateDelta);
+  
   float trackerDiffDelta = distancePI(stateDelta, targetDelta);                         
   lateralError = distanceLineInfinite(stateX, stateY, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
   
@@ -118,57 +50,32 @@ void trackLine(bool runControl){
   float targetDist = maps.distanceToTargetPoint(stateX, stateY);
   float lastTargetDist = maps.distanceToLastTargetPoint(stateX, stateY);  
 
-  if ( (last_rotation_target.x() != target.x() || last_rotation_target.y() != target.y()) &&
-        (rotateLeft || rotateRight ) ) {
-    // CONSOLE.println("reset left / right rot (target point changed)");
-    rotateLeft = false;
-    rotateRight = false;
-  }
-
   // allow rotations only near last or next waypoint or if too far away from path
-  // it might race between rotating mower and targetDist check below
-  // if we race we still have rotateLeft or rotateRight true
   bool angleToTargetFits = true;
-  if ( (targetDist < 0.25) || (lastTargetDist < 0.25) || (fabs(distToPath) > 0.25) ||
-       rotateLeft || rotateRight ) {
-    if (SMOOTH_CURVES)
-      angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 120);
-    else     
-      angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 20);
-  } else {
-    // while tracking the mowing line do allow rotations if angle to target increases (e.g. due to gps jumps)
-    angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 45);  
+  if ( (targetDist < 0.25) || (lastTargetDist < 0.25) || (fabs(distToPath) > 0.25) ) {
+    if (SMOOTH_CURVES) angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 120);
+    else               angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 20);
   }
+  else
+    angleToTargetFits = true;
+
+
+  float linear = 0.0;  
+  float angular = 0.0; 
+  //linear *= (PI - fabs(trackerDiffDelta)) / PI;
+  //linear *= max(cos(trackerDiffDelta), 0.0);
+  //linear *= cos(trackerDiffDelta * 0.5);
 
   // rover angle too far away from target angle, rotate rover
   if (!angleToTargetFits){
-    // angular control (if angle to far away, rotate to next waypoint)
     linear = 0;
-    angular = 29.0 / 180.0 * PI * 1.25; //  29 degree/s (0.5 rad/s);               
-    if ((!rotateLeft) && (!rotateRight)){ // decide for one rotation direction (and keep it)
-      int r = 0;
-      // no idea but don't work in reverse mode...
-      if (!maps.trackReverse)
-        r = get_turn_direction_preference();
-      // store last_rotation_target point
-      last_rotation_target.setXY(target.x(), target.y());
-      
-      if      (r == 1) rotateRight = true;
-      else if (r == -1) rotateLeft = true;
-      else if (trackerDiffDelta < 0)
-        rotateRight = true;
-      else
-        rotateLeft = true;
-    }        
-    if (rotateRight) angular *= -1.0;
+    angular = 29.0 / 180.0 * PI * 1.25; //  29 degree/s (0.5 rad/s);                    
+    if (trackerDiffDelta < 0) angular *= -1.0;
   } 
   else {
     // line control (stanley)    
     bool straight = maps.nextPointIsStraight();
     bool trackslow_allowed = true;
-
-    rotateLeft = false;
-    rotateRight = false;
 
     // in case of docking or undocking - check if trackslow is allowed
     if ( maps.isUndocking() || maps.isDocking() ) {
@@ -186,18 +93,15 @@ void trackLine(bool runControl){
     if (maps.trackSlow && trackslow_allowed)
       linear = 0.1;   
     // reduce speed when approaching/leaving waypoints         
-    else if (
-      (setSpeed > 0.2) 
+    else if (setSpeed > 0.2 
       && (targetDist < 0.25 && (!straight)) //approaching
       || (lastTargetDist < 0.25))           //leaving  
         linear = 0.15;         
-    else {
-      if (gps.solution == SOL_FLOAT)        
-        linear = min(setSpeed, 0.1); // reduce speed for float solution
-      else
-        linear = setSpeed;         // desired speed
-      if (sonar.nearObstacle())
-        linear = 0.1; // slow down near obstacles
+    else
+    {
+      if (gps.solution == SOL_FLOAT) linear = min(setSpeed, 0.1); // reduce speed for float solution
+      else if (sonar.nearObstacle()) linear = 0.1; // slow down near obstacles
+      else                           linear = setSpeed;         // desired speed
     }     
 
     // slow down speed in case of overload and overwrite all prior speed 
@@ -212,14 +116,12 @@ void trackLine(bool runControl){
           
     // correct for path errors 
     float k = stanleyTrackingNormalK; // STANLEY_CONTROL_K_NORMAL;
-    float p = stanleyTrackingNormalP; // STANLEY_CONTROL_P_NORMAL;  
-    /*if (maps.trackSlow && trackslow_allowed) {
-      k = stanleyTrackingSlowK; //STANLEY_CONTROL_K_SLOW;   
-      p = stanleyTrackingSlowP; //STANLEY_CONTROL_P_SLOW;          
-    }*/         
+    float p = stanleyTrackingNormalP; // STANLEY_CONTROL_P_NORMAL;        
     angular = p * trackerDiffDelta + atan(k * lateralError); // correct for path errors       
     angular = max(-PI/4, min(PI/4, angular));
+    
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
+    //linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
   }
   
   // check some pre-conditions that can make linear+angular speed zero
@@ -269,8 +171,8 @@ void trackLine(bool runControl){
     }
   }
 
-  // in any case, turn off mower motor if lifted 
-  // also, if lifted, do not turn on mowing motor so that the robot will drive and can do obstacle avoidance 
+  bool mow = true;
+  if (stateOp == OP_DOCK) mow = false;
   if (detectLift()) mow = false;
    
   if (mow) { 
