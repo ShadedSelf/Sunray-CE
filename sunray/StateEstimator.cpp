@@ -372,7 +372,8 @@ void computeRobotState(){
             headingOffset = headingDiff;
           else // delta fusion (complementary filter, see above comment)
             //headingOffset = fusionPI(0.95, headingDiff, headingOffset);     
-            headingOffset = headingOffset * GPS_IMU_FUSION + headingDiff * (1.0 - GPS_IMU_FUSION);          
+            //headingOffset = headingOffset * GPS_IMU_FUSION + headingDiff * (1.0 - GPS_IMU_FUSION);
+            headingOffset = headingOffset + distancePI(headingOffset, headingDiff) * (1.0 - GPS_IMU_FUSION);   
         }
       }
       lastGpsPos = gpsPos;
