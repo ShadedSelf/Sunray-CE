@@ -374,6 +374,12 @@ void computeRobotState(){
             //headingOffset = fusionPI(0.95, headingDiff, headingOffset);     
             //headingOffset = headingOffset * GPS_IMU_FUSION + headingDiff * (1.0 - GPS_IMU_FUSION);
             headingOffset = headingOffset + distancePI(headingOffset, headingDiff) * (1.0 - GPS_IMU_FUSION);   
+          if (headingOffset < -PI || headingOffset > PI)
+          {
+            headingOffset = mod(headingOffset, 2.0*PI);
+            if(headingOffset < -PI) headingOffset += 2.0*PI; 
+            if(headingOffset >  PI) headingOffset -= 2.0*PI;
+          }
         }
       }
       lastGpsPos = gpsPos;
