@@ -72,8 +72,8 @@ void trackLine(bool runControl){
     angular = 29.0 / 180.0 * PI * 1.25; //  29 degree/s (0.5 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
   } 
-  else {
-    // line control (stanley)    
+  else // line control (stanley)    
+  {
     bool straight = maps.nextPointIsStraight();
     bool trackslow_allowed = true;
 
@@ -105,7 +105,8 @@ void trackLine(bool runControl){
     }     
 
     // slow down speed in case of overload and overwrite all prior speed 
-    if ( (motor.motorLeftOverload) || (motor.motorRightOverload) || (motor.motorMowOverload) ){
+    if (motor.motorLeftOverload || motor.motorRightOverload || motor.motorMowOverload)
+    {
       if (!printmotoroverload)
           CONSOLE.println("motor overload detected: reduce linear speed to 0.1");
       printmotoroverload = true;
@@ -172,16 +173,15 @@ void trackLine(bool runControl){
   }
 
   bool mow = true;
-  if (stateOp == OP_DOCK) mow = false;
-  if (detectLift()) mow = false;
-   
-  if (mow) { 
-    if (millis() < motor.motorMowSpinUpTime + 3000){
-       // wait until mowing motor is running
-      if (!buzzer.isPlaying()) buzzer.sound(SND_WARNING, true);
-      linear = 0;
-      angular = 0;     
-    }
+  if (stateOp == OP_DOCK || detectLift())
+    mow = false;
+
+  // wait until mowing motor is running
+  if (mow && millis() < motor.motorMowSpinUpTime + 3000) { 
+    if (!buzzer.isPlaying())
+      buzzer.sound(SND_WARNING, true);
+    linear = 0;
+    angular = 0;     
   }
 
   if (runControl){

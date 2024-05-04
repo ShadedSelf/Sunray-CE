@@ -782,10 +782,8 @@ bool detectObstacle(){
   }
   
   // sonar obstacle
-  if (sonar.obstacle() && (maps.wayMode != WAY_DOCK)){
-    CONSOLE.println("sonar obstacle!");    
-    statMowSonarCounter++;
-
+  if (sonar.obstacle() && (maps.wayMode != WAY_DOCK))
+  {
     // check if obstacle is inside perimeter
     bool isInside = true;
     for (int i = -1; i <= 1; i++)
@@ -797,7 +795,11 @@ bool detectObstacle(){
       isInside = isInside && maps.isInsidePerimeter(checkPoint.x, checkPoint.y);
     }
 
-    if (SONAR_TRIGGER_OBSTACLES && isInside){
+    if (SONAR_TRIGGER_OBSTACLES && isInside)
+    {
+      CONSOLE.println("sonar obstacle!");    
+
+      statMowSonarCounter++;
       triggerObstacle();
       return true;
     }        
@@ -874,7 +876,6 @@ bool detectObstacleRotation(){
 
 // robot main loop
 void run(){  
-  //DEBUGLN(analogRead(pinOdometryLeft));
   #ifdef ENABLE_NTRIP
     ntrip.run();
   #endif

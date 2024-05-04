@@ -21,14 +21,17 @@ String MowOp::name(){
     return "Mow";
 }
 
-void MowOp::begin(){
+void MowOp::begin()
+{
+    CONSOLE.println("OP_MOW");   
+
     bool error = false;
     bool routingFailed = false;      
-
-    CONSOLE.println("OP_MOW");      
+   
     motor.enableTractionMotors(true); // allow traction motors to operate         
     motor.setLinearAngularSpeed(0,0);      
-    if (((previousOp != &escapeReverseOp) && (previousOp != &escapeForwardOp)) || (DISABLE_MOW_MOTOR_AT_OBSTACLE))  motor.setMowState(false);              
+    if (((previousOp != &escapeReverseOp) && (previousOp != &escapeForwardOp)) || (DISABLE_MOW_MOTOR_AT_OBSTACLE))
+        motor.setMowState(false);              
     battery.setIsDocked(false);                
     timetable.setMowingCompletedInCurrentTimeFrame(false);                
 
@@ -36,18 +39,17 @@ void MowOp::begin(){
 
     dockOp.dockReasonRainTriggered = false;    
 
-    if (((initiatedByOperator) && (previousOp == &idleOp)) || (lastMapRoutingFailed))  maps.clearObstacles();
+    if (((initiatedByOperator) && (previousOp == &idleOp)) || (lastMapRoutingFailed))
+        maps.clearObstacles();
 
     if (maps.startMowing(stateX, stateY)){
         if (maps.nextPoint(true, stateX, stateY)) {
             lastFixTime = millis();                
             maps.setLastTargetPoint(stateX, stateY);        
-            //stateSensor = SENS_NONE;
             motor.setMowState(true);                
         } else {
             error = true;
-            CONSOLE.println("error: no waypoints!");
-            //op = stateOp;                
+            CONSOLE.println("error: no waypoints!");              
         }
     } else error = true;
 
