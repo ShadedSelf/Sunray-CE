@@ -10,6 +10,7 @@
 #include "helper.h"
 #include "pid.h"
 #include "src/op/op.h"
+#include "Stats.h"
 
 float stanleyTrackingNormalK = STANLEY_CONTROL_K_NORMAL;
 float stanleyTrackingNormalP = STANLEY_CONTROL_P_NORMAL;    
@@ -136,6 +137,7 @@ void trackLine(bool runControl){
         // if in linear motion and not enough ground speed => obstacle
         if (GPS_SPEED_DETECTION) {         
           CONSOLE.println("gps no speed => obstacle!");
+          statMowGPSNoSpeedCounter++;
           triggerObstacle();
           return; }
   else { // no gps solution

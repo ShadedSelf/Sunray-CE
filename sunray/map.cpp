@@ -695,6 +695,7 @@ bool Map::setPoint(int idx, float x, float y){
 
 
 // set number points for point type
+// transfers points from global point list to specific point list
 bool Map::setWayCount(WayType type, int count){
   if ((memoryCorruptions != 0) || (memoryAllocErrors != 0)){
     CONSOLE.println("ERROR setWayCount: memory errors");
@@ -704,7 +705,9 @@ bool Map::setWayCount(WayType type, int count){
     case WAY_PERIMETER:            
       if (perimeterPoints.alloc(count)){
         for (int i=0; i < count; i++){
-          perimeterPoints.points[i].assign( points.points[i] );
+          int sidx = i;
+          if (sidx < points.numPoints)
+            perimeterPoints.points[i].assign( points.points[sidx] );
         }
       }
       break;
@@ -714,17 +717,21 @@ bool Map::setWayCount(WayType type, int count){
     case WAY_DOCK:    
       if (dockPoints.alloc(count)){
         for (int i=0; i < count; i++){
-          dockPoints.points[i].assign( points.points[perimeterPoints.numPoints + exclusionPointsCount + i] );
+          int sidx = perimeterPoints.numPoints + exclusionPointsCount + i;
+          if (sidx < points.numPoints) 
+            dockPoints.points[i].assign( points.points[ sidx ] );
         }
       }
       break;
     case WAY_MOW:          
       if (mowPoints.alloc(count)){
         for (int i=0; i < count; i++){
-          mowPoints.points[i].assign( points.points[perimeterPoints.numPoints + exclusionPointsCount + dockPoints.numPoints + i] );
+          int sidx = perimeterPoints.numPoints + exclusionPointsCount + dockPoints.numPoints + i;
+          if (sidx < points.numPoints)
+            mowPoints.points[i].assign( points.points[ sidx ] );
         }
         if (exclusionPointsCount == 0){
-          points.dealloc();
+          points.dealloc(); // free point list
           finishedUploadingMap();
         }
       }
@@ -761,7 +768,9 @@ bool Map::setExclusionLength(int idx, int len){
     ptIdx += exclusions.polygons[i].numPoints;    
   }    
   for (int j=0; j < len; j++){
-    exclusions.polygons[idx].points[j].assign( points.points[perimeterPoints.numPoints + ptIdx] );        
+    int sidx =  perimeterPoints.numPoints + ptIdx;
+    if (sidx < points.numPoints)
+      exclusions.polygons[idx].points[j].assign( points.points[ sidx ] );
     ptIdx ++;
   }
   CONSOLE.print("ptIdx=");
@@ -1007,7 +1016,7 @@ bool Map::startMowing(float stateX, float stateY){
     Point src;
     Point dst;
     src.setXY(stateX, stateY);
-    if (wayMode == WAY_DOCK){
+    if ((wayMode == WAY_DOCK) && (dockPoints.numPoints > 0)) {
       src.assign(dockPoints.points[0]);
     } else {
       wayMode = WAY_FREE;      
