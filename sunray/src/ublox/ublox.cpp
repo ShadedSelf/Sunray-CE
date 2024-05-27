@@ -192,6 +192,7 @@ bool UBLOX::configure(){
           setValueSuccess &= configGPS.addCfgValset8(0x201100a4, CPG_CONFIG_FILTER_MINELEV); // CFG-NAVSPG-INFIL_MINELEV  (10 Min SV elevation degree)
           setValueSuccess &= configGPS.addCfgValset8(0x201100aa, CPG_CONFIG_FILTER_NCNOTHRS); // CFG-NAVSPG-INFIL_NCNOTHRS (10 C/N0 Threshold #SVs)
           setValueSuccess &= configGPS.addCfgValset8(0x201100ab, CPG_CONFIG_FILTER_CNOTHRS); // CFG-NAVSPG-INFIL_CNOTHRS  (30 dbHz)
+          setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_INFIL_MINCNO, 35); // CFG-NAVSPG-INFIL_MINCNO  (30 dbHz)
         } else { // ublox default filter settings
           setValueSuccess &= configGPS.addCfgValset8(0x201100a4, 10); // CFG-NAVSPG-INFIL_MINELEV  (10 Min SV elevation degree)
           setValueSuccess &= configGPS.addCfgValset8(0x201100aa, 0);  // CFG-NAVSPG-INFIL_NCNOTHRS (0 C/N0 Threshold #SVs)
@@ -205,6 +206,8 @@ bool UBLOX::configure(){
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NMEA_FILT_SBAS, 0);  // SBAS
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_SIGNAL_BDS_ENA, 0);  // Beidou
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NMEA_FILT_BDS, 0);  // Beidou
+
+        setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_DYNMODEL, 11);  // Robotic mower dynmodel
       } 
       else if (idx == 2){
         // ----- USB messages (Ardumower) -----------------  
