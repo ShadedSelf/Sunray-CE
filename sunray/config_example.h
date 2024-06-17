@@ -74,24 +74,21 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 // see Wiki for wiring, how to position the module, and to configure the I2C pullup jumpers:   
 // https://wiki.ardumower.de/index.php?title=Ardumower_Sunray#IMU.2C_sensor_fusion
 
-#define MPU6050
+//#define MPU6050
 //#define MPU9150
 //#define MPU9250   // also choose this for MPU9255
 //#define BNO055
-//#define ICM20948
+#define ICM20948
 
 #define MPU_ADDR 0x69  // I2C address (0x68 if AD0=LOW, 0x69 if AD0=HIGH)
-
 #define USE_MAGNOMETER false  // use IMUs magnometer (only ICM)
-
-// should the mower turn off if IMU is tilt over? (yes: uncomment line, no: comment line)
-#define ENABLE_TILT_DETECTION  1
+#define ENABLE_TILT_DETECTION  1 // should the mower turn off if IMU is tilt over? (yes: uncomment line, no: comment line)
 
 // --------- lift sensor (e.g. Alfred mower) ---------------------------------------------
 // should the lift sensor be enabled? (yes: uncomment line, no: comment line)
 //#define ENABLE_LIFT_DETECTION  1
 // should the lift sensor be used for obstacle avoidance (if not, mower will simply go into error if lifted)
-#define LIFT_OBSTACLE_AVOIDANCE 1  
+//#define LIFT_OBSTACLE_AVOIDANCE 1  
 
 
 // ------- SD card map load/resume and logging ---------------------------------
@@ -119,17 +116,15 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 // NOTE: if using non-default Ardumower chassis and your freewheel is at frontside (gear motors at backside), have may have to swap motor cables, 
 // more info here: https://wiki.ardumower.de/index.php?title=Ardumower_Chassis_%27mountain_mod%27)
 #define FREEWHEEL_IS_AT_BACKSIDE   true   // default Ardumower: true   (change to false, if your freewheel is at frontside) - this is used for obstacle avoidance
-#define WHEEL_BASE_CM         35         // wheel-to-wheel distance (cm)        
+#define WHEEL_BASE_CM         35.15         // wheel-to-wheel distance (cm)        
 #define WHEEL_DIAMETER        250        // wheel diameter (mm)                 
 #define MOWER_SIZE            63         // mower / chassis size / length in cm
 
 #define ENABLE_ODOMETRY_ERROR_DETECTION  true    // use this to detect odometry erros
 
 #define TICKS_PER_REVOLUTION  570     // odometry ticks per wheel revolution
-
-#define RESPONSIVE_RPM false // use tick time for odometry RPM calculations
-#define FILTER_ODOMETRY false //rolling average for odometry tick time
-
+#define RESPONSIVE_RPM true // use tick time for odometry RPM calculations
+#define FILTER_ODOMETRY true //rolling average for odometry tick time
 #define ODOMETRY_DIVIDER false // set to true if using hardware odometry divider
 
 
@@ -152,11 +147,10 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define MOTOR_OVERLOAD_CURRENT 0.8    // gear motors overload current (amps)
 
 #define USE_LINEAR_SPEED_RAMP  true      // use a speed ramp for the linear speed
-//#define USE_LINEAR_SPEED_RAMP  false      // do not use a speed ramp 
 
 // motor speed control (PID coefficients) - these values are tuned for Ardumower motors
 // general information about PID controllers: https://wiki.ardumower.de/index.php?title=PID_control
-#define MOTOR_PID_KP     1.0   // do not change 2.0 (for non-Ardumower motors or if the motor speed control is too fast you may try: KP=1.0, KI=0, KD=0)
+#define MOTOR_PID_KP     0.9   // do not change 2.0 (for non-Ardumower motors or if the motor speed control is too fast you may try: KP=1.0, KI=0, KD=0)
 #define MOTOR_PID_KI     0.0   // do not change 0.03
 #define MOTOR_PID_KD     0.0   // do not change 0.03
 
@@ -173,27 +167,17 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define MOW_FAULT_CURRENT 3.0       // mowing motor fault current (amps)
 #define MOW_TOO_LOW_CURRENT 0.005   // mowing motor too low current (amps)
-#define MOW_OVERLOAD_CURRENT 2.0    // mowing motor overload current (amps)
+#define MOW_OVERLOAD_CURRENT 2.5    // mowing motor overload current (amps)
 
-// should the direction of mowing motor toggle each start? (yes: true, no: false)
-#define MOW_TOGGLE_DIR true
 
-// should the error on motor overload detection be enabled?
-#define ENABLE_OVERLOAD_DETECTION  true    // robot will stop on overload
-//#define ENABLE_OVERLOAD_DETECTION  false    // robot will slow down on overload
+#define MOW_TOGGLE_DIR true                   // should the direction of mowing motor toggle each start? (yes: true, no: false)
+#define ENABLE_OVERLOAD_DETECTION  true       // robot will stop on overload
+#define ENABLE_FAULT_DETECTION  true          // should the motor fault (error) detection be enabled? 
+#define ENABLE_RPM_FAULT_DETECTION  true      // use mow rpm signal to detect a motor fault (requires mowing motor with rpm output!)
+#define ENABLE_FAULT_OBSTACLE_AVOIDANCE true  // should the robot trigger obstacle avoidance on motor errors if motor recovery failed?
+#define ENABLE_MOW_MOTOR true                 // Default is true, set false for testing purpose to switch off mow motor permanently
 
-// should the motor fault (error) detection be enabled? 
-#define ENABLE_FAULT_DETECTION  true
-//#define ENABLE_FAULT_DETECTION  false       // use this if you keep getting 'motor error'
-
-#define ENABLE_RPM_FAULT_DETECTION  true     // use mow rpm signal to detect a motor fault (requires mowing motor with rpm output!)
-//#define ENABLE_RPM_FAULT_DETECTION  false     // do not use mow rpm signal to detect a motor fault
-
-// should the robot trigger obstacle avoidance on motor errors if motor recovery failed?
-#define ENABLE_FAULT_OBSTACLE_AVOIDANCE true  
-
-// shall the mow motor be activated for normal operation? Deactivate this option for GPS tests and path tracking running tests
-#define ENABLE_MOW_MOTOR true // Default is true, set false for testing purpose to switch off mow motor permanently
+#define ADAPTIVE_SPEED true // Speed is controlled by mow motor load
 
 
 // ------ WIFI module (ESP8266 ESP-01 with ESP firmware 2.2.1) --------------------------------
@@ -253,8 +237,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define SONAR_INSTALLED 1              // uncomment if ultrasonic sensors are installed
 #define SONAR_ENABLE true              // should ultrasonic sensor be used?
-//#define SONAR_ENABLE false
-#define SONAR_OBSTACLE_SLOW_CM 5.0        // slow down mower below this distance from trigger (cm)
+#define SONAR_OBSTACLE_SLOW_CM 10.0        // slow down mower below this distance from trigger (cm)
 #define SONAR_TRIGGER_OBSTACLES true     // should sonar be used to trigger obstacles? if not, mower will only slow down
 #define SONAR_LEFT_OBSTACLE_CM   9.0      // stop mowing operation below this distance (cm) 
 #define SONAR_CENTER_OBSTACLE_CM 9.0      // stop mowing operation below this distance (cm) 
@@ -262,11 +245,9 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 // ------ rain sensor ----------------------------------------------------------
 #define RAIN_ENABLE true                 // if activated, mower will dock when rain sensor triggers
-//#define RAIN_ENABLE false
 
 // ------ time-of-flight distance sensor (VL53L0X) -----------------------------
 // do not use this sensor (not recommended)
-//#define TOF_ENABLE true
 #define TOF_ENABLE false
 #define TOF_OBSTACLE_CM 100      // stop mowing operation below this distance (cm) 
 
@@ -293,7 +274,6 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 //#define CURRENT_FACTOR 2.941  // PCB1.4 (bridged INA169, max. 5A)
 
 #define GO_HOME_VOLTAGE   23.1  // start going to dock below this voltage
-// The battery will charge if both battery voltage is below that value and charging current is above that value.
 #define BAT_FULL_VOLTAGE  28.2  // start mowing again at this voltage
 #define BAT_FULL_CURRENT  0.1   // start mowing again below this charging current (amps)
 
@@ -301,7 +281,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define BAT_SWITCH_OFF_IDLE  false         // switch off if idle (JP8 must be set to autom.)
 #define BAT_SWITCH_OFF_UNDERVOLTAGE  true  // switch off if undervoltage (JP8 must be set to autom.)
 
-#define BAT_FULL_CHARGE_RECONNECT 60*60*2 // time in seconds to wait to start charging the battery again once its fullç
+#define BAT_FULL_CHARGE_RECONNECT 60*60*2 // time in seconds to wait to start charging the battery again once its full
 
 
 // ------ GPS ------------------------------------------
@@ -319,14 +299,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 //#define GPS_SKYTRAQ  1               // comment out for ublox gps, uncomment for skytraq gps/NMEA
 
 #define REQUIRE_VALID_GPS  true       // mower will pause if no float and no fix GPS solution during mowing (recommended)
-//#define REQUIRE_VALID_GPS  false    // mower will continue to mow if no float or no fix solution (not recommended)
-
 #define GPS_SPEED_DETECTION true  // will detect obstacles via GPS feedback (no speed)  - recommended
-//#define GPS_SPEED_DETECTION false
-
-// detect if robot is actually moving (obstacle detection via GPS feedback)
 #define GPS_MOTION_DETECTION          true    // if robot is not moving trigger obstacle avoidance (recommended)
-//#define GPS_MOTION_DETECTION        false   // ignore if robot is not moving
 #define GPS_MOTION_DETECTION_TIMEOUT  5      // timeout for motion (secs)
 
 // configure ublox f9p with optimal settings (will be stored in f9p RAM only)
@@ -339,15 +313,15 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 //#define GPS_CONFIG   false  // do not configure GPS receiver (no GPS wire fix required)
 
 #define GPS_CONFIG_FILTER   true     // use signal strength filter? (recommended to get rid of 'FIX jumps') - adjust filter settings below
-//#define GPS_CONFIG_FILTER   false     // use this if you have difficulties to get a FIX solution (uses ublox default filter settings)
 #define CPG_CONFIG_FILTER_MINELEV  10   // Min SV elevation degree: 14 (high elevation, less robust), 10 (low elevation, robust) 
 #define CPG_CONFIG_FILTER_NCNOTHRS 10   // C/N0 Threshold #SVs: 10 (robust), 6 (less robust)
 #define CPG_CONFIG_FILTER_CNOTHRS  30   // 30 dbHz (robust), 13 dbHz (less robust)
+#define CPG_CONFIG_FILTER_MINCNO   30   // 30dbHz
 
 #define GPS_POSITION_OFFSET_ENABLED true // enable gps antenna position correction offset?
 #define GPS_POSITION_OFFSET_FORWARD 0.0 // offset to add fordwards (cm)
 #define GPS_POSITION_OFFSET_RIGHT 0.0 // offset to add to the right (cm)
-#define GPS_POSITION_OFFSET_UP 0.0 // offse to add upwards (cm), set to ground level for tilt compensation (-24 cm for standard ardumower)
+#define GPS_POSITION_OFFSET_UP -24.0 // offse to add upwards (cm), set to ground level for tilt compensation (-24 cm for standard ardumower)
 
 #define INVALID_GPS_TIMEOUT 30.0 // time in seconds to navigate with invalid GPS
 
@@ -355,24 +329,17 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define IGNORE_GPS_AFTER_JUMP 4.0    // time in seconds to ignore GPS position after jump detected
 
 #define GPS_IMU_FUSION 0.995      // (0-1) weight for IMU heading fusion with GPS heading
-#define IMU_FLOAT_FUSION 0.999    // (0-1) weight for IMU+odometry position fusion with float GPS position
+#define IMU_FLOAT_FUSION 0.99    // (0-1) weight for IMU+odometry position fusion with float GPS position
 
 // ------ obstacle detection and avoidance  -------------------------
 
 #define ENABLE_PATH_FINDER  true     // path finder calculates routes around exclusions and obstacles 
-#define ALLOW_ROUTE_OUTSIDE_PERI_METER 1.0   // max. distance (m) to allow routing from outside perimeter 
-// (increase if you get 'no map route' errors near perimeter)
-
-#define OBSTACLE_DETECTION_ROTATION true // detect robot rotation stuck (requires IMU)
-// NOTE: recommended to turn this off for slope environment   
-
+#define ALLOW_ROUTE_OUTSIDE_PERI_METER 1.0   // max. distance (m) to allow routing from outside perimeter // (increase if you get 'no map route' errors near perimeter)
+#define OBSTACLE_DETECTION_ROTATION true // detect robot rotation stuck (requires IMU) NOTE: recommended to turn this off for slope environment   
 #define OBSTACLE_AVOIDANCE true   // try to find a way around obstacle
-//#define OBSTACLE_AVOIDANCE false  // stop robot on obstacle
 #define OBSTACLE_DIAMETER 1.0   // choose diameter of obstacles placed in front of robot (m) for obstacle avoidance
 #define DISABLE_MOW_MOTOR_AT_OBSTACLE true // switch off mow motor while escape at detected obstacle; set false if mow motor shall not be stopped at detected obstacles
 
-// detect robot being kidnapped? robot will try GPS recovery if distance to tracked path is greater than a certain value
-// (false GPS fix recovery), and if that fails go into error 
 #define KIDNAP_DETECT true  // recommended
 #define KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE 1.0  // allowed path tolerance (m) 
 #define KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE_DOCK_UNDOCK 1.0  // allowed path tolerance (m) 
@@ -381,21 +348,13 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 // ------ docking --------------------------------------
 // is a docking station available?
 #define DOCKING_STATION true   // use this if docking station available and mower should dock automatically
-//#define DOCKING_STATION false    // mower will just stop after mowing instead of docking automatically 
-
 #define DOCK_IGNORE_GPS false     // use GPS fix in docking station and IMU for GPS float/invalid
-//#define DOCK_IGNORE_GPS true     // ignore GPS fix in docking station and use IMU-only (use this if robot gets false GPS fixes in your docking station)
-
-//#define DOCK_AUTO_START true     // robot will automatically continue mowing after docked automatically
-#define DOCK_AUTO_START false      // robot will not automatically continue mowing after docked automatically
-
+#define DOCK_AUTO_START false      // robot will automatically continue mowing after docked automatically
 #define DOCK_RETRY_TOUCH true   // robot will retry touching docking contacts (max. 1cm) if loosing docking contacts during charging
-//#define DOCK_RETRY_TOUCH false   // robot will not retry touching docking contacts (max. 1cm) if loosing docking contacts during charging
 
-#define DOCK_UNDOCK_TRACKSLOW_DISTANCE 4 // set distance (m) from dock for trackslow (speed limit)
-
+#define DOCK_UNDOCK_TRACKSLOW_DISTANCE 1.5 // set distance (m) from dock for trackslow (speed limit)
 #define UNDOCK_IGNORE_GPS_DISTANCE 8 // set distance (m) from dock to ignore gps while undocking
-#define DOCK_IGNORE_GPS_DISTANCE 4   // set distance (m) from dock to ignore gps while docking
+#define DOCK_IGNORE_GPS_DISTANCE 2.75   // set distance (m) from dock to ignore gps while docking
 
 // ---- path tracking -----------------------------------
 
@@ -403,25 +362,23 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define TARGET_REACHED_TOLERANCE 0.075
 
 // stanley control for path tracking - determines gain how fast to correct for lateral path errors
-#define STANLEY_CONTROL_P_NORMAL  2.0   // 3.0 for path tracking control (angular gain) when mowing
-#define STANLEY_CONTROL_K_NORMAL  4.0   // 1.0 for path tracking control (lateral gain) when mowing
+#define STANLEY_CONTROL_P_NORMAL  1.0   // 3.0 for path tracking control (angular gain) when mowing
+#define STANLEY_CONTROL_K_NORMAL  2.5   // 1.0 for path tracking control (lateral gain) when mowing
 
-#define STANLEY_CONTROL_P_SLOW    1.0   // 3.0 for path tracking control (angular gain) when docking tracking
-#define STANLEY_CONTROL_K_SLOW    1.5   // 0.1 for path tracking control (lateral gain) when docking tracking
+//#define STANLEY_LOOK_AHEAD true
+//#define STANLEY_LOOK_AHEAD_DISTANCE 10.0
 
 
 // ----- other options --------------------------------------------
 
 // button control (turns on additional features via the POWER-ON button)
 #define BUTTON_CONTROL true      // additional features activated (press-and-hold button for specific beep count: 
-                                 //  1 beep=stop, 6 beeps=start, 5 beeps=dock, 3 beeps=R/C mode ON/OFF, 9 beeps=shutdown, 12 beeps=WiFi WPS
-//#define BUTTON_CONTROL false   // additional features deactivated
+                                 //  1 beep=stop, 2 beeps=start, 3 beeps=dock, ? beeps=R/C mode ON/OFF, 10 beeps=shutdown, ? beeps=WiFi WPS
 
-//#define USE_TEMP_SENSOR true  // only activate if temp sensor (htu21d) connected
-#define USE_TEMP_SENSOR true  
+#define USE_TEMP_SENSOR true  // only activate if temp sensor (htu21d) connected
 
-#define DOCK_OVERHEAT_TEMP 30    // if temperature above this degreeC, mower will dock 
-#define DOCK_TOO_COLD_TEMP 5    // if temperature below this degreeC, mower will dock 
+#define DOCK_OVERHEAT_TEMP 32    // if temperature above this degreeC, mower will dock 
+#define DOCK_TOO_COLD_TEMP 10    // if temperature below this degreeC, mower will dock 
 
 // activate support for model R/C control?
 // use PCB pin 'mow' for R/C model control speed and PCB pin 'steering' for R/C model control steering, 
@@ -435,7 +392,6 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 // ------ experimental options  -------------------------
 
 // drive curves smoothly?
-//#define SMOOTH_CURVES  true
 #define SMOOTH_CURVES  false
 
 // --------- serial monitor output (CONSOLE) ------------------------
@@ -499,7 +455,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 
 // ------- PCB1.3/Due settings -------------------------
-#define IOREF 3.3   // I/O reference voltage 
+#define IOREF 3.35   // I/O reference voltage 
 
 // ------ hardware pins---------------------------------------
 // no configuration needed here
@@ -523,7 +479,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
   #define pinMotorMowSense A3        // M1_FB  mower motor current sense  
   #define pinMotorMowFault 26        // M1_SF  mower motor fault   (if using MOSFET/L298N, keep unconnected)
   #define pinMotorMowEnable 28       // EN mower motor enable      (if using MOSFET/L298N, keep unconnected)
-  #define pinMotorMowRpm A11
+  //#define pinMotorMowRpm A11
+  #define pinMotorMowRpm A6
       
   #define pinFreeWheel 8             // front/rear free wheel sensor    
   #define pinBumperLeft 39           // bumper pins
@@ -563,8 +520,10 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
     #define pinReservedP46 CANTX     // reserved
     #define pinReservedP48 DAC1      // reserved
   #else                              // Adafruit Grand Central M4 
-    #define pinOdometryLeft A12      // left odometry sensor
-    #define pinOdometryRight A14     // right odometry sensor  
+    //#define pinOdometryLeft A12      // left odometry sensor
+    //#define pinOdometryRight A14     // right odometry sensor 
+    #define pinOdometryLeft A5      // left odometry sensor
+    #define pinOdometryRight A7     // right odometry sensor 
     #define pinReservedP46 A15       // reserved
     #define pinReservedP48 A13       // reserved
   #endif
