@@ -14,13 +14,49 @@
 
 float stanleyTrackingNormalK = STANLEY_CONTROL_K_NORMAL;
 float stanleyTrackingNormalP = STANLEY_CONTROL_P_NORMAL;    
-float stanleyTrackingSlowK = STANLEY_CONTROL_K_SLOW;
-float stanleyTrackingSlowP = STANLEY_CONTROL_P_SLOW;    
+float stanleyTrackingSlowK = 0;
+float stanleyTrackingSlowP = 0;    
 
 float setSpeed = 0.1; // linear speed (m/s)
+//float adaptiveSpeed = 0.1;
 bool stateKidnapped = false;
 bool printmotoroverload = false;
 
+
+//PID adaptiveSpeedPID;
+
+
+bool nearPerimeter()
+{
+  if (maps.wayMode != WAY_DOCK )
+  {
+    bool isInside = true;
+
+    vec3_t rr = vec3_t(stateX, stateY, 0) + right * 10.0 / 100.0;
+    vec3_t ll = vec3_t(stateX, stateY, 0) - right * 10.0 / 100.0;
+
+    isInside = isInside && maps.isInsidePerimeter(rr.x, rr.y);
+    isInside = isInside && maps.isInsidePerimeter(ll.x, ll.y);
+
+    return !isInside;   
+  }
+  return false;
+}
+
+bool isCloseToDock()
+{
+  if (maps.isUndocking() || maps.isDocking())
+  {
+    float dockX = 0;
+    float dockY = 0;
+    float dockDelta = 0;
+    maps.getDockingPos(dockX, dockY, dockDelta);
+    float dist_dock = distance(dockX, dockY, stateX, stateY);
+
+    return dist_dock < DOCK_UNDOCK_TRACKSLOW_DISTANCE;
+  }
+  return false;
+}
 
 // control robot velocity (linear,angular) to track line to next waypoint (target)
 // uses a stanley controller for line tracking
@@ -76,22 +112,9 @@ void trackLine(bool runControl){
   else // line control (stanley)    
   {
     bool straight = maps.nextPointIsStraight();
-    bool trackslow_allowed = true;
-
-    // in case of docking or undocking - check if trackslow is allowed
-    if ( maps.isUndocking() || maps.isDocking() ) {
-        float dockX = 0;
-        float dockY = 0;
-        float dockDelta = 0;
-        maps.getDockingPos(dockX, dockY, dockDelta);
-        float dist_dock = distance(dockX, dockY, stateX, stateY);
-        // only allow trackslow if we are near dock (below DOCK_UNDOCK_TRACKSLOW_DISTANCE)
-        if (dist_dock > DOCK_UNDOCK_TRACKSLOW_DISTANCE)
-            trackslow_allowed = false;
-    }
 
     // planner forces slow tracking (e.g. docking etc)
-    if (maps.trackSlow && trackslow_allowed)
+    if (maps.trackSlow && isCloseToDock())
       linear = 0.1;   
     // reduce speed when approaching/leaving waypoints         
     else if (setSpeed > 0.2 
@@ -100,10 +123,40 @@ void trackLine(bool runControl){
         linear = 0.15;         
     else
     {
-      if (gps.solution == SOL_FLOAT) linear = min(setSpeed, 0.1); // reduce speed for float solution
-      else if (sonar.nearObstacle()) linear = 0.1; // slow down near obstacles
-      else                           linear = setSpeed;         // desired speed
-    }     
+      if      (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
+      else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
+      else if (nearPerimeter()) linear = 0.15;            // slow down near perimeter
+      else                                                // regular speed
+      {
+        if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)
+        {    
+          /*adaptiveSpeedPID.Kp = 0.0025;
+          adaptiveSpeedPID.Ki = 0;
+          adaptiveSpeedPID.Kd = 0;
+
+          adaptiveSpeedPID.x = motor.motorMowSenseLP;
+          adaptiveSpeedPID.w = 0.75;
+          adaptiveSpeedPID.y_min = -0.05;
+          adaptiveSpeedPID.y_max = 0.05;
+          adaptiveSpeedPID.max_output = 0.1;
+          adaptiveSpeedPID.compute();
+          adaptiveSpeed += adaptiveSpeedPID.y;
+
+          adaptiveSpeed = constrain(adaptiveSpeed, 0.1, setSpeed);
+
+          linear = adaptiveSpeed;*/
+
+          float minCurrent = 0.75;
+          float maxCurrent = 1.25;
+          float diffCurrent = maxCurrent - minCurrent;
+
+          float t = (motor.motorMowSenseLP - minCurrent) / diffCurrent;
+          linear = lerp(setSpeed, 0.1, constrain(t, 0.0, 1.0));
+        }
+        else
+          linear = setSpeed; // desired speed
+      }
+    }   
 
     // slow down speed in case of overload and overwrite all prior speed 
     if (motor.motorLeftOverload || motor.motorRightOverload || motor.motorMowOverload)
@@ -117,10 +170,10 @@ void trackLine(bool runControl){
       printmotoroverload = false; 
           
     // correct for path errors 
-    float k = stanleyTrackingNormalK; // STANLEY_CONTROL_K_NORMAL;
-    float p = stanleyTrackingNormalP; // STANLEY_CONTROL_P_NORMAL;        
-    angular = p * trackerDiffDelta + atan(k * lateralError); // correct for path errors       
-    angular = max(-PI/4, min(PI/4, angular));
+    float k = stanleyTrackingNormalK;
+    float p = stanleyTrackingNormalP;        
+    angular = p * trackerDiffDelta + atan(k * lateralError);  // correct for path errors   
+    angular = constrain(angular, -PI/4.0, PI/4.0);            // constrain rotation
     
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
     //linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
@@ -131,7 +184,7 @@ void trackLine(bool runControl){
     if (millis() > lastFixTime + fixTimeout * 1000.0)
       activeOp->onGpsFixTimeout();            
 
-  if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT))       
+  if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT)) // && lastFix time - now > 1000   
     if (abs(linear) > 0.06)
       if ((millis() > linearMotionStartTime + 5000) && (stateGroundSpeed < 0.03))
         // if in linear motion and not enough ground speed => obstacle

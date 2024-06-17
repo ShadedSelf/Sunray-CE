@@ -83,6 +83,10 @@ bool Battery::isDocked(){
 void Battery::setIsDocked(bool state){
   CONSOLE.print("battery.setIsDocked ");
   CONSOLE.println(state);
+
+  //if (state && !docked) buzzer.sound(SND_PLUG, true);
+  //if (!state && docked) buzzer.sound(SND_UNPLUG, true);
+
   docked = state;
 }
 

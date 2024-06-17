@@ -86,7 +86,7 @@ void cmdTuneParam(){
             case 3: 
               stanleyTrackingSlowK = floatValue;
               break;
-            case 4:
+            /*case 4:
               motor.motorLeftPID.Kp = floatValue;
               motor.motorRightPID.Kp = floatValue;              
               break;
@@ -97,7 +97,7 @@ void cmdTuneParam(){
             case 6:
               motor.motorLeftPID.Kd = floatValue;
               motor.motorRightPID.Kd = floatValue;              
-              break;
+              break;*/
           } 
       } 
       counter++;
@@ -219,7 +219,7 @@ void cmdMotorPlot(){
 void cmdSensorTest(){
   String s = F("F");
   cmdAnswer(s);
-  sensorTest();  
+  //sensorTest();  
 }
 
 // request timetable (mowing allowed day masks for 24 UTC hours)

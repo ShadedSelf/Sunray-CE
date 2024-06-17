@@ -24,15 +24,17 @@ PID::PID(float Kp, float Ki, float Kd){
 void PID::reset(void) {
   this->eold = 0;
   this->esum = 0;
-  lastControlTime = millis();
+  lastControlTime = micros();
 }
 
 float PID::compute() {
-  unsigned long now = millis();
-  Ta = ((float)(now - lastControlTime)) / 1000.0;
+  unsigned long now = micros();
+  Ta = ((float)(now - lastControlTime)) / 1000000.0;
   lastControlTime = now;
+  
+  Ta = max(Ta, 0.000001);
 
-  Ta = 50.0 / 1000.0;
+  //Ta = 50.0 / 1000.0;
   /*if (Ta > TaMax) {
     if (millis() > consoleWarnTimeout){
       consoleWarnTimeout = millis() + 1000;

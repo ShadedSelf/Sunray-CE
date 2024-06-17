@@ -11,16 +11,7 @@
 #include <Arduino.h>
 
 
-typedef union {
-  float floatingPoint;   
-  unsigned long ulong;
-  byte binary[4];
-} binaryLongOrFloat;
-
-typedef union {
-  unsigned int uint;
-  byte binary[4];  
-} binaryInt;
+#define lerp(a, b, t) (a*(1.0-t) + b*t)
 
 
 float scalePI(float v);
@@ -39,15 +30,6 @@ double distanceLL(double lat1, double lon1, double lat2, double lon2);
 void relativeLL(double lat1, double lon1, double lat2, double lon2, float &n, float &e);
 
 int sign(double x);
-
-void printFloat(float v);
-void printLong(unsigned long v);
-void printInt(unsigned int v);
-
-uint32_t serialToLong(HardwareSerial *serial);
-float serialToFloat(HardwareSerial *serial);
-
-float parseFloatValue(String s, String key);
 
 int freeRam ();
 

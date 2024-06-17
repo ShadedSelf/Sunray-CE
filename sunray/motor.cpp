@@ -493,6 +493,7 @@ void Motor::sense(){
   //nextSenseTime = millis() + 20;
   motorDriver.getMotorCurrent(motorLeftSense, motorRightSense, motorMowSense);
   float lp = 0.995; // 0.9
+  lp = 0.9;
   motorRightSenseLP = lp * motorRightSenseLP + (1.0-lp) * motorRightSense;
   motorLeftSenseLP = lp * motorLeftSenseLP + (1.0-lp) * motorLeftSense;
   motorMowSenseLP = lp * motorMowSenseLP + (1.0-lp) * motorMowSense; 

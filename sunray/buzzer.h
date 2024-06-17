@@ -11,7 +11,7 @@
 
 #include <inttypes.h>
 
-enum SoundSelect {SND_READY, SND_PROGRESS, SND_OVERCURRENT, SND_TILT, SND_WARNING, SND_ERROR} ;
+enum SoundSelect {SND_READY, SND_PROGRESS, SND_OVERCURRENT, SND_TILT, SND_WARNING, SND_ERROR, SND_PLUG, SND_UNPLUG} ;
 
 class Buzzer {
     public:

@@ -50,12 +50,6 @@
 // #define I2C_SPEED  10000
 #define _BV(x) (1 << (x))
 
-const signed char orientationMatrix[9] = {
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1
-};
-
 #ifdef DRV_SIM_ROBOT
   SimImuDriver imuDriver(robotDriver);
 #elif defined(BNO055)
@@ -183,9 +177,6 @@ PubSubClient mqttClient(espClient);
 int motorErrorCounter = 0;
 
 
-RunningMedian<unsigned int,3> tofMeasurements;
-
-
 // must be defined to override default behavior
 void watchdogSetup (void){} 
 
@@ -210,63 +201,6 @@ void updateGPSMotionCheckTime(){
   nextGPSMotionCheckTime = millis() + GPS_MOTION_DETECTION_TIMEOUT * 1000;     
 }
 
-
-
-
-
-void sensorTest(){
-  CONSOLE.println("testing sensors for 60 seconds...");
-  unsigned long stopTime = millis() + 60000;  
-  unsigned long nextMeasureTime = 0;
-  while (millis() < stopTime){
-    sonar.run();
-    bumper.run();
-    liftDriver.run();
-    if (millis() > nextMeasureTime){
-      nextMeasureTime = millis() + 1000;      
-      if (SONAR_ENABLE){
-        CONSOLE.print("sonar (enabled,left,center,right,triggered): ");
-        CONSOLE.print(sonar.enabled);
-        CONSOLE.print("\t");
-        CONSOLE.print(sonar.distanceLeft);
-        CONSOLE.print("\t");
-        CONSOLE.print(sonar.distanceCenter);
-        CONSOLE.print("\t");
-        CONSOLE.print(sonar.distanceRight);
-        CONSOLE.print("\t");
-        CONSOLE.print(((int)sonar.obstacle()));
-        CONSOLE.print("\t");
-      }
-      if (TOF_ENABLE){   
-        CONSOLE.print("ToF (dist): ");
-        int v = tof.readRangeContinuousMillimeters();        
-        if (!tof.timeoutOccurred()) {     
-          CONSOLE.print(v/10);
-        }
-        CONSOLE.print("\t");
-      }    
-      if (BUMPER_ENABLE){
-        CONSOLE.print("bumper (left,right,triggered): ");
-        CONSOLE.print(((int)bumper.testLeft()));
-        CONSOLE.print("\t");
-        CONSOLE.print(((int)bumper.testRight()));
-        CONSOLE.print("\t");
-        CONSOLE.print(((int)bumper.obstacle()));
-        CONSOLE.print("\t");       
-      }
-	    #ifdef ENABLE_LIFT_DETECTION 
-        CONSOLE.print("lift sensor (triggered): ");		
-        CONSOLE.print(((int)liftDriver.triggered()));	
-        CONSOLE.print("\t");							            
-      #endif  
-	
-      CONSOLE.println();  
-      watchdogReset();
-      robotDriver.run();   
-    }
-  }
-  CONSOLE.println("end of sensor test - please ignore any IMU/GPS errors");
-}
 
 
 void startWIFI(){
@@ -335,33 +269,6 @@ void startWIFI(){
     mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
     mqttClient.setCallback(mqttCallback);
   }  
-}
-
-
-
-// check for RTC module
-bool checkAT24C32() {
-  byte b = 0;
-  int r = 0;
-  unsigned int address = 0;
-  Wire.beginTransmission(AT24C32_ADDRESS);
-  if (Wire.endTransmission() == 0) {
-    Wire.beginTransmission(AT24C32_ADDRESS);
-    Wire.write(address >> 8);
-    Wire.write(address & 0xFF);
-    if (Wire.endTransmission() == 0) {
-      Wire.requestFrom(AT24C32_ADDRESS, 1);
-      while (Wire.available() > 0 && r < 1) {        
-        b = (byte)Wire.read();        
-        r++;
-      }
-    }
-  }
-  #ifdef __linux__  
-    return true;
-  #else
-    return (r == 1);
-  #endif
 }
 
 
@@ -556,18 +463,7 @@ void start(){
     
   Wire.begin();      
   analogReadResolution(12);  // configure ADC 12 bit resolution
-  unsigned long timeout = millis() + 2000;
-  while (millis() < timeout){
-    if (!checkAT24C32()){
-      CONSOLE.println(F("PCB not powered ON or RTC module missing"));      
-      I2Creset();  
-      Wire.begin();    
-      #ifdef I2C_SPEED
-        Wire.setClock(I2C_SPEED);     
-      #endif
-    } else break;
-  }  
-  
+
   // give Arduino IDE users some time to open serial console to actually see very first console messages
   #ifndef __linux__
     delay(1500);
@@ -855,7 +751,7 @@ bool detectObstacleRotation(){
       }
     }
   }*/
-  if (imuDriver.imuFound){
+  /*if (imuDriver.imuFound){
     if (millis() > angularMotionStartTime + 3000) {                  
       if (fabs(stateDeltaSpeedLP) < 3.0/180.0 * PI){ // less than 3 degree/s yaw speed, e.g. due to obstacle
         CONSOLE.println("no IMU rotation speed detected for requested rotation => assuming obstacle");   
@@ -864,13 +760,13 @@ bool detectObstacleRotation(){
         return true;      
       }
     }
-    /*if (diffIMUWheelYawSpeedLP > 10.0/180.0 * PI) {  // yaw speed difference between wheels and IMU more than 8 degree/s, e.g. due to obstacle
+    if (diffIMUWheelYawSpeedLP > 10.0/180.0 * PI) {  // yaw speed difference between wheels and IMU more than 8 degree/s, e.g. due to obstacle
       CONSOLE.println("yaw difference between wheels and IMU for requested rotation => assuming obstacle"); 
       statMowDiffIMUWheelYawSpeedCounter++;           
       triggerObstacleRotation();
       return true;            
-    }*/
-  }
+    }
+  }*/
   return false;
 }
 
@@ -893,12 +789,12 @@ void run(){
   batteryDriver.run();
   motorDriver.run();
   rainDriver.run();
-  liftDriver.run();
+  //liftDriver.run();
   motor.run();
   sonar.run();
   maps.run();  
-  rcmodel.run();
-  bumper.run();
+  //rcmodel.run();
+  //bumper.run();
 
     
   // state saving

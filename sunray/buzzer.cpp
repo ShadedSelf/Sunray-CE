@@ -81,7 +81,25 @@ void Buzzer::run(){
         case 3: noTone();  nextToneTime = m + 200; break;
         case 4:            nextToneTime = 0;       break;
       }
-      break;      
+      break;   
+    case SND_PLUG:
+      switch (toneIdx){
+        case 0: tone(2100); nextToneTime = m + 500; break;
+        case 1: noTone();  nextToneTime = m + 200; break;
+        case 2: tone(4200); nextToneTime = m + 500; break;
+        case 3: noTone();  nextToneTime = m + 200; break;
+        case 4:            nextToneTime = 0;       break;
+      }
+      break;     
+    case SND_UNPLUG:
+      switch (toneIdx){
+        case 0: tone(4200); nextToneTime = m + 500; break;
+        case 1: noTone();  nextToneTime = m + 200; break;
+        case 2: tone(2100); nextToneTime = m + 500; break;
+        case 3: noTone();  nextToneTime = m + 200; break;
+        case 4:            nextToneTime = 0;       break;
+      }
+      break;  
   }
   toneIdx++;
 }

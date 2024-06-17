@@ -198,49 +198,6 @@ void relativeLL(double lat1, double lon1, double lat2, double lon2, float &n, fl
   }
 }
 
-void printFloat(float v){
-  binaryLongOrFloat b;
-  b.floatingPoint = v;  
-  CONSOLE.write(b.binary[3]);  
-  CONSOLE.write(b.binary[2]);  
-  CONSOLE.write(b.binary[1]);  
-  CONSOLE.write(b.binary[0]);  
-}
-
-void printLong(unsigned long v){
-  binaryLongOrFloat b;
-  b.ulong = v; 
-  CONSOLE.write(b.binary[3]);  
-  CONSOLE.write(b.binary[2]);  
-  CONSOLE.write(b.binary[1]);  
-  CONSOLE.write(b.binary[0]);  
-}
-
-void printInt(unsigned int v){
-  binaryInt b;
-  b.uint = v; 
-  CONSOLE.write(b.binary[1]);  
-  CONSOLE.write(b.binary[0]);    
-}
-
-uint32_t serialToLong(HardwareSerial* serial){
-  binaryLongOrFloat b;
-  b.binary[3] = serial->read();
-  b.binary[2] = serial->read();
-  b.binary[1] = serial->read();
-  b.binary[0] = serial->read();
-  return b.ulong;
-}
-
-float serialToFloat(HardwareSerial* serial){
-  binaryLongOrFloat b;
-  b.binary[3] = serial->read();
-  b.binary[2] = serial->read();
-  b.binary[1] = serial->read();
-  b.binary[0] = serial->read();
-  return b.floatingPoint;
-}
-
 int freeRam () {
 #ifdef __AVR__
   extern int __heap_start, *__brkval; 

@@ -182,7 +182,8 @@ void readIMU(){
   if (avail)
     resetImuTimeout(); // reset IMU data timeout, if IMU data available
 
-  if ((duration > 30) || (millis() > imuDataTimeout)) {
+  if (duration > 30 || millis() > imuDataTimeout)
+  {
     if (millis() > imuDataTimeout){
       CONSOLE.print("ERROR IMU data timeout: ");
       CONSOLE.print(millis()-imuDataTimeout);
@@ -194,10 +195,13 @@ void readIMU(){
     }
     stateSensor = SENS_IMU_TIMEOUT;
     motor.stopImmediately(true);    
-    statImuRecoveries++;            
-    if (!startIMU(true)){ // restart I2C bus
-      return;
-    }    
+
+    // restart I2C bus
+    statImuRecoveries++;   
+    I2Creset();  
+    Wire.begin(); 
+    startIMU(true);
+
     return;
   } 
   
