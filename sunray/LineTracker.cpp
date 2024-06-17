@@ -125,7 +125,7 @@ void trackLine(bool runControl){
     {
       if      (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
       else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
-      else if (nearPerimeter()) linear = 0.15;            // slow down near perimeter
+      else if (SET_PERIMETER_SPEED && nearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
       else                                                // regular speed
       {
         if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)

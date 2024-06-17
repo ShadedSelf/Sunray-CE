@@ -368,6 +368,9 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 //#define STANLEY_LOOK_AHEAD true
 //#define STANLEY_LOOK_AHEAD_DISTANCE 10.0
 
+#define SET_PERIMETER_SPEED true    // set different speed for perimert
+#define PERIMETER_SPEED  0.15       // perimeter speed m/s
+
 
 // ----- other options --------------------------------------------
 
@@ -479,8 +482,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
   #define pinMotorMowSense A3        // M1_FB  mower motor current sense  
   #define pinMotorMowFault 26        // M1_SF  mower motor fault   (if using MOSFET/L298N, keep unconnected)
   #define pinMotorMowEnable 28       // EN mower motor enable      (if using MOSFET/L298N, keep unconnected)
-  //#define pinMotorMowRpm A11
-  #define pinMotorMowRpm A6
+  #define pinMotorMowRpm A11
       
   #define pinFreeWheel 8             // front/rear free wheel sensor    
   #define pinBumperLeft 39           // bumper pins
@@ -520,10 +522,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
     #define pinReservedP46 CANTX     // reserved
     #define pinReservedP48 DAC1      // reserved
   #else                              // Adafruit Grand Central M4 
-    //#define pinOdometryLeft A12      // left odometry sensor
-    //#define pinOdometryRight A14     // right odometry sensor 
-    #define pinOdometryLeft A5      // left odometry sensor
-    #define pinOdometryRight A7     // right odometry sensor 
+    #define pinOdometryLeft A12      // left odometry sensor
+    #define pinOdometryRight A14     // right odometry sensor 
     #define pinReservedP46 A15       // reserved
     #define pinReservedP48 A13       // reserved
   #endif
@@ -571,4 +571,18 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #ifdef BNO055
   #define MPU9250   // just to make mpu driver happy to compile something
+#endif
+
+#ifdef ICM20948
+  #define MPU9250   // just to make mpu driver happy to compile something
+#endif
+
+#ifdef __cplusplus
+  #include "udpserial.h"
+  #include "sdserial.h"
+  #include "src/agcm4/adafruit_grand_central.h"
+  #ifdef __linux__
+    #include "src/linux/linux.h"    
+    #include <Console.h>
+  #endif
 #endif

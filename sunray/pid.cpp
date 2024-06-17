@@ -54,7 +54,7 @@ float PID::compute() {
   if (esum < -max_output)  esum = -max_output;
   if (esum > max_output)  esum = max_output;
   y = Kp * e
-      + Ki * Ta * esum;
+      + Ki * Ta * esum
       + Kd/Ta * (e - eold);
   eold = e;
   // restrict output to min/max
