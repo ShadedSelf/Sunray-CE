@@ -30,18 +30,19 @@ void Motor::begin() {
   ticksPerRevolution = TICKS_PER_REVOLUTION;
 	wheelBaseCm = WHEEL_BASE_CM;    // wheel-to-wheel distance (cm) 36
   wheelDiameter = WHEEL_DIAMETER; // wheel diameter (mm)
-  ticksPerCm = ((float)ticksPerRevolution) / (((float)wheelDiameter)/10.0) / 3.1415;    // computes encoder ticks per cm (do not change)  
+  ticksPerCm = ((float)ticksPerRevolution) / (((float)wheelDiameter) / 10.0) / PI;    // computes encoder ticks per cm (do not change)  
 
-  motorLeftPID.Kp       = MOTOR_PID_KP;  // 2.0;  
-  motorLeftPID.Ki       = MOTOR_PID_KI;  // 0.03; 
-  motorLeftPID.Kd       = MOTOR_PID_KD;  // 0.03;
-  motorLeftPID.reset(); 
-  motorRightPID.Kp       = motorLeftPID.Kp;
-  motorRightPID.Ki       = motorLeftPID.Ki;
-  motorRightPID.Kd       = motorLeftPID.Kd;
-  motorRightPID.reset();		 
+  motorLeftPID.Kp = motorRightPID.Kp = MOTOR_PID_KP;  // 2.0;  
+  motorLeftPID.Ki = motorRightPID.Ki = MOTOR_PID_KI;  // 0.03; 
+  motorLeftPID.Kd = motorRightPID.Kd = MOTOR_PID_KD;  // 0.03;
+  
+  motorLeftPID.TaMax = motorRightPID.TaMax = 0.1;
+  
+  motorLeftPID.y_min = motorRightPID.y_min = -pwmMax;
+  motorLeftPID.y_max = motorRightPID.y_max = pwmMax;
+  motorLeftPID.max_output = motorRightPID.max_output = pwmMax;
+  motorLeftPID.reset(); 		 
 
-  robotPitch = 0;
   #ifdef MOTOR_DRIVER_BRUSHLESS
     motorLeftSwapDir = true;
   #else
@@ -78,7 +79,6 @@ void Motor::begin() {
   motorMowSenseLP = 0;  
   motorsSenseLP = 0;
 
-  activateLinearSpeedRamp = USE_LINEAR_SPEED_RAMP;
   linearSpeedSet = 0;
   angularSpeedSet = 0;
   motorLeftRpmSet = 0;
@@ -121,7 +121,7 @@ void Motor::setMowMaxPwm( int val ){
   pwmMaxMow = val;
 }
 
-void Motor::speedPWM ( int pwmLeft, int pwmRight, int pwmMow )
+void Motor::speedPWM( int pwmLeft, int pwmRight, int pwmMow )
 {
   //Correct Motor Direction
   if (motorLeftSwapDir) pwmLeft *= -1;
@@ -149,17 +149,13 @@ void Motor::setLinearAngularSpeed(float linear, float angular, bool useLinearRam
   setLinearAngularSpeedTimeoutActive = true;
 
   // linear
-  if ((activateLinearSpeedRamp) && (useLinearRamp))
+  if (USE_LINEAR_SPEED_RAMP && useLinearRamp)
     linearSpeedSet = 0.95 * linearSpeedSet + 0.05 * linear;
   else
     linearSpeedSet = linear;
 
   // angular
-  //if (fabsf(linearSpeedSet) < 0.05)
-  //if (fabsf(angular) > fabsf(angularSpeedSet))
-    //angularSpeedSet = 0.95 * angularSpeedSet + 0.05 * angular;
-  //else
-    angularSpeedSet = angular;   
+  angularSpeedSet = angular;   
    
   float rspeed = linearSpeedSet + angularSpeedSet * (wheelBaseCm /100.0 / 2.0);          
   float lspeed = linearSpeedSet - angularSpeedSet * (wheelBaseCm /100.0 / 2.0);   
@@ -297,11 +293,6 @@ void Motor::run() {
   motorLeftTicks += ticksLeft;
   motorRightTicks += ticksRight;
   motorMowTicks += ticksMow;
-  /*CONSOLE.print(motorLeftTicks);
-  CONSOLE.print(" ");
-  CONSOLE.print(motorRightTicks);
-  CONSOLE.print(" ");
-  CONSOLE.println(motorMowTicks);*/
 
   unsigned long currTime = millis();
   float deltaControlTimeSec =  ((float)(currTime - lastControlTime)) / 1000.0;
@@ -518,29 +509,23 @@ void Motor::control(){
 
   //########################  Calculate PWM for left driving motor ############################
 
-  motorLeftPID.TaMax = 0.1;
   motorLeftPID.x = motorLeftRpmCurr;
   motorLeftPID.w = motorLeftRpmSet;
-  motorLeftPID.y_min = -pwmMax;
-  motorLeftPID.y_max = pwmMax;
-  motorLeftPID.max_output = pwmMax;
   motorLeftPID.compute();
   mlpwm += motorLeftPID.y;
-  if (motorLeftRpmSet >= 0) motorLeftPWMCurr = min( max(0, (int)mlpwm), pwmMax); // 0.. pwmMax
-  if (motorLeftRpmSet < 0) motorLeftPWMCurr = max(-pwmMax, min(0, (int)mlpwm));  // -pwmMax..0
+  motorLeftPWMCurr = constrain((int)mlpwm, -pwmMax, pwmMax);
+  //if (motorLeftRpmSet >= 0) motorLeftPWMCurr = min( max(0, (int)mlpwm), pwmMax); // 0.. pwmMax
+  //if (motorLeftRpmSet < 0) motorLeftPWMCurr = max(-pwmMax, min(0, (int)mlpwm));  // -pwmMax..0
 
   //########################  Calculate PWM for right driving motor ############################
   
-  motorRightPID.TaMax = 0.1;
   motorRightPID.x = motorRightRpmCurr;
   motorRightPID.w = motorRightRpmSet;
-  motorRightPID.y_min = -pwmMax;
-  motorRightPID.y_max = pwmMax;
-  motorRightPID.max_output = pwmMax;
   motorRightPID.compute();
   mrpwm += motorRightPID.y;
-  if (motorRightRpmSet >= 0) motorRightPWMCurr = min( max(0, (int)mrpwm), pwmMax);  // 0.. pwmMax
-  if (motorRightRpmSet < 0) motorRightPWMCurr = max(-pwmMax, min(0, (int)mrpwm));   // -pwmMax..0  
+  motorRightPWMCurr = constrain((int)mrpwm, -pwmMax, pwmMax);
+  //if (motorRightRpmSet >= 0) motorRightPWMCurr = min( max(0, (int)mrpwm), pwmMax);  // 0.. pwmMax
+  //if (motorRightRpmSet < 0) motorRightPWMCurr = max(-pwmMax, min(0, (int)mrpwm));   // -pwmMax..0  
 
   if ((abs(motorLeftRpmSet) < 0.01) && (motorLeftPWMCurr < 30)) motorLeftPWMCurr = 0;
   if ((abs(motorRightRpmSet) < 0.01) && (motorRightPWMCurr < 30)) motorRightPWMCurr = 0;
@@ -552,9 +537,8 @@ void Motor::control(){
 
   //########################  set PWM for all motors ############################
 
-  if (!tractionMotorsEnabled){
+  if (!tractionMotorsEnabled)
     motorLeftPWMCurr = motorRightPWMCurr = 0;
-  }
 
   speedPWM(motorLeftPWMCurr, motorRightPWMCurr, motorMowPWMCurr);
 }

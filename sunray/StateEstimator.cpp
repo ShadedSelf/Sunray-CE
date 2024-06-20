@@ -224,8 +224,6 @@ void readIMU(){
         activeOp->onImuTilt();
       }           
     #endif
-
-    motor.robotPitch = scalePI(imuDriver.pitch);
     
     float currentIMUYaw = scalePI(imuDriver.yaw);
     lastIMUYaw = scalePIangles(lastIMUYaw, currentIMUYaw);

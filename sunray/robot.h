@@ -150,7 +150,7 @@ extern BLEConfig bleConfig;
 extern Bumper bumper;
 extern Buzzer buzzer;
 extern Sonar sonar;
-extern VL53L0X tof;
+//extern VL53L0X tof;
 extern PinManager pinMan;
 extern Map maps;
 extern TimeTable timetable;

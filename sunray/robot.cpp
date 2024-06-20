@@ -101,7 +101,7 @@ BLEConfig bleConfig;
 Buzzer buzzer;
 Sonar sonar;
 Bumper bumper;
-VL53L0X tof(VL53L0X_ADDRESS_DEFAULT);
+//VL53L0X tof(VL53L0X_ADDRESS_DEFAULT);
 Map maps;
 RCModel rcmodel;
 TimeTable timetable;
@@ -134,7 +134,7 @@ unsigned long nextGPSMotionCheckTime = 0;
 bool finishAndRestart = false;
 
 unsigned long nextBadChargingContactCheck = 0;
-unsigned long nextToFTime = 0;
+//unsigned long nextToFTime = 0;
 unsigned long linearMotionStartTime = 0;
 unsigned long angularMotionStartTime = 0;
 unsigned long overallMotionTimeout = 0;
@@ -512,7 +512,7 @@ void start(){
 
   outputConfig();
 
-  if (TOF_ENABLE){
+  /*if (TOF_ENABLE){
     tof.setTimeout(500);
     if (!tof.init())
     {
@@ -520,17 +520,11 @@ void start(){
       delay(1000);
     }
     tof.startContinuous(100);
-  }        
+  }    */    
   
   CONSOLE.print("SERIAL_BUFFER_SIZE=");
   CONSOLE.print(SERIAL_BUFFER_SIZE);
   CONSOLE.println(" (increase if you experience GPS checksum errors)");
-  //CONSOLE.println("-----------------------------------------------------");
-  //CONSOLE.println("NOTE: if you experience GPS checksum errors, try to increase UART FIFO size:");
-  //CONSOLE.println("1. Arduino IDE->File->Preferences->Click on 'preferences.txt' at the bottom");
-  //CONSOLE.println("2. Locate file 'packages/arduino/hardware/sam/xxxxx/cores/arduino/RingBuffer.h");
-  //CONSOLE.println("   for Grand Central M4 'packages/adafruit/hardware/samd/xxxxx/cores/arduino/RingBuffer.h");  
-  //CONSOLE.println("change:     #define SERIAL_BUFFER_SIZE 128     into into:     #define SERIAL_BUFFER_SIZE 1024");
   CONSOLE.println("-----------------------------------------------------");
   
   #ifdef GPS_USE_TCP
@@ -540,8 +534,7 @@ void start(){
   #endif
 
   maps.begin();      
-  //maps.clipperTest();
-    
+
   // initialize ESP module
   startWIFI();
   #ifdef ENABLE_NTRIP
@@ -640,7 +633,7 @@ bool detectLift(){
 bool detectObstacle(){   
   if (! ((robotShouldMoveForward()) || (robotShouldRotate())) ) return false;  
 
-  #if (TOF_ENABLE)
+ /* #if (TOF_ENABLE)
     if (millis() >= nextToFTime){
       nextToFTime = millis() + 200;
       int v = tof.readRangeContinuousMillimeters();        
@@ -657,7 +650,7 @@ bool detectObstacle(){
         }      
       } 
     }
-  #endif  
+  #endif  */
   
   #ifdef ENABLE_LIFT_DETECTION
     #ifdef LIFT_OBSTACLE_AVOIDANCE
@@ -835,12 +828,12 @@ void run(){
   }
 
   // LED states
-  if (millis() > nextLedTime){
+  /*if (millis() > nextLedTime){
     nextLedTime = millis() + 1000;
     robotDriver.ledStateGpsFloat = (gps.solution == SOL_FLOAT);
     robotDriver.ledStateGpsFix = (gps.solution == SOL_FIXED);
     robotDriver.ledStateError = (stateOp == OP_ERROR);     
-  }
+  }*/
 
   gps.run();
 
@@ -859,6 +852,7 @@ void run(){
     controlLoops++;    
     
     computeRobotState();
+
     if (!robotShouldMove()){
       resetLinearMotionMeasurement();
       updateGPSMotionCheckTime();  
@@ -891,71 +885,53 @@ void run(){
     if (battery.underVoltage()){
       activeOp->onBatteryUndervoltage();
     } 
-    else {      
-      if (USE_TEMP_SENSOR){
+    else
+    {      
+      if (USE_TEMP_SENSOR)
         if (stateTemp > DOCK_OVERHEAT_TEMP
         ||  stateTemp < DOCK_TOO_COLD_TEMP)
           activeOp->onTempOutOfRangeTriggered();
-      }
 
-      if (RAIN_ENABLE){
-        // rain sensor should trigger serveral times to robustly detect rain (robust rain detection)
-        // it should not trigger if one rain drop or wet tree leaves touches the sensor  
-        if (rainDriver.triggered()){  
-          //CONSOLE.print("RAIN TRIGGERED ");
-          activeOp->onRainTriggered();                                                                              
-        }                           
-      }    
+      if (RAIN_ENABLE)
+        if (rainDriver.triggered())
+          activeOp->onRainTriggered();                                                                                                       
       
-      if (battery.shouldGoHome())
-        if (DOCKING_STATION)
+      if (DOCKING_STATION)
+       if (battery.shouldGoHome())
            activeOp->onBatteryLowShouldDock();
        
-      if (battery.chargerConnected()){
-        if (battery.chargingHasCompleted()){
-          activeOp->onChargingCompleted();
-        }
-      }        
+      if (battery.chargerConnected())
+        if (battery.chargingHasCompleted())
+          activeOp->onChargingCompleted();     
     } 
 
-    //CONSOLE.print("active:");
-    //CONSOLE.println(activeOp->name());
     activeOp->checkStop();
     activeOp->run();     
       
     // process button state
 
+    // start/stop
+    if (stateButton == 1){                 
+      stateButton = 0;
+      stateSensor = SENS_STOP_BUTTON;
+
+      if (stateOp == OP_MOW)
+        setOperation(OP_IDLE, false); 
+      else
+        setOperation(OP_MOW, false);                            
+    }
     // dock
-    if (stateButton == 3){
-      stateButton = 0; // reset button state
+    else if (stateButton == 2){
+      stateButton = 0;
       stateSensor = SENS_STOP_BUTTON;
       setOperation(OP_DOCK, false);
     }
-    // mow
-    else if (stateButton == 2){ 
-      stateButton = 0; // reset button state        
-      stateSensor = SENS_STOP_BUTTON;
-      setOperation(OP_MOW, false);
-    } 
-    // stop
-    else if (stateButton == 1){                 
-      stateButton = 0;  // reset button state
-      stateSensor = SENS_STOP_BUTTON;
-      setOperation(OP_IDLE, false);                             
-    }
     // switch off
-    else if (stateButton == 10){
-      stateButton = 0;  // reset button state
+    else if (stateButton == 5){
+      stateButton = 0;
       stateSensor = SENS_STOP_BUTTON;
       cmdSwitchOffRobot();
     }
-    else if (stateButton == 12){
-      stateButton = 0; // reset button state
-      stateSensor = SENS_STOP_BUTTON;
-      #ifdef __linux__
-        WiFi.startWifiProtectedSetup();
-      #endif
-    } 
 
     // update operation type      
     stateOp = activeOp->getGoalOperationType();           
@@ -998,26 +974,27 @@ void run(){
   //##############################################################################
 
   // compute button state (stateButton)
-  if (BUTTON_CONTROL){
-    if (stopButton.triggered()){
+  if (BUTTON_CONTROL)
+  {
+    if (stopButton.triggered())
+    {
       if (millis() > stateButtonTimeout){
         stateButtonTimeout = millis() + 1000;
         stateButtonTemp++; // next state
         buzzer.sound(SND_READY, true);
         CONSOLE.print("BUTTON ");
         CONSOLE.print(stateButtonTemp);
-        CONSOLE.println("s");                                     
-      }
-                          
-    } else {
+        CONSOLE.println("s");}                      
+    }
+    else
+    {
       if (stateButtonTemp > 0){
         // button released => set stateButton
         stateButtonTimeout = 0;
         stateButton = stateButtonTemp;
         stateButtonTemp = 0;
         CONSOLE.print("stateButton ");
-        CONSOLE.println(stateButton);
-      }
+        CONSOLE.println(stateButton);}
     }
   }    
 }        

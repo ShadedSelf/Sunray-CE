@@ -125,7 +125,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define TICKS_PER_REVOLUTION  570     // odometry ticks per wheel revolution
 #define RESPONSIVE_RPM true // use tick time for odometry RPM calculations
 #define FILTER_ODOMETRY true //rolling average for odometry tick time
-#define ODOMETRY_DIVIDER false // set to true if using hardware odometry divider
+#define ODOMETRY_DIVIDER true // set to true if using hardware odometry divider
 
 
 // ----- gear motors --------------------------------------------------
