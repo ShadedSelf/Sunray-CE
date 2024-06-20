@@ -870,9 +870,11 @@ void run(){
       stateChargerConnected = battery.chargerConnected(); 
       if (stateChargerConnected){      
         // charger connected event        
-        activeOp->onChargerConnected();                
+        activeOp->onChargerConnected();
+        buzzer.sound(SND_PLUG);             
       } else {
         activeOp->onChargerDisconnected();
+        buzzer.sound(SND_UNPLUG);
       }            
     }
     if (millis() > nextBadChargingContactCheck) {

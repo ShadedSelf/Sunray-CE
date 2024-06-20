@@ -77,13 +77,13 @@ class Motor {
     float motorRightRpmLast;
     float motorMowPWMSet;  
     float motorMowPWMCurr; 
-    int motorLeftPWMCurr;
-    int motorRightPWMCurr;    
+    float motorLeftPWMCurr;
+    float motorRightPWMCurr;    
     float motorMowPWMCurrLP; 
     float motorLeftPWMCurrLP;
     float motorRightPWMCurrLP;    
     unsigned long lastControlTime;    
-    unsigned long nextSenseTime;          
+    //unsigned long nextSenseTime;          
     bool recoverMotorFault;
     int recoverMotorFaultCounter;
     unsigned long nextRecoverMotorFaultTime;

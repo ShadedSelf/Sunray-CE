@@ -12,17 +12,13 @@
 
 void Motor::begin() {
   #ifdef MAX_GEAR_PWM
-    if (MAX_GEAR_PWM <= 255)
-      pwmMax = MAX_GEAR_PWM;
-    else pwmMax = 255;
+    pwmMax = MAX_GEAR_PWM;
   #else 
     pwmMax = 255;
   #endif
  
   #ifdef MAX_MOW_PWM
-    if (MAX_MOW_PWM <= 255)
-      pwmMaxMow = MAX_MOW_PWM;
-    else pwmMaxMow = 255;
+    pwmMaxMow = MAX_MOW_PWM;
   #else 
     pwmMaxMow = 255;
   #endif
@@ -41,7 +37,9 @@ void Motor::begin() {
   motorLeftPID.y_min = motorRightPID.y_min = -pwmMax;
   motorLeftPID.y_max = motorRightPID.y_max = pwmMax;
   motorLeftPID.max_output = motorRightPID.max_output = pwmMax;
-  motorLeftPID.reset(); 		 
+
+  motorLeftPID.reset(); 
+  motorRightPID.reset();		 
 
   #ifdef MOTOR_DRIVER_BRUSHLESS
     motorLeftSwapDir = true;
@@ -88,7 +86,7 @@ void Motor::begin() {
   toggleMowDir = MOW_TOGGLE_DIR;
 
   lastControlTime = 0;
-  nextSenseTime = 0;
+  //nextSenseTime = 0;
   motorLeftTicks =0;  
   motorRightTicks =0;
   motorMowTicks = 0;
@@ -246,9 +244,9 @@ void Motor::run() {
   // if motor driver uses too much current, try a recovery     
   // if there is some error (odometry, too low current, rpm fault), try a recovery 
   if (!recoverMotorFault) {
-    bool someFault = ( (checkFault()) || (checkCurrentTooHighError()) || (checkMowRpmFault()) 
-                    || (checkOdometryError()) || (checkCurrentTooLowError()) );
-    if (someFault){
+    if (checkFault()|| checkCurrentTooHighError() || checkMowRpmFault()
+    || checkOdometryError() || checkCurrentTooLowError())
+    {
       stopImmediately(true);
       recoverMotorFault = true;
       nextRecoverMotorFaultTime = millis() + 1000;                  
@@ -305,13 +303,13 @@ void Motor::run() {
   motorDriver.getMotorTickTime(timeLeft, timeRight, timeMow);  
 
   // calculat speed via tick time
-  motorLeftRpmCurr = (1000000.0 / (timeLeft * ticksPerRevolution)) * 60.0 * (float)(motorLeftPWMCurr != 0);
-  motorRightRpmCurr = (1000000.0 / (timeRight * ticksPerRevolution)) * 60.0 * (float)(motorRightPWMCurr != 0);
-  motorMowRpmCurr = (1000000.0 / (timeMow * 6)) * 60.0 * (float)(motorMowPWMCurr != 0);
+  motorLeftRpmCurr = (1000000.0 / (timeLeft * ticksPerRevolution)) * 60.0 * (float)(fabs(motorLeftPWMCurr) > 0.5);
+  motorRightRpmCurr = (1000000.0 / (timeRight * ticksPerRevolution)) * 60.0 * (float)(fabs(motorRightPWMCurr) > 0.5);
+  motorMowRpmCurr = (1000000.0 / (timeMow * 6)) * 60.0 * (float)(fabs(motorMowPWMCurr) > 0.5);
 
-  if (motorLeftPWMCurr < 0) motorLeftRpmCurr *= -1.0;
-  if (motorRightPWMCurr < 0) motorRightRpmCurr *= -1.0;
-  if (motorMowPWMCurr < 0) motorMowRpmCurr *= -1.0;
+  if (motorLeftPWMCurr < 0.0) motorLeftRpmCurr *= -1.0;
+  if (motorRightPWMCurr < 0.0) motorRightRpmCurr *= -1.0;
+  if (motorMowPWMCurr < 0.0) motorMowRpmCurr *= -1.0;
 # else
   // calculate speed via tick count
   // 2000 ticksPerRevolution: @ 30 rpm  => 0.5 rps => 1000 ticksPerSec
@@ -418,8 +416,8 @@ bool Motor::checkFault() {
 // check odometry errors
 bool Motor::checkOdometryError() {
   if (ENABLE_ODOMETRY_ERROR_DETECTION){
-    if  (   ( (abs(motorLeftPWMCurr) > 100) && (abs(motorLeftPWMCurrLP) > 100) && (abs(motorLeftRpmCurrLP) < 0.001))    
-        ||  ( (abs(motorRightPWMCurr) > 100) && (abs(motorRightPWMCurrLP) > 100) && (abs(motorRightRpmCurrLP) < 0.001))  )
+    if  (   ( (fabs(motorLeftPWMCurr) > 100) && (fabs(motorLeftPWMCurrLP) > 100) && (fabs(motorLeftRpmCurrLP) < 0.001))    
+        ||  ( (fabs(motorRightPWMCurr) > 100) && (fabs(motorRightPWMCurrLP) > 100) && (fabs(motorRightRpmCurrLP) < 0.001))  )
     {               
       // odometry error
       CONSOLE.print("ERROR: odometry error - rpm too low (left, right)=");
@@ -480,62 +478,43 @@ bool Motor::checkMowRpmFault(){
 
 // measure motor currents
 void Motor::sense(){
-  //if (millis() < nextSenseTime) return;
-  //nextSenseTime = millis() + 20;
   motorDriver.getMotorCurrent(motorLeftSense, motorRightSense, motorMowSense);
-  float lp = 0.995; // 0.9
-  lp = 0.9;
+  //float lp = 0.995; // 0.9
+  float lp = 0.9;
   motorRightSenseLP = lp * motorRightSenseLP + (1.0-lp) * motorRightSense;
   motorLeftSenseLP = lp * motorLeftSenseLP + (1.0-lp) * motorLeftSense;
   motorMowSenseLP = lp * motorMowSenseLP + (1.0-lp) * motorMowSense; 
   motorsSenseLP = motorRightSenseLP + motorLeftSenseLP + motorMowSenseLP;
-  motorRightPWMCurrLP = lp * motorRightPWMCurrLP + (1.0-lp) * ((float)motorRightPWMCurr);
-  motorLeftPWMCurrLP = lp * motorLeftPWMCurrLP + (1.0-lp) * ((float)motorLeftPWMCurr);
-  lp = 0.99;
-  motorMowPWMCurrLP = lp * motorMowPWMCurrLP + (1.0-lp) * ((float)motorMowPWMCurr); 
+  
+  motorRightPWMCurrLP = lp * motorRightPWMCurrLP + (1.0-lp) * motorRightPWMCurr;
+  motorLeftPWMCurrLP = lp * motorLeftPWMCurrLP + (1.0-lp) * motorLeftPWMCurr;
+  //lp = 0.99;
+  motorMowPWMCurrLP = lp * motorMowPWMCurrLP + (1.0-lp) * motorMowPWMCurr; 
 
   checkOverload();  
 }
 
-
-float mlpwm = 0.0;
-float mrpwm = 0.0;
-float mmpwm = 0.0;
-void Motor::control(){  
-    
-  if (abs((int)mlpwm - motorLeftPWMCurr) > 0) mlpwm = (float)motorLeftPWMCurr;
-  if (abs((int)mrpwm - motorRightPWMCurr) > 0) mrpwm = (float)motorRightPWMCurr;
-  if (abs((int)mmpwm - motorMowPWMCurr) > 0) mmpwm = (float)motorMowPWMCurr;
-
+void Motor::control(){
   //########################  Calculate PWM for left driving motor ############################
-
   motorLeftPID.x = motorLeftRpmCurr;
   motorLeftPID.w = motorLeftRpmSet;
   motorLeftPID.compute();
-  mlpwm += motorLeftPID.y;
-  motorLeftPWMCurr = constrain((int)mlpwm, -pwmMax, pwmMax);
-  //if (motorLeftRpmSet >= 0) motorLeftPWMCurr = min( max(0, (int)mlpwm), pwmMax); // 0.. pwmMax
-  //if (motorLeftRpmSet < 0) motorLeftPWMCurr = max(-pwmMax, min(0, (int)mlpwm));  // -pwmMax..0
+  motorLeftPWMCurr += motorLeftPID.y;
+  motorLeftPWMCurr = constrain(motorLeftPWMCurr, -pwmMax, pwmMax);
 
   //########################  Calculate PWM for right driving motor ############################
-  
   motorRightPID.x = motorRightRpmCurr;
   motorRightPID.w = motorRightRpmSet;
   motorRightPID.compute();
-  mrpwm += motorRightPID.y;
-  motorRightPWMCurr = constrain((int)mrpwm, -pwmMax, pwmMax);
-  //if (motorRightRpmSet >= 0) motorRightPWMCurr = min( max(0, (int)mrpwm), pwmMax);  // 0.. pwmMax
-  //if (motorRightRpmSet < 0) motorRightPWMCurr = max(-pwmMax, min(0, (int)mrpwm));   // -pwmMax..0  
+  motorRightPWMCurr += motorRightPID.y;
+  motorRightPWMCurr = constrain(motorRightPWMCurr, -pwmMax, pwmMax);
 
-  if ((abs(motorLeftRpmSet) < 0.01) && (motorLeftPWMCurr < 30)) motorLeftPWMCurr = 0;
-  if ((abs(motorRightRpmSet) < 0.01) && (motorRightPWMCurr < 30)) motorRightPWMCurr = 0;
-
-  //########################  Calculate PWM for mowing motor ############################
-  
-  mmpwm = 0.99 * mmpwm + 0.01 * motorMowPWMSet;
-  motorMowPWMCurr = (int)mmpwm;
+  //########################  Calculate PWM for mowing motor ############################  
+  motorMowPWMCurr = 0.99 * motorMowPWMCurr + 0.01 * motorMowPWMSet;
 
   //########################  set PWM for all motors ############################
+  if (fabs(motorLeftRpmSet) < 0.01/* && motorLeftPWMCurr < 30.0*/) motorLeftPWMCurr = 0;
+  if (fabs(motorRightRpmSet) < 0.01/* && motorRightPWMCurr < 30.0*/) motorRightPWMCurr = 0;
 
   if (!tractionMotorsEnabled)
     motorLeftPWMCurr = motorRightPWMCurr = 0;
