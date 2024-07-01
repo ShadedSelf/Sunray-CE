@@ -28,34 +28,26 @@ bool printmotoroverload = false;
 
 bool nearPerimeter()
 {
-  if (maps.wayMode != WAY_DOCK )
-  {
-    bool isInside = true;
+  bool isInside = true;
 
-    vec3_t rr = vec3_t(stateX, stateY, 0) + right * 10.0 / 100.0;
-    vec3_t ll = vec3_t(stateX, stateY, 0) - right * 10.0 / 100.0;
+  vec3_t rr = vec3_t(stateX, stateY, 0) + right * 10.0 / 100.0;
+  vec3_t ll = vec3_t(stateX, stateY, 0) - right * 10.0 / 100.0;
 
-    isInside = isInside && maps.isInsidePerimeter(rr.x, rr.y);
-    isInside = isInside && maps.isInsidePerimeter(ll.x, ll.y);
+  isInside = isInside && maps.isInsidePerimeter(rr.x, rr.y);
+  isInside = isInside && maps.isInsidePerimeter(ll.x, ll.y);
 
-    return !isInside;   
-  }
-  return false;
+  return !isInside && maps.wayMode != WAY_DOCK;   
 }
 
 bool isCloseToDock()
 {
-  if (maps.isUndocking() || maps.isDocking())
-  {
-    float dockX = 0;
-    float dockY = 0;
-    float dockDelta = 0;
-    maps.getDockingPos(dockX, dockY, dockDelta);
-    float dist_dock = distance(dockX, dockY, stateX, stateY);
+  float dockX = 0;
+  float dockY = 0;
+  float dockDelta = 0;
+  maps.getDockingPos(dockX, dockY, dockDelta);
+  float dist_dock = distance(dockX, dockY, stateX, stateY);
 
-    return dist_dock < DOCK_UNDOCK_TRACKSLOW_DISTANCE;
-  }
-  return false;
+  return dist_dock < DOCK_UNDOCK_TRACKSLOW_DISTANCE && (maps.isUndocking() || maps.isDocking());
 }
 
 // control robot velocity (linear,angular) to track line to next waypoint (target)
@@ -99,9 +91,6 @@ void trackLine(bool runControl){
 
   float linear = 0.0;  
   float angular = 0.0; 
-  //linear *= (PI - fabs(trackerDiffDelta)) / PI;
-  //linear *= max(cos(trackerDiffDelta), 0.0);
-  //linear *= cos(trackerDiffDelta * 0.5);
 
   // rover angle too far away from target angle, rotate rover
   if (!angleToTargetFits){
@@ -113,50 +102,44 @@ void trackLine(bool runControl){
   {
     bool straight = maps.nextPointIsStraight();
 
-    // planner forces slow tracking (e.g. docking etc)
-    if (maps.trackSlow && isCloseToDock())
-      linear = 0.1;   
-    // reduce speed when approaching/leaving waypoints         
-    else if (setSpeed > 0.2 
-      && (targetDist < 0.25 && (!straight)) //approaching
-      || (lastTargetDist < 0.25))           //leaving  
+    if (maps.trackSlow && isCloseToDock())  // planner forces slow tracking (e.g. docking etc)
+      linear = 0.1;        
+    else if (setSpeed > 0.2                 // reduce speed when approaching/leaving waypoints    
+      && (targetDist < 0.25 && (!straight)) // approaching
+      || (lastTargetDist < 0.25))           // leaving  
         linear = 0.15;         
+    else if      (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
+    else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
+    else if (SET_PERIMETER_SPEED && nearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
+    else if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)
+    {    
+      /*adaptiveSpeedPID.Kp = 0.0025;
+      adaptiveSpeedPID.Ki = 0;
+      adaptiveSpeedPID.Kd = 0;
+
+      adaptiveSpeedPID.x = motor.motorMowSenseLP;
+      adaptiveSpeedPID.w = 0.75;
+      adaptiveSpeedPID.y_min = -0.05;
+      adaptiveSpeedPID.y_max = 0.05;
+      adaptiveSpeedPID.max_output = 0.1;
+      adaptiveSpeedPID.compute();
+      adaptiveSpeed += adaptiveSpeedPID.y;
+
+      adaptiveSpeed = constrain(adaptiveSpeed, 0.1, setSpeed);
+
+      linear = adaptiveSpeed;*/
+
+      float minCurrent = ADAPTIVES_SPEED_MINCURRENT;
+      float maxCurrent = ADAPTIVES_SPEED_MAXCURRENT;
+      float diffCurrent = maxCurrent - minCurrent;
+
+      float minSpeed = 0.1;
+
+      float t = (motor.motorMowSenseLP - minCurrent) / diffCurrent;
+      linear = lerp(setSpeed, minSpeed, constrain(t, 0.0, 1.0));
+    }
     else
-    {
-      if      (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
-      else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
-      else if (SET_PERIMETER_SPEED && nearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
-      else                                                // regular speed
-      {
-        if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)
-        {    
-          /*adaptiveSpeedPID.Kp = 0.0025;
-          adaptiveSpeedPID.Ki = 0;
-          adaptiveSpeedPID.Kd = 0;
-
-          adaptiveSpeedPID.x = motor.motorMowSenseLP;
-          adaptiveSpeedPID.w = 0.75;
-          adaptiveSpeedPID.y_min = -0.05;
-          adaptiveSpeedPID.y_max = 0.05;
-          adaptiveSpeedPID.max_output = 0.1;
-          adaptiveSpeedPID.compute();
-          adaptiveSpeed += adaptiveSpeedPID.y;
-
-          adaptiveSpeed = constrain(adaptiveSpeed, 0.1, setSpeed);
-
-          linear = adaptiveSpeed;*/
-
-          float minCurrent = 0.75;
-          float maxCurrent = 1.25;
-          float diffCurrent = maxCurrent - minCurrent;
-
-          float t = (motor.motorMowSenseLP - minCurrent) / diffCurrent;
-          linear = lerp(setSpeed, 0.1, constrain(t, 0.0, 1.0));
-        }
-        else
-          linear = setSpeed; // desired speed
-      }
-    }   
+      linear = setSpeed; // desired speed
 
     // slow down speed in case of overload and overwrite all prior speed 
     if (motor.motorLeftOverload || motor.motorRightOverload || motor.motorMowOverload)
@@ -176,7 +159,8 @@ void trackLine(bool runControl){
     angular = constrain(angular, -PI/4.0, PI/4.0);            // constrain rotation
     
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
-    //linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
+    
+    linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
   }
   
   // check some pre-conditions that can make linear+angular speed zero

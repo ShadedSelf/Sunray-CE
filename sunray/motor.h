@@ -7,6 +7,7 @@
 #define MOTOR_H
 
 #include "pid.h"
+#include "config.h"
 
 
 // selected motor
@@ -32,8 +33,8 @@ class Motor {
     bool motorMowForwardSet; 
     bool odometryError;    
     unsigned long motorOverloadDuration; // accumulated duration (ms)
-    int  pwmMax;
-    int  pwmMaxMow;  
+    int pwmMax;
+    int pwmMaxMow;  
     float mowMotorCurrentAverage;
     float currentFactor;
     bool pwmSpeedCurveDetection;
@@ -54,7 +55,10 @@ class Motor {
     unsigned long motorMowSpinUpTime;
     bool motorRecoveryState; 
     PID motorLeftPID;
-    PID motorRightPID;    
+    PID motorRightPID;   
+  #if MOW_RPM_CONTROL
+    PID motorMowPID; 
+  #endif
     void begin();
     void run();      
     void test();
@@ -73,8 +77,6 @@ class Motor {
     float motorLeftRpmCurrLP;
     float motorRightRpmCurrLP;    
     float motorMowRpmCurrLP;    
-    float motorLeftRpmLast;
-    float motorRightRpmLast;
     float motorMowPWMSet;  
     float motorMowPWMCurr; 
     float motorLeftPWMCurr;

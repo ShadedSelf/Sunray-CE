@@ -204,7 +204,7 @@ void updateGPSMotionCheckTime(){
 
 
 void startWIFI(){
-#ifdef __linux__
+/*#ifdef __linux__
   WiFi.begin();
   wifiFound = true;
 #else  
@@ -268,7 +268,7 @@ void startWIFI(){
     CONSOLE.println("MQTT: enabled");
     mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
     mqttClient.setCallback(mqttCallback);
-  }  
+  }  */
 }
 
 
@@ -871,10 +871,10 @@ void run(){
       if (stateChargerConnected){      
         // charger connected event        
         activeOp->onChargerConnected();
-        buzzer.sound(SND_PLUG);             
+        //buzzer.sound(SND_PLUG);             
       } else {
         activeOp->onChargerDisconnected();
-        buzzer.sound(SND_UNPLUG);
+        //buzzer.sound(SND_UNPLUG);
       }            
     }
     if (millis() > nextBadChargingContactCheck) {
@@ -908,32 +908,9 @@ void run(){
     } 
 
     activeOp->checkStop();
-    activeOp->run();     
-      
-    // process button state
+    activeOp->run();
 
-    // start/stop
-    if (stateButton == 1){                 
-      stateButton = 0;
-      stateSensor = SENS_STOP_BUTTON;
-
-      if (stateOp == OP_MOW)
-        setOperation(OP_IDLE, false); 
-      else
-        setOperation(OP_MOW, false);                            
-    }
-    // dock
-    else if (stateButton == 2){
-      stateButton = 0;
-      stateSensor = SENS_STOP_BUTTON;
-      setOperation(OP_DOCK, false);
-    }
-    // switch off
-    else if (stateButton == 5){
-      stateButton = 0;
-      stateSensor = SENS_STOP_BUTTON;
-      cmdSwitchOffRobot();
-    }
+    processButtonState();  
 
     // update operation type      
     stateOp = activeOp->getGoalOperationType();           
@@ -973,32 +950,7 @@ void run(){
     loopTimeMax = 0;
     loopTimeTimer = millis();
   }   
-  //##############################################################################
-
-  // compute button state (stateButton)
-  if (BUTTON_CONTROL)
-  {
-    if (stopButton.triggered())
-    {
-      if (millis() > stateButtonTimeout){
-        stateButtonTimeout = millis() + 1000;
-        stateButtonTemp++; // next state
-        buzzer.sound(SND_READY, true);
-        CONSOLE.print("BUTTON ");
-        CONSOLE.print(stateButtonTemp);
-        CONSOLE.println("s");}                      
-    }
-    else
-    {
-      if (stateButtonTemp > 0){
-        // button released => set stateButton
-        stateButtonTimeout = 0;
-        stateButton = stateButtonTemp;
-        stateButtonTemp = 0;
-        CONSOLE.print("stateButton ");
-        CONSOLE.println(stateButton);}
-    }
-  }    
+  //##############################################################################   
 }        
 
 
@@ -1010,4 +962,47 @@ void setOperation(OperationType op, bool allowRepeat){
   stateOp = op;  
   activeOp->changeOperationTypeByOperator(stateOp);
   saveState();
+}
+
+void processButtonState()
+{
+#if BUTTON_CONTROL
+  // process button state
+  if (stateButton == 1) {      // start-stop            
+    if (stateOp == OP_MOW || stateOp == OP_DOCK)
+      setOperation(OP_IDLE, false); 
+    else
+      setOperation(OP_MOW, false);                            
+  }
+  if (stateButton == 2)        // dock
+    setOperation(OP_DOCK, false);
+  if (stateButton == 5)        // switch off
+    cmdSwitchOffRobot();
+
+  // reset button state
+  if (stateButton > 0) {
+    stateButton = 0;
+    stateSensor = SENS_STOP_BUTTON;
+  }
+
+  // compute button state (stateButton)
+  if (stopButton.triggered()) {
+    if (millis() > stateButtonTimeout){
+      stateButtonTimeout = millis() + 1000;
+      stateButtonTemp++; // next state
+      buzzer.sound(SND_READY, true);
+      CONSOLE.print("BUTTON ");
+      CONSOLE.print(stateButtonTemp);
+      CONSOLE.println("s");}                      
+  }
+  else {
+    if (stateButtonTemp > 0){
+      // button released => set stateButton
+      stateButtonTimeout = 0;
+      stateButton = stateButtonTemp;
+      stateButtonTemp = 0;
+      CONSOLE.print("stateButton ");
+      CONSOLE.println(stateButton);}
+  } 
+#endif  
 }

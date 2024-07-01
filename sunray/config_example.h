@@ -177,7 +177,12 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define ENABLE_FAULT_OBSTACLE_AVOIDANCE true  // should the robot trigger obstacle avoidance on motor errors if motor recovery failed?
 #define ENABLE_MOW_MOTOR true                 // Default is true, set false for testing purpose to switch off mow motor permanently
 
-#define ADAPTIVE_SPEED true // Speed is controlled by mow motor load
+#define ADAPTIVE_SPEED false                  // Speed is controlled by mow motor load
+#define ADAPTIVES_SPEED_MINCURRENT 1.50       // Minimium current to start adaptive speed
+#define ADAPTIVES_SPEED_MAXCURRENT 2.75       // Maximum current to stop adaptive speed
+
+#define MOW_RPM_CONTROL false  // Control mow motor by rpm instead of pwm
+#define MOW_RPM 2900          // Mow motor rpm
 
 
 // ------ WIFI module (ESP8266 ESP-01 with ESP firmware 2.2.1) --------------------------------
@@ -307,10 +312,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 // NOTE: due to a PCB1.3 bug GPS_RX pin is not working and you have to fix this by a wire:
 // https://wiki.ardumower.de/index.php?title=Ardumower_Sunray#PCB1.3_GPS_pin_fix_and_wire_fix   (see 'GPS wire fix')
 #define GPS_REBOOT_RECOVERY  true // allow GPS receiver rebooting (recommended - requires GPS wire fix above! otherwise firmware will stuck at boot!)
-//#define GPS_REBOOT_RECOVERY   false  // do not allow rebooting GPS receiver (no GPS wire fix required)
 
 #define GPS_CONFIG   true     // configure GPS receiver (recommended - requires GPS wire fix above! otherwise firmware will stuck at boot!)
-//#define GPS_CONFIG   false  // do not configure GPS receiver (no GPS wire fix required)
 
 #define GPS_CONFIG_FILTER   true     // use signal strength filter? (recommended to get rid of 'FIX jumps') - adjust filter settings below
 #define CPG_CONFIG_FILTER_MINELEV  10   // Min SV elevation degree: 14 (high elevation, less robust), 10 (low elevation, robust) 

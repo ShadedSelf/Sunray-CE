@@ -11,23 +11,15 @@
 
 
 void Motor::begin() {
-  #ifdef MAX_GEAR_PWM
-    pwmMax = MAX_GEAR_PWM;
-  #else 
-    pwmMax = 255;
-  #endif
- 
-  #ifdef MAX_MOW_PWM
-    pwmMaxMow = MAX_MOW_PWM;
-  #else 
-    pwmMaxMow = 255;
-  #endif
+  pwmMax = MAX_GEAR_PWM;
+  pwmMaxMow = MAX_MOW_PWM;
   
   ticksPerRevolution = TICKS_PER_REVOLUTION;
 	wheelBaseCm = WHEEL_BASE_CM;    // wheel-to-wheel distance (cm) 36
   wheelDiameter = WHEEL_DIAMETER; // wheel diameter (mm)
   ticksPerCm = ((float)ticksPerRevolution) / (((float)wheelDiameter) / 10.0) / PI;    // computes encoder ticks per cm (do not change)  
 
+  // Motor PIDs -------
   motorLeftPID.Kp = motorRightPID.Kp = MOTOR_PID_KP;  // 2.0;  
   motorLeftPID.Ki = motorRightPID.Ki = MOTOR_PID_KI;  // 0.03; 
   motorLeftPID.Kd = motorRightPID.Kd = MOTOR_PID_KD;  // 0.03;
@@ -40,6 +32,21 @@ void Motor::begin() {
 
   motorLeftPID.reset(); 
   motorRightPID.reset();		 
+
+#if MOW_RPM_CONTROL
+  motorMowPID.Kp = 0.0005;
+  motorMowPID.Ki = 0.0;
+  motorMowPID.Kd = 0.0;
+  
+  motorMowPID.TaMax = 0.1;
+  
+  motorMowPID.y_min = -10;
+  motorMowPID.y_max = 10;
+  motorMowPID.max_output = 10;
+
+  motorMowPID.reset(); 
+#endif
+  //------------------
 
   #ifdef MOTOR_DRIVER_BRUSHLESS
     motorLeftSwapDir = true;
@@ -102,8 +109,6 @@ void Motor::begin() {
   motorLeftRpmCurr=0;
   motorRightRpmCurr=0;
   motorMowRpmCurr=0;  
-  motorLeftRpmLast = 0;
-  motorRightRpmLast = 0;
   motorLeftRpmCurrLP = 0;
   motorRightRpmCurrLP = 0;
   motorMowRpmCurrLP = 0;
@@ -154,6 +159,7 @@ void Motor::setLinearAngularSpeed(float linear, float angular, bool useLinearRam
 
   // angular
   angularSpeedSet = angular;   
+   
    
   float rspeed = linearSpeedSet + angularSpeedSet * (wheelBaseCm /100.0 / 2.0);          
   float lspeed = linearSpeedSet - angularSpeedSet * (wheelBaseCm /100.0 / 2.0);   
@@ -219,6 +225,9 @@ void Motor::stopImmediately(bool includeMowerMotor){
   // reset PID
   motorLeftPID.reset();
   motorRightPID.reset();
+#if MOW_RPM_CONTROL
+  motorMowPID.reset(); 
+#endif
   // reset unread encoder ticks
   int ticksLeft=0;
   int ticksRight=0;
@@ -335,9 +344,7 @@ void Motor::run() {
   motorMowRpmCurrLP = lp * motorMowRpmCurrLP + (1.0-lp) * motorMowRpmCurr;
 
   // speed controller
-  control();    
-  motorLeftRpmLast = motorLeftRpmCurr;
-  motorRightRpmLast = motorRightRpmCurr;
+  control();
 }  
 
 
@@ -480,7 +487,8 @@ bool Motor::checkMowRpmFault(){
 void Motor::sense(){
   motorDriver.getMotorCurrent(motorLeftSense, motorRightSense, motorMowSense);
   //float lp = 0.995; // 0.9
-  float lp = 0.9;
+  float lp = 0.8;
+  lp = 0.995;
   motorRightSenseLP = lp * motorRightSenseLP + (1.0-lp) * motorRightSense;
   motorLeftSenseLP = lp * motorLeftSenseLP + (1.0-lp) * motorLeftSense;
   motorMowSenseLP = lp * motorMowSenseLP + (1.0-lp) * motorMowSense; 
@@ -491,7 +499,7 @@ void Motor::sense(){
   //lp = 0.99;
   motorMowPWMCurrLP = lp * motorMowPWMCurrLP + (1.0-lp) * motorMowPWMCurr; 
 
-  checkOverload();  
+  checkOverload();
 }
 
 void Motor::control(){
@@ -510,11 +518,20 @@ void Motor::control(){
   motorRightPWMCurr = constrain(motorRightPWMCurr, -pwmMax, pwmMax);
 
   //########################  Calculate PWM for mowing motor ############################  
+#if MOW_RPM_CONTROL
+  motorMowPID.x = motorMowRpmCurr;
+  motorMowPID.w = MOW_RPM * sign(motorMowPWMSet) * (float)(fabs(motorMowPWMSet) > 0.5);
+  motorMowPID.compute();
+  motorMowPWMCurr += motorMowPID.y;
+  motorMowPWMCurr = constrain(motorMowPWMCurr, -pwmMaxMow, pwmMaxMow);
+#else
   motorMowPWMCurr = 0.99 * motorMowPWMCurr + 0.01 * motorMowPWMSet;
+#endif
 
   //########################  set PWM for all motors ############################
-  if (fabs(motorLeftRpmSet) < 0.01/* && motorLeftPWMCurr < 30.0*/) motorLeftPWMCurr = 0;
-  if (fabs(motorRightRpmSet) < 0.01/* && motorRightPWMCurr < 30.0*/) motorRightPWMCurr = 0;
+  if (fabs(motorLeftRpmSet) < 0.01) motorLeftPWMCurr = 0;
+  if (fabs(motorRightRpmSet) < 0.01) motorRightPWMCurr = 0;
+  //if (fabs(motorMowPWMSet) < 0.5) motorMowPWMCurr = 0;
 
   if (!tractionMotorsEnabled)
     motorLeftPWMCurr = motorRightPWMCurr = 0;
@@ -545,136 +562,6 @@ void Motor::dumpOdoTicks(int seconds){
 }
 
 
-void Motor::test(){
-  CONSOLE.println("motor test - 10 revolutions");
-  motorLeftTicks = 0;  
-  motorRightTicks = 0;  
-  unsigned long nextInfoTime = 0;
-  int seconds = 0;
-  int pwmLeft = 200;
-  int pwmRight = 200; 
-  bool slowdown = true;
-  unsigned long stopTicks = ticksPerRevolution * 10;
-  unsigned long nextControlTime = 0;
-  while (motorLeftTicks < stopTicks || motorRightTicks < stopTicks){
-    if (millis() > nextControlTime){
-      nextControlTime = millis() + 20;
-      if ((slowdown) && ((motorLeftTicks + ticksPerRevolution  > stopTicks)||(motorRightTicks + ticksPerRevolution > stopTicks))){  //Letzte halbe drehung verlangsamen
-        pwmLeft = pwmRight = 20;
-        slowdown = false;
-      }    
-      if (millis() > nextInfoTime){      
-        nextInfoTime = millis() + 1000;            
-        dumpOdoTicks(seconds);
-        seconds++;      
-      }    
-      if(motorLeftTicks >= stopTicks)
-      {
-        pwmLeft = 0;
-      }  
-      if(motorRightTicks >= stopTicks)
-      {
-        pwmRight = 0;      
-      }
-      
-      speedPWM(pwmLeft, pwmRight, 0);
-      //sense();
-      int ticksLeft;
-      int ticksRight;
-      int ticksMow;
-      motorDriver.getMotorEncoderTicks(ticksLeft, ticksRight, ticksMow); 
-      motorLeftTicks += ticksLeft;
-      motorRightTicks += ticksRight;
-      //delay(50);         
-      watchdogReset();     
-      robotDriver.run();
-    }
-  }  
-  speedPWM(0, 0, 0);
-  CONSOLE.println("motor test done - please ignore any IMU/GPS errors");
-}
+void Motor::test() { }
 
-
-void Motor::plot(){
-  CONSOLE.println("motor plot (left,right,mow) - NOTE: Start Arduino IDE Tools->Serial Plotter (CTRL+SHIFT+L)");
-  delay(5000);
-  CONSOLE.println("pwmLeft,pwmRight,pwmMow,ticksLeft,ticksRight,ticksMow");
-  motorLeftTicks = 0;  
-  motorRightTicks = 0;  
-  motorMowTicks = 0;
-  int pwmLeft = 0;
-  int pwmRight = 0; 
-  int pwmMow = 0;
-  int cycles = 0;
-  int acceleration = 1;
-  bool forward = true;
-  unsigned long nextPlotTime = 0;
-  unsigned long stopTime = millis() + 1 * 60 * 1000 * 5;
-  unsigned long nextControlTime = 0;
-
-  while (millis() < stopTime){   // 60 seconds...
-    if (millis() > nextControlTime){
-      nextControlTime = millis() + 20; 
-
-      int ticksLeft=0;
-      int ticksRight=0;
-      int ticksMow=0;
-      motorDriver.getMotorEncoderTicks(ticksLeft, ticksRight, ticksMow);  
-      motorLeftTicks += ticksLeft;
-      motorRightTicks += ticksRight;
-      motorMowTicks += ticksMow;
-
-      if (millis() > nextPlotTime){ 
-        nextPlotTime = millis() + 100;
-        CONSOLE.print(pwmLeft);
-        CONSOLE.print(",");  
-        CONSOLE.print(pwmRight);
-        CONSOLE.print(",");
-        CONSOLE.print(pwmMow);
-        CONSOLE.print(",");        
-        CONSOLE.print(motorLeftTicks * 10);    
-        CONSOLE.print(",");
-        CONSOLE.print(motorRightTicks * 10);
-        CONSOLE.print(",");
-        CONSOLE.print(motorMowTicks);        
-        CONSOLE.println();
-        motorLeftTicks = 0;
-        motorRightTicks = 0;
-        motorMowTicks = 0;      
-      }
-
-      speedPWM(pwmLeft, pwmRight, pwmMow*0);
-      if (pwmLeft >= 255){
-        forward = false;
-        cycles++; 
-      }      
-      if (pwmLeft <= -255){
-        forward = true;
-        cycles++;               
-      } 
-      if ((cycles == 2) && (pwmLeft >= 0)) {
-        if (acceleration == 1) acceleration = 20;
-          else acceleration = 1;
-        cycles = 0;
-      }         
-      if (forward){
-        pwmLeft += acceleration;
-        pwmRight += acceleration;
-        pwmMow += acceleration;
-      } else {
-        pwmLeft -= acceleration;
-        pwmRight -= acceleration;
-        pwmMow -= acceleration;
-      }
-      pwmLeft = min(255, max(-255, pwmLeft));
-      pwmRight = min(255, max(-255, pwmRight));          
-      pwmMow = min(255, max(-255, pwmMow));                
-    }  
-    //sense();
-    //delay(10);
-    watchdogReset();     
-    robotDriver.run(); 
-  }
-  speedPWM(0, 0, 0);
-  CONSOLE.println("motor plot done - please ignore any IMU/GPS errors");
-}
+void Motor::plot() { }

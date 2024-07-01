@@ -302,13 +302,14 @@ void computeRobotState(){
 
   // detect fix jumps before heading fusion
   if (gps.solutionAvail && gps.solution == SOL_FIXED
-  && distGPS > 0.2
+  && distGPS > 0.15
   && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
   {
     gps.solutionAvail = false;
     lastFixJumpTime = millis();
     lastGpsPos = gpsPos;
   }
+  
   // set last invalid time
   if (gps.solutionAvail && gps.solution == SOL_INVALID)
   {
