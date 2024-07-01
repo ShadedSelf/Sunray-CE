@@ -1909,7 +1909,7 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.println("starting path-finder");
     while(true) {       
       if (millis() >= nextProgressTime){
-        nextProgressTime = millis() + 4000;          
+        nextProgressTime = millis() + 1000;          
         CONSOLE.print(".");
         watchdogReset();     
       }
@@ -1960,7 +1960,7 @@ bool Map::findPath(Point &src, Point &dst){
         Node* neighbor = &pathFinderNodes.nodes[neighborIdx];                
         
         if (millis() >= nextProgressTime){
-          nextProgressTime = millis() + 4000;          
+          nextProgressTime = millis() + 1000;          
           CONSOLE.print("+");
           watchdogReset();     
         }

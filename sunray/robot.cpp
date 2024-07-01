@@ -541,7 +541,7 @@ void start(){
     ntrip.begin();  
   #endif
   
-  watchdogEnable(5000L);   // 5 seconds  
+  watchdogEnable(WATCHDOG_TIMER);   // 5 seconds  
   
   startIMU(false);        
   
@@ -820,11 +820,11 @@ void run(){
   if (millis() > nextImuTime){
     nextImuTime = millis() + 30;        
     //imu.resetFifo();    
-    if (imuIsCalibrating) {
-      activeOp->onImuCalibration();             
-    } else {
+   // if (imuIsCalibrating) {
+    //  activeOp->onImuCalibration();             
+    //} else {
       readIMU();    
-    }
+    //}
   }
 
   // LED states
@@ -922,7 +922,7 @@ void run(){
 
   //##############################################################################
 
-  if(millis() > wdResetTimer + 1000){
+  if(millis() > wdResetTimer + WATCHDOG_TIMER/5){
     watchdogReset();
   }   
 

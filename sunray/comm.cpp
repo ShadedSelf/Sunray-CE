@@ -25,7 +25,6 @@
 //#define VERBOSE 1
 
 unsigned long nextInfoTime = 0;
-bool triggerWatchdog = false;
 
 int encryptMode = 0; // 0=off, 1=encrypt
 int encryptPass = PASS; 
@@ -495,14 +494,15 @@ void cmdStressTest(){
 // perform hang test (watchdog should trigger and restart robot)
 void cmdTriggerWatchdog(){
   String s = F("Y");
-  cmdAnswer(s);  
-  setOperation(OP_IDLE);
+  cmdAnswer(s); 
+  CONSOLE.println("hang test - watchdog should trigger and perform a reset");
+
   #ifdef __linux__
     Process p;
     p.runShellCommand("reboot");    
-  #else
-    triggerWatchdog = true;  
   #endif
+
+  while (true) { }
 }
 
 // perform hang test (watchdog should trigger)
@@ -973,12 +973,6 @@ void processComm(){
     processWifiAppServer();
     processWifiRelayClient();
     processWifiMqttClient();
-  }
-  if (triggerWatchdog) {
-    CONSOLE.println("hang test - watchdog should trigger and perform a reset");
-    while (true){
-      // do nothing, just hang    
-    }
   }
 }
 

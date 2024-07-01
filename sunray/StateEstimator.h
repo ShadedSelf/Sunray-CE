@@ -7,6 +7,20 @@
 #ifndef STATE_ESTIMATOR_H
 #define STATE_ESTIMATOR_H
 
+/*struct StateData
+{
+  vec3_t forward;
+  vec3_t right;
+  vec3_t up;
+
+  vec3_t position;
+  float heading;
+
+  float stateGroundSpeed; // m/s
+  float lateralError; // lateral error
+};*/
+
+
 
 #include <Arduino.h>
 
@@ -15,6 +29,7 @@
 
 extern vec3_t forward;
 extern vec3_t right;
+extern vec3_t up;
 
 extern float stateX;  // position-east (m)
 extern float stateY;  // position-north (m)

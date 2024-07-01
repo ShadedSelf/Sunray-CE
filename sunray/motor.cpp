@@ -525,7 +525,7 @@ void Motor::control(){
   motorMowPWMCurr += motorMowPID.y;
   motorMowPWMCurr = constrain(motorMowPWMCurr, -pwmMaxMow, pwmMaxMow);
 #else
-  motorMowPWMCurr = 0.99 * motorMowPWMCurr + 0.01 * motorMowPWMSet;
+  motorMowPWMCurr = 0.96 * motorMowPWMCurr + 0.04 * motorMowPWMSet;
 #endif
 
   //########################  set PWM for all motors ############################

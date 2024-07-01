@@ -111,15 +111,18 @@ bool loadState(){
 #if defined(ENABLE_SD_RESUME)
   CONSOLE.println("resuming is activated");
   CONSOLE.print("state load... ");
+
   if (!SD.exists("state.bin")) {
     CONSOLE.println("no state file!");
     return false;
   }
+
   stateFile = SD.open("state.bin", FILE_READ);
   if (!stateFile){        
     CONSOLE.println("ERROR opening file for reading");
     return false;
   }
+
   uint32_t marker = 0;
   stateFile.read((uint8_t*)&marker, sizeof(marker));
   if (marker != 0x10001007){
@@ -127,6 +130,7 @@ bool loadState(){
     CONSOLE.println(marker, HEX);
     return false;
   }
+
   long crc = 0;
   stateFile.read((uint8_t*)&crc, sizeof(crc));
   if (crc != maps.mapCRC){
@@ -136,6 +140,7 @@ bool loadState(){
     CONSOLE.println(maps.mapCRC);
     return false;
   }
+
   bool res = true;
   OperationType savedOp;
   res &= (stateFile.read((uint8_t*)&stateX, sizeof(stateX)) != 0);
@@ -158,12 +163,14 @@ bool loadState(){
   res &= (stateFile.read((uint8_t*)&finishAndRestart, sizeof(finishAndRestart)) != 0); 
   res &= (stateFile.read((uint8_t*)&motor.motorMowForwardSet, sizeof(motor.motorMowForwardSet)) != 0); 
   res &= (stateFile.read((uint8_t*)&timetable.timetable, sizeof(timetable.timetable)) != 0);
-  res &= (stateFile.read((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0);  
+  res &= (stateFile.read((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0); 
+
   stateFile.close();  
   CONSOLE.println("ok");
   stateCRC = calcStateCRC();
   dumpState();
   timetable.dump();
+
   if (getResetCause() == RST_WATCHDOG){
     CONSOLE.println("resuming operation due to watchdog trigger");
     stateOp = savedOp;
@@ -178,19 +185,19 @@ bool saveState(){
   bool res = true;
 #if defined(ENABLE_SD_RESUME)
   double crc = calcStateCRC();
-  //CONSOLE.print("stateCRC=");
-  //CONSOLE.print(stateCRC);
-  //CONSOLE.print(" crc=");
-  //CONSOLE.println(crc);
-  if (crc == stateCRC) return true;
+  if (crc == stateCRC)
+    return true;
   stateCRC = crc;
+
   dumpState();
   CONSOLE.print("save state... ");
+
   stateFile = SD.open("state.bin",  FILE_CREATE); // O_WRITE | O_CREAT);
   if (!stateFile){        
     CONSOLE.println("ERROR opening file for writing");
     return false;
   }
+
   uint32_t marker = 0x10001007;
   res &= (stateFile.write((uint8_t*)&marker, sizeof(marker)) != 0); 
   res &= (stateFile.write((uint8_t*)&maps.mapCRC, sizeof(maps.mapCRC)) != 0); 
@@ -215,12 +222,13 @@ bool saveState(){
   res &= (stateFile.write((uint8_t*)&finishAndRestart, sizeof(finishAndRestart)) != 0);  
   res &= (stateFile.write((uint8_t*)&motor.motorMowForwardSet, sizeof(motor.motorMowForwardSet)) != 0);
   res &= (stateFile.write((uint8_t*)&timetable.timetable, sizeof(timetable.timetable)) != 0);  
-  res &= (stateFile.write((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0);  
-  if (res){
+  res &= (stateFile.write((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0); 
+
+  if (res)
     CONSOLE.println("ok");
-  } else {
+  else
     CONSOLE.println("ERROR saving state");
-  }
+
   stateFile.flush();
   stateFile.close();
 #endif

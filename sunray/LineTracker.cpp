@@ -160,7 +160,11 @@ void trackLine(bool runControl){
     
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
     
+    // slow down on heading error
     linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
+
+    // slow down on uphill?
+    // linear *=
   }
   
   // check some pre-conditions that can make linear+angular speed zero

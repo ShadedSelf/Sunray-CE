@@ -396,9 +396,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 
 // ------ experimental options  -------------------------
-
-// drive curves smoothly?
-#define SMOOTH_CURVES  false
+#define SMOOTH_CURVES  false  // drive curves smoothly?
+#define WATCHDOG_TIMER 5000   // watchodg timer in ms
 
 // --------- serial monitor output (CONSOLE) ------------------------
 // which Arduino Due USB port do you want to your for serial monitor output (CONSOLE)?

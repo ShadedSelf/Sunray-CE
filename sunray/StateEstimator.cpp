@@ -17,8 +17,9 @@
 #include <vector_type.h>
 
 
-vec3_t forward = {0,0,0};
-vec3_t right = {0,0,0};
+vec3_t forward = {1,0,0};
+vec3_t right = {0,-1,0};
+vec3_t up = {0,0,1};
 
 float stateX = 0;  // position-east (m)
 float stateY = 0;  // position-north (m)
@@ -140,7 +141,7 @@ bool startIMU(bool forceIMU){
     watchdogReset();     
   }              
 
-  imuIsCalibrating = true;   
+  //imuIsCalibrating = true;   
   nextImuCalibrationSecond = millis() + 1000;
   imuCalibrationSeconds = 0;
   
@@ -260,7 +261,7 @@ void computeRobotState(){
   float deltaOdometry = -(distLeft - distRight) / motor.wheelBaseCm;  
 
   vec3_t rpy;
-  if ((imuDriver.imuFound) && (maps.useIMU)) {     // IMU available and should be used by planner
+  if (imuDriver.imuFound && maps.useIMU) {     // IMU available and should be used by planner
       stateDelta = scalePI(imuDriver.yaw + headingOffset);
       rpy = vec3_t(imuDriver.roll, imuDriver.pitch, stateDelta);
   }
@@ -277,7 +278,7 @@ void computeRobotState(){
 
   forward = rot.rotate({1,0,0}, GLOBAL_FRAME).norm(); 
   right = rot.rotate({0,-1,0}, GLOBAL_FRAME).norm();
-  vec3_t up = rot.rotate({0,0,1}, GLOBAL_FRAME).norm();
+  up = rot.rotate({0,0,1}, GLOBAL_FRAME).norm();
   
   // gps position
   vec3_t gpsPos = {0,0,0};
@@ -309,7 +310,7 @@ void computeRobotState(){
     lastFixJumpTime = millis();
     lastGpsPos = gpsPos;
   }
-  
+
   // set last invalid time
   if (gps.solutionAvail && gps.solution == SOL_INVALID)
   {
@@ -375,9 +376,7 @@ void computeRobotState(){
             headingOffset = headingDiff;
           else // delta fusion (complementary filter, see above comment)
           {
-            //headingOffset = fusionPI(0.95, headingDiff, headingOffset);     
-            //headingOffset = headingOffset * GPS_IMU_FUSION + headingDiff * (1.0 - GPS_IMU_FUSION);
-            headingOffset = headingOffset + distancePI(headingOffset, headingDiff) * (1.0 - GPS_IMU_FUSION);   
+            headingOffset = headingOffset + (double)distancePI(headingOffset, headingDiff) * (1.0 - GPS_IMU_FUSION);   
             if (headingOffset < -PI || headingOffset > PI)
             {
               headingOffset = fmod(headingOffset, 2.0*PI);
