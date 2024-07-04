@@ -30,8 +30,8 @@ bool nearPerimeter()
 {
   bool isInside = true;
 
-  vec3_t rr = vec3_t(stateX, stateY, 0) + right * 10.0 / 100.0;
-  vec3_t ll = vec3_t(stateX, stateY, 0) - right * 10.0 / 100.0;
+  vec3_t rr = vec3_t(position.x, position.y, 0) + right * 10.0 / 100.0;
+  vec3_t ll = vec3_t(position.x, position.y, 0) - right * 10.0 / 100.0;
 
   isInside = isInside && maps.isInsidePerimeter(rr.x, rr.y);
   isInside = isInside && maps.isInsidePerimeter(ll.x, ll.y);
@@ -45,7 +45,7 @@ bool isCloseToDock()
   float dockY = 0;
   float dockDelta = 0;
   maps.getDockingPos(dockX, dockY, dockDelta);
-  float dist_dock = distance(dockX, dockY, stateX, stateY);
+  float dist_dock = distance(dockX, dockY, position.x, position.y);
 
   return dist_dock < DOCK_UNDOCK_TRACKSLOW_DISTANCE && (maps.isUndocking() || maps.isDocking());
 }
@@ -56,11 +56,11 @@ bool isCloseToDock()
 void trackLine(bool runControl){  
 
   bool targetReached =
-    maps.distanceToTargetPoint(stateX, stateY) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE);
+    maps.distanceToTargetPoint(position.x, position.y) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE);
 
   if (targetReached){
     activeOp->onTargetReached();
-    if (!maps.nextPoint(false,stateX,stateY))   
+    if (!maps.nextPoint(false, position.x, position.y))   
       activeOp->onNoFurtherWaypoints(); // finish    
   }  
   
@@ -68,16 +68,16 @@ void trackLine(bool runControl){
   Point lastTarget = maps.lastTargetPoint;
 
   //float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());   
-  float targetDelta = pointsAngle(stateX, stateY, target.x(), target.y());    
+  float targetDelta = pointsAngle(position.x, position.y, target.x(), target.y());    
   if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
-  targetDelta = scalePIangles(targetDelta, stateDelta);
+  targetDelta = scalePIangles(targetDelta, heading);
   
-  float trackerDiffDelta = distancePI(stateDelta, targetDelta);                         
-  lateralError = distanceLineInfinite(stateX, stateY, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
+  float trackerDiffDelta = distancePI(heading, targetDelta);                         
+  lateralError = distanceLineInfinite(position.x, position.y, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
   
-  float distToPath = distanceLine(stateX, stateY, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
-  float targetDist = maps.distanceToTargetPoint(stateX, stateY);
-  float lastTargetDist = maps.distanceToLastTargetPoint(stateX, stateY);  
+  float distToPath = distanceLine(position.x, position.y, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
+  float targetDist = maps.distanceToTargetPoint(position.x, position.y);
+  float lastTargetDist = maps.distanceToLastTargetPoint(position.x, position.y);  
 
   // allow rotations only near last or next waypoint or if too far away from path
   bool angleToTargetFits = true;
@@ -103,12 +103,16 @@ void trackLine(bool runControl){
     bool straight = maps.nextPointIsStraight();
 
     if (maps.trackSlow && isCloseToDock())  // planner forces slow tracking (e.g. docking etc)
-      linear = 0.1;        
+      linear = 0.1;     
+    else if (motor.motorLeftOverload
+      || motor.motorRightOverload
+      || motor.motorMowOverload)
+        linear = 0.1;                       // overload
     else if (setSpeed > 0.2                 // reduce speed when approaching/leaving waypoints    
       && (targetDist < 0.25 && (!straight)) // approaching
       || (lastTargetDist < 0.25))           // leaving  
         linear = 0.15;         
-    else if      (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
+    else if (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
     else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
     else if (SET_PERIMETER_SPEED && nearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
     else if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)
@@ -135,23 +139,12 @@ void trackLine(bool runControl){
 
       float minSpeed = 0.1;
 
-      float t = (motor.motorMowSenseLP - minCurrent) / diffCurrent;
+      float t = (motor.motorMowSenseFLP - minCurrent) / diffCurrent;
       linear = lerp(setSpeed, minSpeed, constrain(t, 0.0, 1.0));
     }
     else
       linear = setSpeed; // desired speed
 
-    // slow down speed in case of overload and overwrite all prior speed 
-    if (motor.motorLeftOverload || motor.motorRightOverload || motor.motorMowOverload)
-    {
-      if (!printmotoroverload)
-          CONSOLE.println("motor overload detected: reduce linear speed to 0.1");
-      printmotoroverload = true;
-      linear = 0.1;  
-    } 
-    else
-      printmotoroverload = false; 
-          
     // correct for path errors 
     float k = stanleyTrackingNormalK;
     float p = stanleyTrackingNormalP;        
@@ -161,7 +154,8 @@ void trackLine(bool runControl){
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
     
     // slow down on heading error
-    linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
+    //linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
+    linear *= exp(-trackerDiffDelta * trackerDiffDelta * HEADING_ERROR_SPEED_FACTOR);
 
     // slow down on uphill?
     // linear *=
@@ -196,7 +190,7 @@ void trackLine(bool runControl){
         float dockY = 0;
         float dockDelta = 0;
         maps.getDockingPos(dockX, dockY, dockDelta);
-        float dist = distance(dockX, dockY, stateX, stateY);
+        float dist = distance(dockX, dockY, position.x, position.y);
         // check if current distance to docking station is below
         if (dist < KIDNAP_DETECT_DISTANCE_DOCK_UNDOCK)
             allowedPathTolerance = KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE_DOCK_UNDOCK;

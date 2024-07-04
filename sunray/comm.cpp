@@ -526,8 +526,8 @@ void cmdKidnap(){
   String s = F("K");
   cmdAnswer(s);  
   CONSOLE.println("kidnapping robot - kidnap detection should trigger");
-  stateX = 0;  
-  stateY = 0;
+  position.x = 0;  
+  position.y = 0;
 }
 
 // toggle GPS solution (invalid,float,fix) for testing
@@ -539,8 +539,8 @@ void cmdToggleGPSSolution(){
     case SOL_INVALID:  
       gps.solutionAvail = true;
       gps.solution = SOL_FLOAT;
-      gps.relPosN = stateY - 2.0;  // simulate pos. solution jump
-      gps.relPosE = stateX - 2.0;
+      gps.relPosN = position.y - 2.0;  // simulate pos. solution jump
+      gps.relPosE = position.x - 2.0;
       lastFixTime = millis();
       stateGroundSpeed = 0.1;
       break;
@@ -548,8 +548,8 @@ void cmdToggleGPSSolution(){
       gps.solutionAvail = true;
       gps.solution = SOL_FIXED;
       stateGroundSpeed = 0.1;
-      gps.relPosN = stateY + 2.0;  // simulate undo pos. solution jump
-      gps.relPosE = stateX + 2.0;
+      gps.relPosN = position.y + 2.0;  // simulate undo pos. solution jump
+      gps.relPosE = position.x + 2.0;
       break;
     case SOL_FIXED:  
       gps.solutionAvail = true;
@@ -582,11 +582,11 @@ void cmdSummary(){
   String s = F("S,");
   s += battery.batteryVoltage;  
   s += ",";
-  s += stateX;
+  s += position.x;
   s += ",";
-  s += stateY;
+  s += position.y;
   s += ",";
-  s += stateDelta;
+  s += heading;
   s += ",";
   s += gps.solution;
   s += ",";
@@ -1043,11 +1043,11 @@ void outputConsole(){
     CONSOLE.print(",");
     CONSOLE.print(maps.targetPoint.y());
     CONSOLE.print(" x=");
-    CONSOLE.print(stateX);
+    CONSOLE.print(position.x);
     CONSOLE.print(" y=");
-    CONSOLE.print(stateY);
+    CONSOLE.print(position.y);
     CONSOLE.print(" delta=");
-    CONSOLE.print(stateDelta);    
+    CONSOLE.print(heading);    
     CONSOLE.print(" tow=");
     CONSOLE.print(gps.iTOW);
     CONSOLE.print(" lon=");

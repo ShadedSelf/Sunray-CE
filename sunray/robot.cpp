@@ -550,7 +550,7 @@ void start(){
   loadState();
 
   #ifdef DRV_SIM_ROBOT
-    robotDriver.setSimRobotPosState(stateX, stateY, stateDelta);
+    robotDriver.setSimRobotPosState(position.x, position.y, heading);
     tester.begin();
   #endif
 }
@@ -677,8 +677,7 @@ bool detectObstacle(){
     bool isInside = true;
     for (int i = -1; i <= 1; i++)
     {
-      vec3_t checkPoint =
-        vec3_t(stateX, stateY, 0)
+      vec3_t checkPoint = position
         + forward * (12.0 + 2.0 + SONAR_LEFT_OBSTACLE_CM) / 100.0
         + right * float(i) * 8.5 / 100.0;
       isInside = isInside && maps.isInsidePerimeter(checkPoint.x, checkPoint.y);
@@ -699,8 +698,8 @@ bool detectObstacle(){
     updateGPSMotionCheckTime();
     resetOverallMotionTimeout(); // this resets overall motion timeout (overall motion timeout happens if e.g. 
     // motion between anuglar-only and linar-only toggles quickly, and their specific timeouts cannot apply due to the quick toggling)
-    float dX = lastGPSMotionX - stateX;
-    float dY = lastGPSMotionY - stateY;
+    float dX = lastGPSMotionX - position.x;
+    float dY = lastGPSMotionY - position.y;
     float delta = sqrt( sq(dX) + sq(dY) );    
     if (delta < 0.05){
       if (GPS_MOTION_DETECTION){
@@ -710,8 +709,8 @@ bool detectObstacle(){
         return true;
       }
     }
-    lastGPSMotionX = stateX;      
-    lastGPSMotionY = stateY;      
+    lastGPSMotionX = position.x;      
+    lastGPSMotionY = position.y;      
   }    
   return false;
 }

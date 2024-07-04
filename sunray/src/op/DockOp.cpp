@@ -47,11 +47,11 @@ void DockOp::begin(){
 
   // plan route to next target point 
 
-  if (maps.startDocking(stateX, stateY)){       
-    if (maps.nextPoint(true, stateX, stateY)) {
+  if (maps.startDocking(position.x, position.y)){       
+    if (maps.nextPoint(true, position.x, position.y)) {
       maps.repeatLastMowingPoint();
       lastFixTime = millis();                
-      maps.setLastTargetPoint(stateX, stateY);        
+      maps.setLastTargetPoint(position.x, position.y);        
       //stateSensor = SENS_NONE;                  
     } else {
       error = true;
@@ -148,7 +148,7 @@ void DockOp::onObstacle(){
     CONSOLE.println("triggerObstacle");      
     statMowObstacles++;      
     if (maps.isDocking()) {    
-        if (maps.retryDocking(stateX, stateY)) {
+        if (maps.retryDocking(position.x, position.y)) {
             changeOp(escapeReverseOp, true);                      
             return;
         }

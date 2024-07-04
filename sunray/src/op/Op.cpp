@@ -176,7 +176,7 @@ float Op::getDockDistance(){
     float dockY = 0;
     float dockDelta = 0;
     maps.getDockingPos(dockX, dockY, dockDelta);
-    float dist_dock = distance(dockX, dockY, stateX, stateY);
+    float dist_dock = distance(dockX, dockY, position.x, position.y);
 
     return dist_dock;
 }

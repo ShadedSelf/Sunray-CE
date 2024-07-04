@@ -82,6 +82,7 @@ void Motor::begin() {
   motorLeftSenseLP = 0;
   motorRightSenseLP = 0;
   motorMowSenseLP = 0;  
+  motorMowSenseFLP = 0;
   motorsSenseLP = 0;
 
   linearSpeedSet = 0;
@@ -219,7 +220,7 @@ void Motor::stopImmediately(bool includeMowerMotor){
   motorRightPWMCurr = 0;  
   if (includeMowerMotor) {
     motorMowPWMSet = 0;
-    motorMowPWMCurr = 0;    
+    //motorMowPWMCurr = 0;    
   }
   speedPWM(motorLeftPWMCurr, motorRightPWMCurr, motorMowPWMCurr);
   // reset PID
@@ -487,16 +488,17 @@ bool Motor::checkMowRpmFault(){
 void Motor::sense(){
   motorDriver.getMotorCurrent(motorLeftSense, motorRightSense, motorMowSense);
   //float lp = 0.995; // 0.9
-  float lp = 0.8;
-  lp = 0.995;
+  float lp = 0.995;
   motorRightSenseLP = lp * motorRightSenseLP + (1.0-lp) * motorRightSense;
   motorLeftSenseLP = lp * motorLeftSenseLP + (1.0-lp) * motorLeftSense;
   motorMowSenseLP = lp * motorMowSenseLP + (1.0-lp) * motorMowSense; 
   motorsSenseLP = motorRightSenseLP + motorLeftSenseLP + motorMowSenseLP;
+
+  float flp = 0.8;
+  motorMowSenseFLP = flp * motorMowSenseFLP + (1.0-flp) * motorMowSense; 
   
   motorRightPWMCurrLP = lp * motorRightPWMCurrLP + (1.0-lp) * motorRightPWMCurr;
   motorLeftPWMCurrLP = lp * motorLeftPWMCurrLP + (1.0-lp) * motorLeftPWMCurr;
-  //lp = 0.99;
   motorMowPWMCurrLP = lp * motorMowPWMCurrLP + (1.0-lp) * motorMowPWMCurr; 
 
   checkOverload();

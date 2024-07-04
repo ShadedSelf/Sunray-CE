@@ -368,6 +368,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define STANLEY_CONTROL_P_NORMAL  1.0   // 3.0 for path tracking control (angular gain) when mowing
 #define STANLEY_CONTROL_K_NORMAL  2.5   // 1.0 for path tracking control (lateral gain) when mowing
 
+#define HEADING_ERROR_SPEED_FACTOR 5.0  // slow linear speed based on heading error -> 0 disabled
+
 //#define STANLEY_LOOK_AHEAD true
 //#define STANLEY_LOOK_AHEAD_DISTANCE 10.0
 

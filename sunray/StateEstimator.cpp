@@ -21,9 +21,9 @@ vec3_t forward = {1,0,0};
 vec3_t right = {0,-1,0};
 vec3_t up = {0,0,1};
 
-float stateX = 0;  // position-east (m)
-float stateY = 0;  // position-north (m)
-float stateDelta = 0;  // direction (rad)
+vec3_t position = {0,0,0};
+float heading = 0;  // direction (rad)
+
 float stateRoll = 0;
 float statePitch = 0;
 float stateDeltaIMU = 0;
@@ -33,15 +33,15 @@ unsigned long stateLeftTicks = 0;
 unsigned long stateRightTicks = 0;
 
 vec3_t lastGpsPos = {0,0,0};
-float lastPosDelta = 0;
+float lastHeading = 0;
 
-float stateDeltaLast = 0;
+/*float stateDeltaLast = 0;
 float stateDeltaSpeed = 0;
 float stateDeltaSpeedLP = 0;
 float stateDeltaSpeedIMU = 0;
 float stateDeltaSpeedWheels = 0;
 float diffIMUWheelYawSpeed = 0;
-float diffIMUWheelYawSpeedLP = 0;
+float diffIMUWheelYawSpeedLP = 0;*/
 
 bool gpsJump = false;
 bool resetLastPos = true;
@@ -260,14 +260,15 @@ void computeRobotState(){
   float distOdometry = (distLeft + distRight) / 2.0;
   float deltaOdometry = -(distLeft - distRight) / motor.wheelBaseCm;  
 
+  // orientation and heading
   vec3_t rpy;
-  if (imuDriver.imuFound && maps.useIMU) {     // IMU available and should be used by planner
-      stateDelta = scalePI(imuDriver.yaw + headingOffset);
-      rpy = vec3_t(imuDriver.roll, imuDriver.pitch, stateDelta);
+  if (imuDriver.imuFound) {     // IMU available
+    heading = scalePI(imuDriver.yaw + headingOffset);
+    rpy = vec3_t(imuDriver.roll, imuDriver.pitch, heading);
   }
-  else {     // odometry
-    stateDelta = scalePI(stateDelta + deltaOdometry);  
-    rpy = vec3_t(0.0, 0.0, stateDelta);
+  else {                        // odometry
+    heading = scalePI(heading + deltaOdometry);  
+    rpy = vec3_t(0.0, 0.0, heading);
   }
   
   // corrected orientation quaternion and vectors
@@ -284,11 +285,10 @@ void computeRobotState(){
   vec3_t gpsPos = {0,0,0};
   if (absolutePosSource)
     relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, gpsPos.y, gpsPos.x);    
-  else {
-    gpsPos.y = gps.relPosN;  
-    gpsPos.x = gps.relPosE;     
-  }   
+  else
+    gpsPos = {gps.relPosE, gps.relPosN, 0};  
 
+  // gps antenna offset
   if (GPS_POSITION_OFFSET_ENABLED && imuDriver.imuFound)
   {
     vec3_t gpsOffset = forward * (GPS_POSITION_OFFSET_FORWARD / 100.0)
@@ -298,17 +298,17 @@ void computeRobotState(){
     gpsPos += gpsOffset ^ vec3_t(1,1,0);
   }
 
-  
-  float distGPS = (gpsPos-lastGpsPos).mag();
-
   // detect fix jumps before heading fusion
-  if (gps.solutionAvail && gps.solution == SOL_FIXED
-  && distGPS > 0.15
-  && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
+  float distGPS = (gpsPos-lastGpsPos).mag();
   {
-    gps.solutionAvail = false;
-    lastFixJumpTime = millis();
-    lastGpsPos = gpsPos;
+    /*if (gps.solutionAvail && gps.solution == SOL_FIXED
+    && distGPS > 0.2
+    && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
+      lastFixJumpTime = millis();
+
+    // store last position if ignoring gps fusion
+    if (gps.solutionAvail && distGPS > 0.1 && millis() <= lastInvalidTime + IGNORE_GPS_AFTER_INVALID * 1000.0)
+      lastGpsPos = gpsPos;*/
   }
 
   // set last invalid time
@@ -325,7 +325,8 @@ void computeRobotState(){
     vec3_t dockPos = {0,0,0};
     float dockDelta = 0;
     maps.getDockingPos(dockPos.x, dockPos.y, dockDelta);
-    float dockDist = (dockPos - vec3_t(stateX, stateY, 0.0)).mag();
+
+    float dockDist = (dockPos - position).mag();
     if (maps.isDocking() && dockDist < DOCK_IGNORE_GPS_DISTANCE)
       dockGPS = false;
   #endif
@@ -344,7 +345,7 @@ void computeRobotState(){
     gps.solutionAvail = false;
     stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * abs(gps.groundSpeed);    
 
-    if ((distGPS > 0.3) || (resetLastPos)){
+    if (distGPS > 0.3 || resetLastPos){
       if (distGPS > 0.3) {
         gpsJump = true;
         statGPSJumps++;
@@ -353,28 +354,28 @@ void computeRobotState(){
       }
       resetLastPos = false;
       lastGpsPos = gpsPos;
-      lastPosDelta = stateDelta;
+      lastHeading = heading;
     }
     else if (distGPS > 0.1) // gps-imu heading fusion
     {       
-      float diffLastPosDelta = distancePI(stateDelta, lastPosDelta);                 
-      if (fabs(diffLastPosDelta) /PI * 180.0 < 10
+      float diffLastHeading = distancePI(heading, lastHeading);                 
+      if (fabs(diffLastHeading) / PI * 180.0 < 10
       && (fabs(motor.linearSpeedSet) > 0)
-      && (fabs(motor.angularSpeedSet) /PI *180.0 < 45) ) // make sure robot is not turning
+      && (fabs(motor.angularSpeedSet) / PI * 180.0 < 45) ) // make sure robot is not turning
       {  
-        float stateDeltaGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);  
+        float headingGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);  
         if (motor.linearSpeedSet < 0)
-          stateDeltaGPS = scalePI(stateDeltaGPS + PI); // consider if driving reverse
+          headingGPS = scalePI(headingGPS + PI); // consider if driving reverse
 
-        if (((gps.solution == SOL_FIXED) && (maps.useGPSfixForDeltaEstimation ))
-        || ((gps.solution == SOL_FLOAT) && false)) // allows planner to use float solution?     
+        if ((gps.solution == SOL_FIXED && maps.useGPSfixForDeltaEstimation)
+        || (gps.solution == SOL_FLOAT && false)) // allows planner to use float solution?     
         {    
           // imu-gps heading difference
-          float headingDiff = distancePI(imuDriver.yaw, stateDeltaGPS);  
+          float headingDiff = distancePI(imuDriver.yaw, headingGPS);  
 
-          if (fabs(distancePI(stateDelta, stateDeltaGPS)/PI*180) > 45) // IMU-based heading too far away => use GPS heading
+          if (fabs(distancePI(heading, headingGPS) / PI * 180) > 45) // IMU-based heading too far away => use GPS heading
             headingOffset = headingDiff;
-          else // delta fusion (complementary filter, see above comment)
+          else                                                              // heading fusion
           {
             headingOffset = headingOffset + (double)distancePI(headingOffset, headingDiff) * (1.0 - GPS_IMU_FUSION);   
             if (headingOffset < -PI || headingOffset > PI)
@@ -387,7 +388,7 @@ void computeRobotState(){
         }
       }
       lastGpsPos = gpsPos;
-      lastPosDelta = stateDelta;
+      lastHeading = heading;
     } 
 
     // set last fix time
@@ -395,28 +396,19 @@ void computeRobotState(){
       lastFixTime = millis();
     
     // update state for fix and float
-    if (gps.solution == SOL_FIXED && maps.useGPSfixForPosEstimation){ // fix
-      stateX = gpsPos.x;
-      stateY = gpsPos.y;
-    }
-    else if (maps.useGPSfloatForPosEstimation){ // allows planner to use float solution?
-      vec3_t pos = (vec3_t(stateX, stateY, 0.0) + forward * (distOdometry/100.0)) * IMU_FLOAT_FUSION
-                  + gpsPos * (1.0 - IMU_FLOAT_FUSION);
-      stateX = pos.x;
-      stateY = pos.y;           
-    }
+    if (gps.solution == SOL_FIXED && maps.useGPSfixForPosEstimation) // fix
+      position = gpsPos;
+    else if (maps.useGPSfloatForPosEstimation) // allows planner to use float solution?
+      position = (position + forward * (distOdometry/100.0)) * IMU_FLOAT_FUSION
+                + gpsPos * (1.0 - IMU_FLOAT_FUSION);
   }
   else // no GPS data available, use odometry
-  {
-    vec3_t pos = forward * (distOdometry/100.0);
-    stateX += pos.x;
-    stateY += pos.y;
-  }
+    position += forward * (distOdometry/100.0);
   
+
   if (stateOp == OP_MOW) statMowDistanceTraveled += distOdometry/100.0;
-  
-  
-  if (imuDriver.imuFound)
+   
+  /*if (imuDriver.imuFound)
     stateDeltaSpeedIMU = 0.99 * stateDeltaSpeedIMU + 0.01 * stateDeltaIMU / 0.02; // IMU yaw rotation speed (20ms timestep)
 
   stateDeltaSpeedWheels = 0.99 * stateDeltaSpeedWheels + 0.01 * deltaOdometry / 0.02; // wheels yaw rotation speed (20ms timestep) 
@@ -430,7 +422,6 @@ void computeRobotState(){
   if (imuDriver.imuFound) {
     diffIMUWheelYawSpeed = stateDeltaSpeedIMU - stateDeltaSpeedWheels;
     diffIMUWheelYawSpeedLP = diffIMUWheelYawSpeedLP * 0.95 + fabs(diffIMUWheelYawSpeed) * 0.05;  
-  }
+  }*/
 }
-
 

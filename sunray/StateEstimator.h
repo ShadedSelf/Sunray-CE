@@ -31,9 +31,9 @@ extern vec3_t forward;
 extern vec3_t right;
 extern vec3_t up;
 
-extern float stateX;  // position-east (m)
-extern float stateY;  // position-north (m)
-extern float stateDelta;  // direction (rad)
+extern vec3_t position;
+extern float heading;  // direction (rad)
+
 extern float stateRoll;
 extern float statePitch;
 extern float stateDeltaIMU;
@@ -42,13 +42,13 @@ extern float lateralError; // lateral error
 
 extern double headingOffset;
 
-extern float stateDeltaLast;
+/*extern float stateDeltaLast;
 extern float stateDeltaSpeed;
 extern float stateDeltaSpeedLP;
 extern float stateDeltaSpeedIMU;
 extern float stateDeltaSpeedWheels;
 extern float diffIMUWheelYawSpeed;
-extern float diffIMUWheelYawSpeedLP;
+extern float diffIMUWheelYawSpeedLP;*/
 
 extern bool gpsJump;
 extern unsigned long lastInvalidTime;
@@ -63,7 +63,6 @@ bool startIMU(bool forceIMU);
 void readIMU();
 void computeRobotState();
 void resetImuTimeout();
-
 
 #endif
 

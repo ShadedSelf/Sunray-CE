@@ -104,9 +104,9 @@ void processWifiMqttClient()
       // map related information
       MQTT_PUBLISH(maps.targetPoint.x(), "%.2f", "/map/targetPoint/X")
       MQTT_PUBLISH(maps.targetPoint.y(), "%.2f", "/map/targetPoint/Y")
-      MQTT_PUBLISH(stateX, "%.2f", "/map/pos/X")
-      MQTT_PUBLISH(stateY, "%.2f", "/map/pos/Y")
-      MQTT_PUBLISH(stateDelta, "%.2f", "/map/pos/Dir")
+      MQTT_PUBLISH(position.x, "%.2f", "/map/pos/X")
+      MQTT_PUBLISH(position.y, "%.2f", "/map/pos/Y")
+      MQTT_PUBLISH(heading, "%.2f", "/map/pos/Dir")
 
       // statistics
       MQTT_PUBLISH((int)statChargeDuration, "%d", "/stats/chargeDuration")

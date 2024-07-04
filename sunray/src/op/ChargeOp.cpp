@@ -69,7 +69,7 @@ void ChargeOp::run(){
         // sensing charging contacts means we are in docking station - we use docking point coordinates to get rid of false fix positions in
         // docking station
         float dockHeading;
-        maps.getDockingPos(stateX, stateY, dockHeading);
+        maps.getDockingPos(position.x, position.y, dockHeading);
         float err = distancePI(imuDriver.yaw, dockHeading);
         headingOffset = err;
                                            

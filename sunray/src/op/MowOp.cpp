@@ -42,10 +42,10 @@ void MowOp::begin()
     if (((initiatedByOperator) && (previousOp == &idleOp)) || (lastMapRoutingFailed))
         maps.clearObstacles();
 
-    if (maps.startMowing(stateX, stateY)){
-        if (maps.nextPoint(true, stateX, stateY)) {
+    if (maps.startMowing(position.x, position.y)){
+        if (maps.nextPoint(true, position.x, position.y)) {
             lastFixTime = millis();                
-            maps.setLastTargetPoint(stateX, stateY);        
+            maps.setLastTargetPoint(position.x, position.y);        
             motor.setMowState(true);                
         } else {
             error = true;
@@ -143,7 +143,7 @@ void MowOp::onObstacle(){
     CONSOLE.println("triggerObstacle");      
     statMowObstacles++;      
     if (maps.isDocking()) {    
-        if (maps.retryDocking(stateX, stateY)) {
+        if (maps.retryDocking(position.x, position.y)) {
             changeOp(escapeReverseOp, true);                      
             return;
         }

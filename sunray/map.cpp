@@ -480,7 +480,6 @@ void Map::begin(){
   useGPSfloatForPosEstimation = true;
   useGPSfloatForDeltaEstimation = true;
   useGPSfixForDeltaEstimation = true;
-  useIMU = true;
   mowPointsIdx = 0;
   freePointsIdx = 0;
   dockPointsIdx = 0;
@@ -924,7 +923,6 @@ void Map::setIsDocked(bool flag){
     useGPSfixForDeltaEstimation = !DOCK_IGNORE_GPS;    
     useGPSfloatForPosEstimation = false;  
     useGPSfloatForDeltaEstimation = false;
-    useIMU = true; // false
   } else {
     wayMode = WAY_FREE;
     dockPointsIdx = 0;    
@@ -934,7 +932,6 @@ void Map::setIsDocked(bool flag){
     useGPSfixForDeltaEstimation = true;
     useGPSfloatForPosEstimation = true;    
     useGPSfloatForDeltaEstimation = true;
-    useIMU = true;
   }  
 }
 
@@ -1311,7 +1308,6 @@ bool Map::nextDockPoint(bool sim){
       if (!sim) useGPSfixForDeltaEstimation = true;      
       if (!sim) useGPSfloatForPosEstimation = false;    
       if (!sim) useGPSfloatForDeltaEstimation = false;    
-      if (!sim) useIMU = true;     // false      
       return true;
     } else {
       // finished docking
@@ -1338,8 +1334,7 @@ bool Map::nextDockPoint(bool sim){
         if (!sim) useGPSfixForPosEstimation = true;        
         if (!sim) useGPSfixForDeltaEstimation = true;
         if (!sim) useGPSfloatForPosEstimation = true;    
-        if (!sim) useGPSfloatForDeltaEstimation = true;    
-        if (!sim) useIMU = true;    
+        if (!sim) useGPSfloatForDeltaEstimation = true;     
         return true;
       } else return false;        
     }  

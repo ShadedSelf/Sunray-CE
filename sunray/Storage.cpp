@@ -29,11 +29,11 @@ double calcStateCRC(){
 void dumpState(){
   CONSOLE.print("dumpState: ");
   CONSOLE.print(" X=");
-  CONSOLE.print(stateX);
+  CONSOLE.print(position.x);
   CONSOLE.print(" Y=");
-  CONSOLE.print(stateY);
+  CONSOLE.print(position.y);
   CONSOLE.print(" delta=");
-  CONSOLE.print(stateDelta);
+  CONSOLE.print(heading);
   CONSOLE.print(" mapCRC=");
   CONSOLE.print(maps.mapCRC);
   CONSOLE.print(" mowPointsIdx=");
@@ -143,9 +143,9 @@ bool loadState(){
 
   bool res = true;
   OperationType savedOp;
-  res &= (stateFile.read((uint8_t*)&stateX, sizeof(stateX)) != 0);
-  res &= (stateFile.read((uint8_t*)&stateY, sizeof(stateY)) != 0);
-  //res &= (stateFile.read((uint8_t*)&stateDelta, sizeof(stateDelta)) != 0);
+  res &= (stateFile.read((uint8_t*)&position, sizeof(position)) != 0);
+  //res &= (stateFile.read((uint8_t*)&position.y, sizeof(position.y)) != 0);
+  //res &= (stateFile.read((uint8_t*)&heading, sizeof(heading)) != 0);
     res &= (stateFile.read((uint8_t*)&headingOffset, sizeof(headingOffset)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.mowPointsIdx, sizeof(maps.mowPointsIdx)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.dockPointsIdx, sizeof(maps.dockPointsIdx)) != 0);
@@ -202,9 +202,9 @@ bool saveState(){
   res &= (stateFile.write((uint8_t*)&marker, sizeof(marker)) != 0); 
   res &= (stateFile.write((uint8_t*)&maps.mapCRC, sizeof(maps.mapCRC)) != 0); 
 
-  res &= (stateFile.write((uint8_t*)&stateX, sizeof(stateX)) != 0);
-  res &= (stateFile.write((uint8_t*)&stateY, sizeof(stateY)) != 0);
-  //res &= (stateFile.write((uint8_t*)&stateDelta, sizeof(stateDelta)) != 0);
+  res &= (stateFile.write((uint8_t*)&position, sizeof(position)) != 0);
+  //res &= (stateFile.write((uint8_t*)&position.y, sizeof(position.y)) != 0);
+  //res &= (stateFile.write((uint8_t*)&heading, sizeof(heading)) != 0);
   res &= (stateFile.write((uint8_t*)&headingOffset, sizeof(headingOffset)) != 0);
   res &= (stateFile.write((uint8_t*)&maps.mowPointsIdx, sizeof(maps.mowPointsIdx)) != 0);
   res &= (stateFile.write((uint8_t*)&maps.dockPointsIdx, sizeof(maps.dockPointsIdx)) != 0);
