@@ -23,6 +23,7 @@ vec3_t up = {0,0,1};
 
 vec3_t position = {0,0,0};
 float heading = 0;  // direction (rad)
+double headingOffset = 0.0;
 
 float stateRoll = 0;
 float statePitch = 0;
@@ -89,6 +90,29 @@ vec3_t quaternion_to_euler(quat_t q)
     return vec3_t(roll, pitch, yaw);
 }
 
+bool shouldUseGps()
+{
+  // should we use GPS if rover is close to dock station?
+  // avoids fix jumps
+  bool dockGPS = true;
+  #ifdef DOCK_IGNORE_GPS_DISTANCE
+    vec3_t dockPos = {0,0,0};
+    float dockDelta = 0;
+    maps.getDockingPos(dockPos.x, dockPos.y, dockDelta);
+
+    float dockDist = (dockPos - position).mag();
+    if (maps.isDocking() && dockDist < DOCK_IGNORE_GPS_DISTANCE)
+      dockGPS = false;
+  #endif
+
+  // use gps only on fix/float
+  // ignore if signal jumped recently or coming from invalid
+  bool solution = ((gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT) 
+    && millis() - lastInvalidTime > IGNORE_GPS_AFTER_INVALID * 1000.0
+    && millis() - lastFixJumpTime > IGNORE_GPS_AFTER_JUMP * 1000.0);
+
+  return dockGPS && solution;
+}
 
 // https://learn.sparkfun.com/tutorials/9dof-razor-imu-m0-hookup-guide#using-the-mpu-9250-dmp-arduino-library
 // start IMU sensor and calibrate
@@ -239,9 +263,6 @@ void resetImuTimeout(){
   imuDataTimeout = millis() + 500;  
 }
 
-
-double headingOffset = 0.0;
-
 // compute robot state (x,y,delta)
 // uses complementary filter ( https://gunjanpatel.wordpress.com/2016/07/07/complementary-filter-design/ )
 // to fusion GPS heading (long-term) and IMU heading (short-term)
@@ -302,13 +323,16 @@ void computeRobotState(){
   float distGPS = (gpsPos-lastGpsPos).mag();
   {
     /*if (gps.solutionAvail && gps.solution == SOL_FIXED
-    && distGPS > 0.2
+    && distGPS > 0.25
     && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
       lastFixJumpTime = millis();
 
     // store last position if ignoring gps fusion
     if (gps.solutionAvail && distGPS > 0.1 && millis() <= lastInvalidTime + IGNORE_GPS_AFTER_INVALID * 1000.0)
-      lastGpsPos = gpsPos;*/
+    {
+      lastGpsPos = gpsPos;
+      lastHeading = heading;
+    }*/
   }
 
   // set last invalid time
@@ -318,29 +342,11 @@ void computeRobotState(){
     lastInvalidTime = millis();
   }
 
-  // should we use GPS if rover is close to dock station?
-  // avoids fix jumps
-  bool dockGPS = true;
-  #ifdef DOCK_IGNORE_GPS_DISTANCE
-    vec3_t dockPos = {0,0,0};
-    float dockDelta = 0;
-    maps.getDockingPos(dockPos.x, dockPos.y, dockDelta);
-
-    float dockDist = (dockPos - position).mag();
-    if (maps.isDocking() && dockDist < DOCK_IGNORE_GPS_DISTANCE)
-      dockGPS = false;
-  #endif
-
-
   if (fabs(motor.linearSpeedSet) < 0.001)  
     resetLastPos = true;
 
   // gps heading and position
-  if (gps.solutionAvail
-  && ((gps.solution == SOL_FIXED || (gps.solution == SOL_FLOAT)) 
-    && millis() > lastInvalidTime + IGNORE_GPS_AFTER_INVALID * 1000.0
-    && millis() > lastFixJumpTime + IGNORE_GPS_AFTER_JUMP * 1000.0)
-  && dockGPS)
+  if (gps.solutionAvail && shouldUseGps())
   {
     gps.solutionAvail = false;
     stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * abs(gps.groundSpeed);    
@@ -356,37 +362,27 @@ void computeRobotState(){
       lastGpsPos = gpsPos;
       lastHeading = heading;
     }
-    else if (distGPS > 0.1) // gps-imu heading fusion
+    else if (distGPS > 0.1
+      && (gps.solution == SOL_FIXED && maps.useGPSfixForDeltaEstimation)) // gps-imu heading fusion
     {       
-      float diffLastHeading = distancePI(heading, lastHeading);                 
-      if (fabs(diffLastHeading) / PI * 180.0 < 10
-      && (fabs(motor.linearSpeedSet) > 0)
-      && (fabs(motor.angularSpeedSet) / PI * 180.0 < 45) ) // make sure robot is not turning
+      // make sure robot is not turning               
+      if (fabs(distancePI(heading, lastHeading)) / PI * 180.0 < 10)
       {  
+        // gps heading
         float headingGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);  
         if (motor.linearSpeedSet < 0)
           headingGPS = scalePI(headingGPS + PI); // consider if driving reverse
+  
+        // imu-gps heading difference
+        float headingDiff = distancePI(imuDriver.yaw, headingGPS);  
+        // heading fusion
+        headingOffset = angleInterpolation(headingOffset, headingDiff, 1.0 - GPS_IMU_FUSION);
 
-        if ((gps.solution == SOL_FIXED && maps.useGPSfixForDeltaEstimation)
-        || (gps.solution == SOL_FLOAT && false)) // allows planner to use float solution?     
-        {    
-          // imu-gps heading difference
-          float headingDiff = distancePI(imuDriver.yaw, headingGPS);  
-
-          if (fabs(distancePI(heading, headingGPS) / PI * 180) > 45) // IMU-based heading too far away => use GPS heading
-            headingOffset = headingDiff;
-          else                                                              // heading fusion
-          {
-            headingOffset = headingOffset + (double)distancePI(headingOffset, headingDiff) * (1.0 - GPS_IMU_FUSION);   
-            if (headingOffset < -PI || headingOffset > PI)
-            {
-              headingOffset = fmod(headingOffset, 2.0*PI);
-              if (headingOffset < -PI) headingOffset += 2.0*PI; 
-              if (headingOffset >  PI) headingOffset -= 2.0*PI;
-            }
-          }
-        }
+        // IMU-based heading too far away => use GPS heading
+        if (fabs(distancePI(heading, headingGPS) / PI * 180) > 45)
+          headingOffset = headingDiff;
       }
+
       lastGpsPos = gpsPos;
       lastHeading = heading;
     } 
@@ -398,7 +394,7 @@ void computeRobotState(){
     // update state for fix and float
     if (gps.solution == SOL_FIXED && maps.useGPSfixForPosEstimation) // fix
       position = gpsPos;
-    else if (maps.useGPSfloatForPosEstimation) // allows planner to use float solution?
+    else if (gps.solution == SOL_FLOAT && maps.useGPSfloatForPosEstimation) // allows planner to use float solution?
       position = (position + forward * (distOdometry/100.0)) * IMU_FLOAT_FUSION
                 + gpsPos * (1.0 - IMU_FLOAT_FUSION);
   }

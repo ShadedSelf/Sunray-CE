@@ -102,6 +102,7 @@ void trackLine(bool runControl){
   {
     bool straight = maps.nextPointIsStraight();
 
+    // linear speed modifiers
     if (maps.trackSlow && isCloseToDock())  // planner forces slow tracking (e.g. docking etc)
       linear = 0.1;     
     else if (motor.motorLeftOverload
@@ -154,11 +155,10 @@ void trackLine(bool runControl){
     if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
     
     // slow down on heading error
-    //linear *= pow( max(cos(trackerDiffDelta), 0.0), 5.0);
     linear *= exp(-trackerDiffDelta * trackerDiffDelta * HEADING_ERROR_SPEED_FACTOR);
 
     // slow down on uphill?
-    // linear *=
+    // linear *= 1.0 - max(imu.pitch, 0.0)
   }
   
   // check some pre-conditions that can make linear+angular speed zero
@@ -208,6 +208,8 @@ void trackLine(bool runControl){
       }
     }
   }
+
+  // -- set speeds --
 
   bool mow = true;
   if (stateOp == OP_DOCK || detectLift())

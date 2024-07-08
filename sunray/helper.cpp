@@ -113,6 +113,18 @@ float fusionPI(float w, float a, float b)
   return atan2(sn, cs);
 }
 
+double angleInterpolation(double a, double b, double t)
+{
+  double res = a + (double)distancePI(a, b) * t;   
+  if (res < -PI || res > PI)
+  {
+    res = fmod(res, 2.0*PI);
+    if (res < -PI) res += 2.0*PI; 
+    if (res >  PI) res -= 2.0*PI;
+  }
+  return res;
+}
+
 
 // scale setangle, so that both PI angles have the same sign
 float scalePIangles(float setAngle, float currAngle){
