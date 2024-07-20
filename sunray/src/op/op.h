@@ -102,7 +102,7 @@ class ImuCalibrationOp: public Op {
     unsigned long nextImuCalibrationSecond;
     int imuCalibrationSeconds;
     virtual String name() override;
-    virtual void changeOp(Op &anOp, bool returnBackOnExit = false) override;
+    //virtual void changeOp(Op &anOp, bool returnBackOnExit = false) override;
     virtual void begin() override;
     virtual void end() override;
     virtual void run() override;

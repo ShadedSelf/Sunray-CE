@@ -7,25 +7,10 @@
 #ifndef STATE_ESTIMATOR_H
 #define STATE_ESTIMATOR_H
 
-/*struct StateData
-{
-  vec3_t forward;
-  vec3_t right;
-  vec3_t up;
-
-  vec3_t position;
-  float heading;
-
-  float stateGroundSpeed; // m/s
-  float lateralError; // lateral error
-};*/
-
-
-
 #include <Arduino.h>
 
-#include <quaternion_type.h>
-#include <vector_type.h>
+#include "src/math/quaternion_type.h"
+#include "src/math/vector_type.h"
 
 extern vec3_t forward;
 extern vec3_t right;
@@ -36,28 +21,15 @@ extern float heading;  // direction (rad)
 
 extern float stateRoll;
 extern float statePitch;
-extern float stateDeltaIMU;
 extern float stateGroundSpeed; // m/s
 extern float lateralError; // lateral error
 
 extern double headingOffset;
 
-/*extern float stateDeltaLast;
-extern float stateDeltaSpeed;
-extern float stateDeltaSpeedLP;
-extern float stateDeltaSpeedIMU;
-extern float stateDeltaSpeedWheels;
-extern float diffIMUWheelYawSpeed;
-extern float diffIMUWheelYawSpeedLP;*/
-
-extern bool gpsJump;
 extern unsigned long lastInvalidTime;
 extern unsigned long lastFixJumpTime;
 
-extern bool imuIsCalibrating;
 extern unsigned long imuDataTimeout;
-extern float lastIMUYaw; 
-
 
 bool startIMU(bool forceIMU);
 void readIMU();

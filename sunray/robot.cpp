@@ -543,12 +543,14 @@ void start(){
   
   watchdogEnable(WATCHDOG_TIMER);   // 5 seconds  
   
-  startIMU(false);        
-  
   buzzer.sound(SND_READY);  
   battery.resetIdle();        
   loadState();
 
+  activeOp->checkStop();
+
+  startIMU(false);        
+  
   #ifdef DRV_SIM_ROBOT
     robotDriver.setSimRobotPosState(position.x, position.y, heading);
     tester.begin();
@@ -816,14 +818,10 @@ void run(){
   }
   
   // IMU
-  if (millis() > nextImuTime){
-    nextImuTime = millis() + 30;        
-    //imu.resetFifo();    
-   // if (imuIsCalibrating) {
-    //  activeOp->onImuCalibration();             
-    //} else {
-      readIMU();    
-    //}
+  if (millis() > nextImuTime)
+  {
+    nextImuTime = millis() + 30;
+    readIMU();    
   }
 
   // LED states

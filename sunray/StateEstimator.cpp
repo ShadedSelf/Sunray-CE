@@ -13,8 +13,8 @@
 #include "helper.h"
 #include "i2c.h"
 
-#include <quaternion_type.h>
-#include <vector_type.h>
+#include "src/math/quaternion_type.h"
+#include "src/math/vector_type.h"
 
 
 vec3_t forward = {1,0,0};
@@ -36,34 +36,19 @@ unsigned long stateRightTicks = 0;
 vec3_t lastGpsPos = {0,0,0};
 float lastHeading = 0;
 
-/*float stateDeltaLast = 0;
-float stateDeltaSpeed = 0;
-float stateDeltaSpeedLP = 0;
-float stateDeltaSpeedIMU = 0;
-float stateDeltaSpeedWheels = 0;
-float diffIMUWheelYawSpeed = 0;
-float diffIMUWheelYawSpeedLP = 0;*/
-
-bool gpsJump = false;
-bool resetLastPos = true;
 unsigned long lastInvalidTime = 0;
 unsigned long lastFixJumpTime = 0;
 
-float lastIMUYaw = 0; 
 float lateralError = 0; // lateral error
 float rollChange = 0;
 float pitchChange = 0;
-bool imuIsCalibrating = false;
-int imuCalibrationSeconds = 0;
-unsigned long nextImuCalibrationSecond = 0;
-unsigned long nextDumpTime = 0;
 
 
-quat_t euler_to_quaternion(vec3_t e)
+quat_t euler_to_quaternion(vec3_t rpy)
 {
-    float roll = e.x;
-    float pitch = e.y;
-    float yaw = e.z;
+    float roll = rpy.x;
+    float pitch = rpy.y;
+    float yaw = rpy.z;
     float qx = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2);
     float qy = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2);
     float qz = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
@@ -119,7 +104,8 @@ bool shouldUseGps()
 bool startIMU(bool forceIMU){    
   // detect IMU
   int counter = 0;  
-  while ((forceIMU) || (counter < 1)){          
+  while (forceIMU || counter < 1)
+  {          
     imuDriver.detect();
     if (imuDriver.imuFound)
       break;
@@ -154,7 +140,7 @@ bool startIMU(bool forceIMU){
     CONSOLE.print("Check connections, and try again.");
     CONSOLE.println();
 
-    delay(1000);   
+    delay(500);   
 
     counter++;
     if (counter > 5){
@@ -165,17 +151,13 @@ bool startIMU(bool forceIMU){
     watchdogReset();     
   }              
 
-  //imuIsCalibrating = true;   
-  nextImuCalibrationSecond = millis() + 1000;
-  imuCalibrationSeconds = 0;
-  
+  activeOp->changeOp(imuCalibrationOp, true);
+
   return true;
 }
 
 
 void dumpImuTilt(){
-  if (millis() < nextDumpTime) return;
-  nextDumpTime = millis() + 10000;
   CONSOLE.print("IMU tilt: ");
   CONSOLE.print("ypr=");
   CONSOLE.print(imuDriver.yaw/PI*180.0);
@@ -249,13 +231,6 @@ void readIMU(){
         activeOp->onImuTilt();
       }           
     #endif
-    
-    float currentIMUYaw = scalePI(imuDriver.yaw);
-    lastIMUYaw = scalePIangles(lastIMUYaw, currentIMUYaw);
-    stateDeltaIMU = -scalePI( distancePI(currentIMUYaw, lastIMUYaw) );  
-    lastIMUYaw = currentIMUYaw;
-
-    //resetImuTimeout();
   }     
 }
 
@@ -320,7 +295,6 @@ void computeRobotState(){
   }
 
   // detect fix jumps before heading fusion
-  float distGPS = (gpsPos-lastGpsPos).mag();
   {
     /*if (gps.solutionAvail && gps.solution == SOL_FIXED
     && distGPS > 0.25
@@ -335,52 +309,37 @@ void computeRobotState(){
     }*/
   }
 
-  // set last invalid time
-  if (gps.solutionAvail && gps.solution == SOL_INVALID)
-  {
-    gps.solutionAvail = false;
-    lastInvalidTime = millis();
-  }
-
-  if (fabs(motor.linearSpeedSet) < 0.001)  
-    resetLastPos = true;
-
   // gps heading and position
   if (gps.solutionAvail && shouldUseGps())
   {
     gps.solutionAvail = false;
-    stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * abs(gps.groundSpeed);    
+    stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * abs(gps.groundSpeed); 
 
-    if (distGPS > 0.3 || resetLastPos){
-      if (distGPS > 0.3) {
-        gpsJump = true;
-        statGPSJumps++;
-        CONSOLE.print("GPS jump: ");
-        CONSOLE.println(distGPS);
-      }
-      resetLastPos = false;
+    float distGPS = (gpsPos-lastGpsPos).mag();   
+    
+    if (fabs(motor.linearSpeedSet) < 0.01)    // reset previous position and heading
+    {
       lastGpsPos = gpsPos;
       lastHeading = heading;
     }
-    else if (distGPS > 0.1
-      && (gps.solution == SOL_FIXED && maps.useGPSfixForDeltaEstimation)) // gps-imu heading fusion
-    {       
-      // make sure robot is not turning               
-      if (fabs(distancePI(heading, lastHeading)) / PI * 180.0 < 10)
-      {  
-        // gps heading
-        float headingGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);  
+    else if (distGPS > 0.1 && gps.solution == SOL_FIXED)    // gps-imu heading fusion
+    {                 
+      if (fabs(distancePI(heading, lastHeading)) / PI * 180.0 < 10) // make sure robot is not turning  
+      {
+        float headingGPS = atan2(gpsPos.y-lastGpsPos.y, gpsPos.x-lastGpsPos.x);
         if (motor.linearSpeedSet < 0)
           headingGPS = scalePI(headingGPS + PI); // consider if driving reverse
-  
-        // imu-gps heading difference
-        float headingDiff = distancePI(imuDriver.yaw, headingGPS);  
-        // heading fusion
-        headingOffset = angleInterpolation(headingOffset, headingDiff, 1.0 - GPS_IMU_FUSION);
 
-        // IMU-based heading too far away => use GPS heading
-        if (fabs(distancePI(heading, headingGPS) / PI * 180) > 45)
-          headingOffset = headingDiff;
+        if (imuDriver.imuFound) // imu
+        {
+          float headingDiff = distancePI(imuDriver.yaw, headingGPS);
+          headingOffset = angleInterpolation(headingOffset, headingDiff, 1.0 - GPS_IMU_FUSION);
+
+          if (fabs(distancePI(heading, headingGPS) / PI * 180) > 45) // IMU-based heading too far away => use GPS heading
+            headingOffset = headingDiff;
+        }
+        else // odometry
+          heading = angleInterpolation(headingGPS, heading, 0.9);
       }
 
       lastGpsPos = gpsPos;
@@ -392,16 +351,20 @@ void computeRobotState(){
       lastFixTime = millis();
     
     // update state for fix and float
-    if (gps.solution == SOL_FIXED && maps.useGPSfixForPosEstimation) // fix
+    if (gps.solution == SOL_FIXED) // fix
       position = gpsPos;
-    else if (gps.solution == SOL_FLOAT && maps.useGPSfloatForPosEstimation) // allows planner to use float solution?
+    else if (gps.solution == SOL_FLOAT) // allows planner to use float solution?
       position = (position + forward * (distOdometry/100.0)) * IMU_FLOAT_FUSION
                 + gpsPos * (1.0 - IMU_FLOAT_FUSION);
   }
   else // no GPS data available, use odometry
     position += forward * (distOdometry/100.0);
-  
 
+  // set last invalid time
+  if (gps.solutionAvail && gps.solution == SOL_INVALID)
+    lastInvalidTime = millis();
+ 
+ 
   if (stateOp == OP_MOW) statMowDistanceTraveled += distOdometry/100.0;
    
   /*if (imuDriver.imuFound)
