@@ -57,7 +57,6 @@ class UBLOX : public GpsDriver {
     int count;
     char payload[2000];                                          
     bool debug;
-    bool verbose;
     unsigned long solutionTimeout;    
 
     void begin();

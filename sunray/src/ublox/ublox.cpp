@@ -19,7 +19,6 @@ SFE_UBLOX_GNSS_SERIAL configGPS; // used for f9p module configuration only
 UBLOX::UBLOX()
 {
   debug = false;
-  verbose = false;
   useTCP = false;
   solutionTimeout = 0;
   #ifdef GPS_DUMP
@@ -369,7 +368,6 @@ void UBLOX::addchk(int b) {
     
 
 void UBLOX::dispatchMessage() {
-    if (verbose) CONSOLE.println();
     switch (this->msgclass){
       case 0x01:
         switch (this->msgid) {
@@ -382,71 +380,36 @@ void UBLOX::dispatchMessage() {
               hour = (unsigned char)this->unpack_int8(16);
               mins = (unsigned char)this->unpack_int8(17);
               sec = (unsigned char)this->unpack_int8(18);              
-              if (verbose) {
-                CONSOLE.print("UBX-NAV-TIMEUTC ");
-                CONSOLE.print("year=");
-                CONSOLE.print(year);
-                CONSOLE.print("  month=");
-                CONSOLE.print(month);
-                CONSOLE.print("  day=");
-                CONSOLE.print(day);
-                CONSOLE.print("  hour=");
-                CONSOLE.print(hour);
-                CONSOLE.print("  min=");
-                CONSOLE.print(mins);
-                CONSOLE.print("  sec=");
-                CONSOLE.println(sec);                
-              }
             }
             break;
           case 0x07:
             { // UBX-NAV-PVT
               iTOW = (unsigned long)this->unpack_int32(0);
-              //numSV = this->unpack_int8(23);               
-              if (verbose) CONSOLE.println("UBX-NAV-PVT");
+              //numSV = this->unpack_int8(23);   
+              //magDec =  (unsigned long)this->unpack_int32(88) * 1e-2;           
             }
             break;
           case 0x12:
             { // UBX-NAV-VELNED
               iTOW = (unsigned long)this->unpack_int32(0);
               groundSpeed = ((double)((unsigned long)this->unpack_int32(20))) / 100.0;
-              heading = ((double)this->unpack_int32(24)) * 1e-5 / 180.0 * PI;
-              //CONSOLE.print("heading:");
-              //CONSOLE.println(heading);
-              if (verbose) {
-                CONSOLE.print("UBX-NAV-VELNED ");
-                CONSOLE.print("groundSpeed=");
-                CONSOLE.print(groundSpeed);
-                CONSOLE.print("  heading=");
-                CONSOLE.println(heading);                
-              }
+              heading = ((double)this->unpack_int32(24)) * 1e-5;
             }
             break;
           case 0x14: 
             { // UBX-NAV-HPPOSLLH
               iTOW = (unsigned long)this->unpack_int32(4);
-              lon = (1e-7  * (this->unpack_int32(8)   +  (this->unpack_int8(24) * 1e-2)));
-              lat = (1e-7  * (this->unpack_int32(12)  +  (this->unpack_int8(25) * 1e-2)));
-              height = (1e-3 * (this->unpack_int32(16) +  (this->unpack_int8(26) * 1e-2))); // HAE (WGS84 height)
-              //height = (1e-3 * (this->unpack_int32(20) +  (this->unpack_int8(27) * 1e-2))); // MSL height
-              hAccuracy = ((double)((unsigned long)this->unpack_int32(28))) * 0.1 / 1000.0;
-              vAccuracy = ((double)((unsigned long)this->unpack_int32(32))) * 0.1 / 1000.0;
-              accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));
-              // long hMSL = this->unpack_int32(16);
-              //unsigned long hAcc = (unsigned long)this->unpack_int32(20);
-              //unsigned long vAcc = (unsigned long)this->unpack_int32(24);                            
-              if (verbose) {
-                CONSOLE.print("UBX-NAV-HPPOSLLH ");
-                CONSOLE.print("lon=");
-                CONSOLE.print(lon,8);
-                CONSOLE.print("  lat=");
-                CONSOLE.println(lat,8);                      
-              }
+              lon = 1e-7 * (this->unpack_int32(8) + (this->unpack_int8(24) * 1e-2));
+              lat = 1e-7 * (this->unpack_int32(12) + (this->unpack_int8(25) * 1e-2));
+              height = 1e-3 * (this->unpack_int32(16) + (this->unpack_int8(26) * 1e-2)); // HAE (WGS84 height)
+              //height = 1e-3 * (this->unpack_int32(20) +  (this->unpack_int8(27) * 1e-2)); // MSL height
+              hAccuracy = (double)((unsigned long)this->unpack_int32(28)) * 0.1 / 1000.0;
+              vAccuracy = (double)((unsigned long)this->unpack_int32(32)) * 0.1 / 1000.0;
+              accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));                         
             }
             break;            
           case 0x43:
             { // UBX-NAV-SIG
-              if (verbose) CONSOLE.print("UBX-NAV-SIG ");
               iTOW = (unsigned long)this->unpack_int32(0);
               int numSigs = this->unpack_int8(5);              
               float ravg = 0;
@@ -473,13 +436,6 @@ void UBLOX::dispatchMessage() {
                   //if (cno > 0){  // signal has some strength (carriar-to-noise)
                     healthycnt++;                   
                     if (crCorrUsed){  // Carrier range corrections have been used
-                      /*CONSOLE.print(sigFlags);
-                      CONSOLE.print(",");                                
-                      CONSOLE.print(qualityInd);
-                      CONSOLE.print(",");                                
-                      CONSOLE.print(prRes);
-                      CONSOLE.print(",");
-                      CONSOLE.println(cno); */
                       rsum += fabs(prRes);    // pseudorange residual
                       rmax = max(rmax, fabs(prRes));
                       rmin = min(rmin, fabs(prRes));
@@ -491,31 +447,6 @@ void UBLOX::dispatchMessage() {
               ravg = rsum/((float)crcnt);
               numSVdgps = crcnt;
               numSV = healthycnt;                            
-              if (verbose){
-                CONSOLE.print("sol=");
-                CONSOLE.print(solution);              
-                CONSOLE.print("\t");
-                CONSOLE.print("hAcc=");
-                CONSOLE.print(hAccuracy);
-                CONSOLE.print("\tvAcc=");
-                CONSOLE.print(vAccuracy);
-                CONSOLE.print("\t#");
-                CONSOLE.print(crcnt);
-                CONSOLE.print("/");
-                CONSOLE.print(numSigs);
-                CONSOLE.print("\t");
-                CONSOLE.print("rsum=");
-                CONSOLE.print(rsum);
-                CONSOLE.print("\t");
-                CONSOLE.print("ravg=");
-                CONSOLE.print(ravg);
-                CONSOLE.print("\t");
-                CONSOLE.print("rmin=");
-                CONSOLE.print(rmin);
-                CONSOLE.print("\t");
-                CONSOLE.print("rmax=");
-                CONSOLE.println(rmax); 
-              }              
             }
             break;
           case 0x3C: 
@@ -523,35 +454,13 @@ void UBLOX::dispatchMessage() {
               iTOW = (unsigned long)this->unpack_int32(4);
               relPosN = ((float)this->unpack_int32(8))/100.0;
               relPosE = ((float)this->unpack_int32(12))/100.0;
-              relPosD = ((float)this->unpack_int32(16))/100.0;              
+              relPosD = ((float)this->unpack_int32(16))/100.0;  
+              //relPosN = (this->unpack_int32(8) + (this->unpack_int8(32) * 1e-2)) / 100.0;
+              //relPosE = (this->unpack_int32(12) + (this->unpack_int8(33) * 1e-2)) / 100.0;
+              //relPosD = (this->unpack_int32(16) + (this->unpack_int8(34) * 1e-2)) / 100.0;
               solution = (SolType)((this->unpack_int32(60) >> 3) & 3);              
               solutionAvail = true;
-              solutionTimeout=millis() + 1000;              
-              if (verbose){
-                CONSOLE.print("UBX-NAV-RELPOSNED ");
-                CONSOLE.print("n=");
-                CONSOLE.print(relPosN,2);
-                CONSOLE.print("  e=");
-                CONSOLE.print(relPosE,2);                       
-                CONSOLE.print("  sol=");                       
-                CONSOLE.print(solution);                       
-                CONSOLE.print(" ");                       
-                switch(solution){
-                  case 0: 
-                    CONSOLE.print("invalid");                       
-                    break;
-                  case 1: 
-                    CONSOLE.print("float");                       
-                    break;
-                  case 2: 
-                    CONSOLE.print("fix");                       
-                    break;                  
-                  default:
-                    CONSOLE.print("unknown");                       
-                    break;
-                }
-                CONSOLE.println();
-              }              
+              solutionTimeout=millis() + 1000;                           
             }
             break;            
         }
@@ -560,7 +469,6 @@ void UBLOX::dispatchMessage() {
         switch (this->msgid) {
           case 0x32: 
             { // UBX-RXM-RTCM              
-              if (verbose) CONSOLE.println("UBX-RXM-RTCM");
               byte flags = (byte)this->unpack_int8(1);
               if ((flags & 1) != 0) dgpsChecksumErrorCounter++;
               dgpsPacketCounter++;
@@ -570,7 +478,6 @@ void UBLOX::dispatchMessage() {
         }
         break;
     }    
-    if (verbose) CONSOLE.println();
 }
 
 long UBLOX::unpack_int32(int offset) {
@@ -613,7 +520,9 @@ void UBLOX::run()
   }
 
 	// read a byte from the serial port	  
-  if (!_bus->available()) return;
+  if (!_bus->available())
+    return;
+
   while (_bus->available()) {		
     byte data = _bus->read();        
 		parse(data);
@@ -623,6 +532,10 @@ void UBLOX::run()
     CONSOLE.print(",");    
 #endif
   }
+
+  // HACKY: force high precision float to fixed
+  if (solutionAvail && solution == SOL_FLOAT && accuracy <= 0.03)
+    solution = SOL_FIXED;
 }
 
 

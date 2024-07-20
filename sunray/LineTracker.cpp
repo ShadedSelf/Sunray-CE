@@ -162,8 +162,7 @@ void trackLine(bool runControl){
   }
   
   // check some pre-conditions that can make linear+angular speed zero
-  if (fixTimeout != 0)
-    if (millis() > lastFixTime + fixTimeout * 1000.0)
+  if (fixTimeout != 0 && millis() > lastFixTime + fixTimeout * 1000.0 && !maps.isDocking())
       activeOp->onGpsFixTimeout();            
 
   if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT)) // && lastFix time - now > 1000   

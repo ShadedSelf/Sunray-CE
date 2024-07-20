@@ -3,8 +3,6 @@
 #include "../../config.h"
 #include "../../i2c.h"
 
-#include <quaternion_type.h>
-#include <vector_type.h>
 
 IcmDriver::IcmDriver(){    
 }
@@ -112,7 +110,7 @@ bool IcmDriver::isDataAvail(){
             double t4 = +1.0 - 2.0 * (q2sqr + q3 * q3);
             yaw = atan2(t3, t4);
 
-            orientation = quat_t(q0, q1, q2, q3).norm();
+            //orientation = quat_t(q0, q1, q2, q3).norm();
 
             return true;
         }

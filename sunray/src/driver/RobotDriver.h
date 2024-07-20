@@ -98,14 +98,12 @@ class RainSensorDriver {
     virtual bool triggered() = 0;  	  		    
 };
 
-#include <quaternion_type.h>
-#include <vector_type.h>
 class ImuDriver {
   public:
     float roll; // euler radiant
     float pitch; // euler radiant
     float yaw;   // euler radiant
-    quat_t orientation;
+    //quat_t orientation;
     bool imuFound;   
     // detect module (should update member 'imuFound')
     virtual void detect() = 0;             
