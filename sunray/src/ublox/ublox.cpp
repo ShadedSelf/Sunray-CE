@@ -385,15 +385,15 @@ void UBLOX::dispatchMessage() {
           case 0x07:
             { // UBX-NAV-PVT
               iTOW = (unsigned long)this->unpack_int32(0);
-              //numSV = this->unpack_int8(23);   
+              //numSV = this->unpack_int8(23);
               //magDec =  (unsigned long)this->unpack_int32(88) * 1e-2;           
             }
             break;
           case 0x12:
             { // UBX-NAV-VELNED
               iTOW = (unsigned long)this->unpack_int32(0);
-              groundSpeed = ((double)((unsigned long)this->unpack_int32(20))) / 100.0;
-              heading = ((double)this->unpack_int32(24)) * 1e-5;
+              groundSpeed = (double)(unsigned long)this->unpack_int32(20) / 100.0;
+              heading = radians( (double)(signed long)this->unpack_int32(24) * 1e-5 );
             }
             break;
           case 0x14: 
@@ -401,10 +401,9 @@ void UBLOX::dispatchMessage() {
               iTOW = (unsigned long)this->unpack_int32(4);
               lon = 1e-7 * ((double)(signed long)this->unpack_int32(8) + ((double)(signed char)this->unpack_int8(24) * 1e-2));
               lat = 1e-7 * ((double)(signed long)this->unpack_int32(12) + ((double)(signed char)this->unpack_int8(25) * 1e-2));
-              height = 1e-3 * ((double)(signed long)this->unpack_int32(16) + ((double)(signed char)this->unpack_int8(26) * 1e-2)); // HAE (WGS84 height)
-              //height = 1e-3 * (this->unpack_int32(20) +  (this->unpack_int8(27) * 1e-2)); // MSL height
-              hAccuracy = (double)((unsigned long)this->unpack_int32(28)) * 0.1 / 1000.0;
-              vAccuracy = (double)((unsigned long)this->unpack_int32(32)) * 0.1 / 1000.0;
+              height = 1e-3 * ((double)(signed long)this->unpack_int32(16) + ((double)(signed char)this->unpack_int8(26) * 0.1)); // HAE (WGS84 height)
+              hAccuracy = (double)(unsigned long)this->unpack_int32(28) * 0.1 / 1000.0;
+              vAccuracy = (double)(unsigned long)this->unpack_int32(32) * 0.1 / 1000.0;
               accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));                 
             }
             break;            
@@ -451,13 +450,10 @@ void UBLOX::dispatchMessage() {
             break;
           case 0x3C: 
             { // UBX-NAV-RELPOSNED              
-              iTOW = (unsigned long)this->unpack_int32(4);
-              relPosN = ((float)this->unpack_int32(8))/100.0;
-              relPosE = ((float)this->unpack_int32(12))/100.0;
-              relPosD = ((float)this->unpack_int32(16))/100.0;  
-              //relPosN = (this->unpack_int32(8) + (this->unpack_int8(32) * 1e-2)) / 100.0;
-              //relPosE = (this->unpack_int32(12) + (this->unpack_int8(33) * 1e-2)) / 100.0;
-              //relPosD = (this->unpack_int32(16) + (this->unpack_int8(34) * 1e-2)) / 100.0;
+              iTOW = (unsigned long)this->unpack_int32(4); 
+              relPosN = ((double)(signed long)this->unpack_int32(8) + ((double)(signed char)this->unpack_int8(32) * 1e-2)) / 100.0;
+              relPosE = ((double)(signed long)this->unpack_int32(12) + ((double)(signed char)this->unpack_int8(33) * 1e-2)) / 100.0;
+              relPosD = ((double)(signed long)this->unpack_int32(16) + ((double)(signed char)this->unpack_int8(34) * 1e-2)) / 100.0;
               solution = (SolType)((this->unpack_int32(60) >> 3) & 3);              
               solutionAvail = true;
               solutionTimeout=millis() + 1000;                           

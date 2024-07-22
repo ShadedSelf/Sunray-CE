@@ -19,8 +19,8 @@ extern vec3_t up;
 extern vec3_t position;
 extern float heading;  // direction (rad)
 
-extern float stateRoll;
-extern float statePitch;
+//extern float stateRoll;
+//extern float statePitch;
 extern float stateGroundSpeed; // m/s
 extern float lateralError; // lateral error
 

@@ -82,7 +82,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define MPU_ADDR 0x69  // I2C address (0x68 if AD0=LOW, 0x69 if AD0=HIGH)
 #define USE_MAGNOMETER false  // use IMUs magnometer (only ICM)
-#define ENABLE_TILT_DETECTION  1 // should the mower turn off if IMU is tilt over? (yes: uncomment line, no: comment line)
+#define ENABLE_TILT_DETECTION  true // should the mower turn off if IMU is tilt over?
 
 // --------- lift sensor (e.g. Alfred mower) ---------------------------------------------
 // should the lift sensor be enabled? (yes: uncomment line, no: comment line)

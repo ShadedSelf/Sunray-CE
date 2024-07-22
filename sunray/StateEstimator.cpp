@@ -25,9 +25,8 @@ vec3_t position = {0,0,0};
 float heading = 0;  // direction (rad)
 double headingOffset = 0.0;
 
-float stateRoll = 0;
-float statePitch = 0;
-float stateDeltaIMU = 0;
+//float stateRoll = 0;
+//float statePitch = 0;
 float stateGroundSpeed = 0; // m/s
 
 unsigned long stateLeftTicks = 0;
@@ -40,9 +39,6 @@ unsigned long lastInvalidTime = 0;
 unsigned long lastFixJumpTime = 0;
 
 float lateralError = 0; // lateral error
-float rollChange = 0;
-float pitchChange = 0;
-
 
 quat_t euler_to_quaternion(vec3_t rpy)
 {
@@ -105,11 +101,12 @@ bool startIMU(bool forceIMU){
   // detect IMU
   int counter = 0;  
   while (forceIMU || counter < 1)
-  {          
+  {
     imuDriver.detect();
     if (imuDriver.imuFound)
       break;
 
+    watchdogReset();
     I2Creset();  
     Wire.begin();    
     #ifdef I2C_SPEED
@@ -122,17 +119,13 @@ bool startIMU(bool forceIMU){
       CONSOLE.println("ERROR IMU not found");
       activeOp->onImuError();            
       return false;
-    }
-
-    watchdogReset();          
+    }       
   }  
 
-  if (!imuDriver.imuFound)
-    return false; 
-   
   // initialize IMU
   counter = 0;  
-  while (true){    
+  while (true)
+  {    
     if (imuDriver.begin())
       break;
 
@@ -140,35 +133,20 @@ bool startIMU(bool forceIMU){
     CONSOLE.print("Check connections, and try again.");
     CONSOLE.println();
 
+    watchdogReset();
     delay(500);   
 
     counter++;
     if (counter > 5){
       activeOp->onImuError();        
       return false;
-    }
-
-    watchdogReset();     
+    }  
   }              
 
+  // calibrate IMU
   activeOp->changeOp(imuCalibrationOp, true);
 
   return true;
-}
-
-
-void dumpImuTilt(){
-  CONSOLE.print("IMU tilt: ");
-  CONSOLE.print("ypr=");
-  CONSOLE.print(imuDriver.yaw/PI*180.0);
-  CONSOLE.print(",");
-  CONSOLE.print(imuDriver.pitch/PI*180.0);
-  CONSOLE.print(",");
-  CONSOLE.print(imuDriver.roll/PI*180.0);
-  CONSOLE.print(" rollChange=");
-  CONSOLE.print(rollChange/PI*180.0);
-  CONSOLE.print(" pitchChange=");
-  CONSOLE.println(pitchChange/PI*180.0);
 }
 
 // read IMU sensor (and restart if required)
@@ -204,7 +182,7 @@ void readIMU(){
     motor.stopImmediately(true);    
 
     // restart I2C bus
-    statImuRecoveries++;   
+    statImuRecoveries++;
     I2Creset();  
     Wire.begin(); 
     startIMU(true);
@@ -212,26 +190,10 @@ void readIMU(){
     return;
   } 
   
-  if (avail) {        
-    // Use dmpUpdateFifo to update the ax, gx, mx, etc. values
-    #ifdef ENABLE_TILT_DETECTION
-      rollChange += (imuDriver.roll-stateRoll);
-      pitchChange += (imuDriver.pitch-statePitch);               
-      rollChange = 0.95 * rollChange;
-      pitchChange = 0.95 * pitchChange;
-      statePitch = imuDriver.pitch;
-      stateRoll = imuDriver.roll;        
-
-      if ((fabs(scalePI(imuDriver.roll)) > 60.0/180.0*PI)
-      ||  (fabs(scalePI(imuDriver.pitch)) > 100.0/180.0*PI)
-      ||  (fabs(rollChange) > 30.0/180.0*PI)
-      ||  (fabs(pitchChange) > 60.0/180.0*PI))
-      {
-        dumpImuTilt();
-        activeOp->onImuTilt();
-      }           
-    #endif
-  }     
+  if (avail && ENABLE_TILT_DETECTION)
+    if (fabs(scalePI(imuDriver.roll) > 60.0/180.0*PI)
+    ||  fabs(scalePI(imuDriver.pitch) > 100.0/180.0*PI))
+      activeOp->onImuTilt();
 }
 
 void resetImuTimeout(){
@@ -243,14 +205,15 @@ void resetImuTimeout(){
 // to fusion GPS heading (long-term) and IMU heading (short-term)
 // with IMU: heading (stateDelta) is computed by gyro (stateDeltaIMU)
 // without IMU: heading (stateDelta) is computed by odometry (deltaOdometry)
-void computeRobotState(){  
+void computeRobotState()
+{  
   long leftDelta = motor.motorLeftTicks-stateLeftTicks;
   long rightDelta = motor.motorRightTicks-stateRightTicks;  
   stateLeftTicks = motor.motorLeftTicks;
   stateRightTicks = motor.motorRightTicks;    
     
-  float distLeft = ((float)leftDelta) / ((float)motor.ticksPerCm);
-  float distRight = ((float)rightDelta) / ((float)motor.ticksPerCm);  
+  float distLeft = (float)leftDelta / motor.ticksPerCm;
+  float distRight = (float)rightDelta / motor.ticksPerCm;  
   //float distLeft = motor.motorLeftRpmCurr * PI * ((float)motor.wheelDiameter / 10.0) / 60.0 * 0.02;
   //float distRight =  motor.motorRightRpmCurr * PI * ((float)motor.wheelDiameter / 10.0) / 60.0 * 0.02; 
   float distOdometry = (distLeft + distRight) / 2.0;
@@ -258,11 +221,13 @@ void computeRobotState(){
 
   // orientation and heading
   vec3_t rpy;
-  if (imuDriver.imuFound) {     // IMU available
+  if (imuDriver.imuFound) // IMU available
+  {
     heading = scalePI(imuDriver.yaw + headingOffset);
     rpy = vec3_t(imuDriver.roll, imuDriver.pitch, heading);
   }
-  else {                        // odometry
+  else // odometry
+  {
     heading = scalePI(heading + deltaOdometry);  
     rpy = vec3_t(0.0, 0.0, heading);
   }
@@ -282,7 +247,11 @@ void computeRobotState(){
   if (absolutePosSource)
     relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, gpsPos.y, gpsPos.x);    
   else
-    gpsPos = {gps.relPosE, gps.relPosN, 0};  
+    gpsPos = vec3_t(gps.relPosE, gps.relPosN, 0) - vec3_t(3075.239, -5381.777, 0);  
+
+  /*CONSOLE.print(gps.relPosE - gpsPos.x, 8);
+  CONSOLE.print(" ");
+  CONSOLE.println(gps.relPosN - gpsPos.y, 8);*/
 
   // gps antenna offset
   if (GPS_POSITION_OFFSET_ENABLED && imuDriver.imuFound)
@@ -322,7 +291,7 @@ void computeRobotState(){
       lastGpsPos = gpsPos;
       lastHeading = heading;
     }
-    else if (distGPS > 0.1 && gps.solution == SOL_FIXED)    // gps-imu heading fusion
+    else if (distGPS > 0.2 && gps.solution == SOL_FIXED)    // gps-imu heading fusion
     {                 
       if (fabs(distancePI(heading, lastHeading)) / PI * 180.0 < 10) // make sure robot is not turning  
       {
