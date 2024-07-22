@@ -205,6 +205,8 @@ void resetImuTimeout(){
 // to fusion GPS heading (long-term) and IMU heading (short-term)
 // with IMU: heading (stateDelta) is computed by gyro (stateDeltaIMU)
 // without IMU: heading (stateDelta) is computed by odometry (deltaOdometry)
+double ee = 0;
+double nn = 0;
 void computeRobotState()
 {  
   long leftDelta = motor.motorLeftTicks-stateLeftTicks;
@@ -243,22 +245,23 @@ void computeRobotState()
   up = rot.rotate({0,0,1}, GLOBAL_FRAME).norm();
   
   // gps position
-  vec3_t gpsPos = {0,0,0};
+  vec3_t gpsPos;
   if (absolutePosSource)
-    relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, gpsPos.y, gpsPos.x);    
+  {
+    double e, n;
+    relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, n, e);  
+    gpsPos = vec3_t(e, n, 0);
+  }  
   else
-    gpsPos = vec3_t(gps.relPosE, gps.relPosN, 0) - vec3_t(3075.239, -5381.777, 0);  
-
-  /*CONSOLE.print(gps.relPosE - gpsPos.x, 8);
-  CONSOLE.print(" ");
-  CONSOLE.println(gps.relPosN - gpsPos.y, 8);*/
+    gpsPos = vec3_t(gps.relPosE + RELPOS_OFFSET_E, gps.relPosN + RELPOS_OFFSET_N, 0);  
 
   // gps antenna offset
   if (GPS_POSITION_OFFSET_ENABLED && imuDriver.imuFound)
   {
-    vec3_t gpsOffset = forward * (GPS_POSITION_OFFSET_FORWARD / 100.0)
-                      + right * (GPS_POSITION_OFFSET_RIGHT / 100.0)
-                      + up * (GPS_POSITION_OFFSET_UP / 100.0);
+    vec3_t gpsOffset = 
+      forward * (GPS_POSITION_OFFSET_FORWARD / 100.0)
+      + right * (GPS_POSITION_OFFSET_RIGHT / 100.0)
+      + up * (GPS_POSITION_OFFSET_UP / 100.0);
 
     gpsPos += gpsOffset ^ vec3_t(1,1,0);
   }

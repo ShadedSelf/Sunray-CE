@@ -132,9 +132,9 @@ class GpsDriver {
     double lon;        // deg
     double lat;        // deg
     double height;     // m
-    float relPosN;     // m
-    float relPosE;     // m
-    float relPosD;     // m
+    double relPosN;    // m
+    double relPosE;    // m
+    double relPosD;    // m
     float heading;     // rad
     float groundSpeed; // m/s
     float accuracy;    // m

@@ -6,6 +6,7 @@
 #include "Arduino.h"
 #include "ublox.h"
 #include "../../config.h"
+#include "../../robot.h"
 #include "src/SparkFun_u-blox_GNSS_v3.h" 
 
 
@@ -404,7 +405,8 @@ void UBLOX::dispatchMessage() {
               height = 1e-3 * ((double)(signed long)this->unpack_int32(16) + ((double)(signed char)this->unpack_int8(26) * 0.1)); // HAE (WGS84 height)
               hAccuracy = (double)(unsigned long)this->unpack_int32(28) * 0.1 / 1000.0;
               vAccuracy = (double)(unsigned long)this->unpack_int32(32) * 0.1 / 1000.0;
-              accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));                 
+              if (absolutePosSource)
+               accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));                  
             }
             break;            
           case 0x43:
@@ -451,12 +453,20 @@ void UBLOX::dispatchMessage() {
           case 0x3C: 
             { // UBX-NAV-RELPOSNED              
               iTOW = (unsigned long)this->unpack_int32(4); 
-              relPosN = ((double)(signed long)this->unpack_int32(8) + ((double)(signed char)this->unpack_int8(32) * 1e-2)) / 100.0;
-              relPosE = ((double)(signed long)this->unpack_int32(12) + ((double)(signed char)this->unpack_int8(33) * 1e-2)) / 100.0;
-              relPosD = ((double)(signed long)this->unpack_int32(16) + ((double)(signed char)this->unpack_int8(34) * 1e-2)) / 100.0;
-              solution = (SolType)((this->unpack_int32(60) >> 3) & 3);              
+              relPosN = ((double)(signed long)this->unpack_int32(8 ) + (double)(signed char)this->unpack_int8(32) * 1e-2) / 100.0;
+              relPosE = ((double)(signed long)this->unpack_int32(12) + (double)(signed char)this->unpack_int8(33) * 1e-2) / 100.0;
+              relPosD = ((double)(signed long)this->unpack_int32(16) + (double)(signed char)this->unpack_int8(34) * 1e-2) / 100.0;
+              solution = (SolType)((this->unpack_int32(60) >> 3) & 3); 
+
               solutionAvail = true;
-              solutionTimeout=millis() + 1000;                           
+              solutionTimeout = millis() + 1000; 
+
+              if (!absolutePosSource)
+              {
+                double accN = (double)(unsigned long)this->unpack_int32(36) * 0.1 / 1000.0;
+                double accE = (double)(unsigned long)this->unpack_int32(40) * 0.1 / 1000.0;
+                accuracy = sqrt(sq(accN) + sq(accE)); 
+              }                          
             }
             break;            
         }

@@ -334,6 +334,9 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define GPS_IMU_FUSION 0.995      // (0-1) weight for IMU heading fusion with GPS heading
 #define IMU_FLOAT_FUSION 0.99    // (0-1) weight for IMU+odometry position fusion with float GPS position
 
+#define RELPOS_OFFSET_E 0.0  // Relative GPS position offset East
+#define RELPOS_OFFSET_N 0.0  // Relative GPS position offset North
+
 // ------ obstacle detection and avoidance  -------------------------
 
 #define ENABLE_PATH_FINDER  true     // path finder calculates routes around exclusions and obstacles 

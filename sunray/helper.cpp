@@ -188,7 +188,7 @@ double distanceLL(double lat1, double lon1, double lat2, double lon2)
   return delta * 6372795.0; 
 }
 
-void relativeLL(double lat1, double lon1, double lat2, double lon2, float &n, float &e){  
+void relativeLL(double lat1, double lon1, double lat2, double lon2, double &n, double &e){  
   // compute relative north/east coordinates (n,e) in meters between (lat,lon1) and (lat2,lon2)  
   int slat = sign(lat2-lat1);
   int slon = sign(lon2-lon1);
