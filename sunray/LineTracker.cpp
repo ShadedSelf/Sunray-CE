@@ -20,13 +20,12 @@ float stanleyTrackingSlowP = 0;
 float setSpeed = 0.1; // linear speed (m/s)
 //float adaptiveSpeed = 0.1;
 bool stateKidnapped = false;
-bool printmotoroverload = false;
 
 
 //PID adaptiveSpeedPID;
 
 
-bool nearPerimeter()
+bool isNearPerimeter()
 {
   bool isInside = true;
 
@@ -55,10 +54,8 @@ bool isCloseToDock()
 // https://medium.com/@dingyan7361/three-methods-of-vehicle-lateral-control-pure-pursuit-stanley-and-mpc-db8cc1d32081
 void trackLine(bool runControl){  
 
-  bool targetReached =
-    maps.distanceToTargetPoint(position.x, position.y) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE);
-
-  if (targetReached){
+  // target reached
+  if (maps.distanceToTargetPoint(position.x, position.y) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE)){
     activeOp->onTargetReached();
     if (!maps.nextPoint(false, position.x, position.y))   
       activeOp->onNoFurtherWaypoints(); // finish    
@@ -69,7 +66,7 @@ void trackLine(bool runControl){
 
   //float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());   
   float targetDelta = pointsAngle(position.x, position.y, target.x(), target.y());    
-  if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
+  if (maps.trackReverse)targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, heading);
   
   float trackerDiffDelta = distancePI(heading, targetDelta);                         
@@ -81,27 +78,27 @@ void trackLine(bool runControl){
 
   // allow rotations only near last or next waypoint or if too far away from path
   bool angleToTargetFits = true;
-  if ( (targetDist < 0.25) || (lastTargetDist < 0.25) || (fabs(distToPath) > 0.25) ) {
+  if (targetDist < 0.25 || lastTargetDist < 0.25 || fabs(distToPath) > 0.25) {
     if (SMOOTH_CURVES) angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 120);
-    else               angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 20);
+    else               angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 10);
   }
-  else
-    angleToTargetFits = true;
 
 
   float linear = 0.0;  
   float angular = 0.0; 
 
   // rover angle too far away from target angle, rotate rover
-  if (!angleToTargetFits){
-    linear = 0;
+  if (!angleToTargetFits)
+  {
     angular = 29.0 / 180.0 * PI * 1.25; //  29 degree/s (0.5 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
+
+    //float aDistace = min(trackerDiffDelta, prevtrackerDiffDelta)
+    //float aDistance = degrees(fabs(trackerDiffDelta));
+    //angular *= constrain(1.0 - degrees(aDistance)/10.0, 0.0, 10.);
   } 
   else // line control (stanley)    
   {
-    bool straight = maps.nextPointIsStraight();
-
     // linear speed modifiers
     if (maps.trackSlow && isCloseToDock())  // planner forces slow tracking (e.g. docking etc)
       linear = 0.1;     
@@ -110,12 +107,12 @@ void trackLine(bool runControl){
       || motor.motorMowOverload)
         linear = 0.1;                       // overload
     else if (setSpeed > 0.2                 // reduce speed when approaching/leaving waypoints    
-      && (targetDist < 0.25 && (!straight)) // approaching
-      || (lastTargetDist < 0.25))           // leaving  
+      && (targetDist < 0.2 && !maps.nextPointIsStraight()) // approaching
+      || (lastTargetDist < 0.2))           // leaving  
         linear = 0.15;         
     else if (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
     else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
-    else if (SET_PERIMETER_SPEED && nearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
+    else if (SET_PERIMETER_SPEED && isNearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
     else if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)
     {    
       /*adaptiveSpeedPID.Kp = 0.0025;
@@ -152,61 +149,53 @@ void trackLine(bool runControl){
     angular = p * trackerDiffDelta + atan(k * lateralError);  // correct for path errors   
     angular = constrain(angular, -PI/4.0, PI/4.0);            // constrain rotation
     
-    if (maps.trackReverse) linear *= -1;   // reverse line tracking needs negative speed 
-    
-    // slow down on heading error
-    linear *= exp(-trackerDiffDelta * trackerDiffDelta * HEADING_ERROR_SPEED_FACTOR);
-
-    // slow down on uphill?
-    // linear *= 1.0 - max(imu.pitch, 0.0)
+    if (maps.trackReverse) linear *= -1.0;   // reverse line tracking needs negative speed 
+    linear *= exp(-trackerDiffDelta * trackerDiffDelta * HEADING_ERROR_SPEED_FACTOR);    // slow down on heading error
+    linear *= 1.0 - constrain(-imuDriver.pitch / (PI*0.5) - 0.1, 0.0, 1.0);              // slow down on uphill
   }
   
   // check some pre-conditions that can make linear+angular speed zero
   if (fixTimeout != 0 && millis() > lastFixTime + fixTimeout * 1000.0 && !maps.isDocking())
       activeOp->onGpsFixTimeout();            
 
-  if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT)) // && lastFix time - now > 1000   
-    if (abs(linear) > 0.06)
-      if ((millis() > linearMotionStartTime + 5000) && (stateGroundSpeed < 0.03))
-        // if in linear motion and not enough ground speed => obstacle
-        if (GPS_SPEED_DETECTION) {         
-          CONSOLE.println("gps no speed => obstacle!");
-          statMowGPSNoSpeedCounter++;
-          triggerObstacle();
-          return; }
-  else { // no gps solution
-    if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking()){
+  if (gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT && !maps.isUndocking()) // && lastFix time - now > 1000
+  {  
+    if (GPS_SPEED_DETECTION && abs(linear) > 0.06
+    && millis() > linearMotionStartTime + 5000 && stateGroundSpeed < 0.03) // if in linear motion and not enough ground speed => obstacle
+    {         
+      CONSOLE.println("gps no speed => obstacle!");
+      statMowGPSNoSpeedCounter++;
+      triggerObstacle();
+      //return;
+    }
+  }
+  else // no gps solution
+  {
+    if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking())
+    {
       CONSOLE.println("WARN: no gps solution!");
       activeOp->onGpsNoSignal();
     }
   }
 
-  // gps-jump/false fix check
-  if (KIDNAP_DETECT){
-    float allowedPathTolerance = KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE;     
-    if ( maps.isUndocking() || maps.isDocking() ) {
-        float dockX = 0;
-        float dockY = 0;
-        float dockDelta = 0;
-        maps.getDockingPos(dockX, dockY, dockDelta);
-        float dist = distance(dockX, dockY, position.x, position.y);
-        // check if current distance to docking station is below
-        if (dist < KIDNAP_DETECT_DISTANCE_DOCK_UNDOCK)
-            allowedPathTolerance = KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE_DOCK_UNDOCK;
-    }
-    if (fabs(distToPath) > allowedPathTolerance){ // actually, this should not happen (except on false GPS fixes or robot being kidnapped...)
-      if (!stateKidnapped){
-        stateKidnapped = true;
-        activeOp->onKidnapped(stateKidnapped);
-      }            
-    }
-    else {
-      if (stateKidnapped) {
-        stateKidnapped = false;
-        activeOp->onKidnapped(stateKidnapped);        
-      }
+  // kidnap detect
+#if KIDNAP_DETECT
+  if (fabs(distToPath) > KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE)
+  {
+    if (!stateKidnapped){
+      stateKidnapped = true;
+      activeOp->onKidnapped(stateKidnapped);
+    }            
+  }
+  else
+  {
+    if (stateKidnapped) {
+      stateKidnapped = false;
+      activeOp->onKidnapped(stateKidnapped);        
     }
   }
+#endif
+
 
   // -- set speeds --
 

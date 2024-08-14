@@ -400,13 +400,19 @@ void UBLOX::dispatchMessage() {
           case 0x14: 
             { // UBX-NAV-HPPOSLLH
               iTOW = (unsigned long)this->unpack_int32(4);
-              lon = 1e-7 * ((double)(signed long)this->unpack_int32(8) + ((double)(signed char)this->unpack_int8(24) * 1e-2));
-              lat = 1e-7 * ((double)(signed long)this->unpack_int32(12) + ((double)(signed char)this->unpack_int8(25) * 1e-2));
-              height = 1e-3 * ((double)(signed long)this->unpack_int32(16) + ((double)(signed char)this->unpack_int8(26) * 0.1)); // HAE (WGS84 height)
+              lon = (double)(signed long)this->unpack_int32(8 ) * 1e-7 + (double)(signed char)this->unpack_int8(24) * 1e-9;
+              lat = (double)(signed long)this->unpack_int32(12) * 1e-7 + (double)(signed char)this->unpack_int8(25) * 1e-9;
+              height = 1e-3 * ((double)(signed long)this->unpack_int32(16) + (double)(signed char)this->unpack_int8(26) * 0.1); // HAE (WGS84 height)
               hAccuracy = (double)(unsigned long)this->unpack_int32(28) * 0.1 / 1000.0;
               vAccuracy = (double)(unsigned long)this->unpack_int32(32) * 0.1 / 1000.0;
+              
               if (absolutePosSource)
-               accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));                  
+              {
+                accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));
+                
+                solutionAvail = true;
+                solutionTimeout = millis() + 1000; 
+              }                 
             }
             break;            
           case 0x43:
@@ -458,15 +464,15 @@ void UBLOX::dispatchMessage() {
               relPosD = ((double)(signed long)this->unpack_int32(16) + (double)(signed char)this->unpack_int8(34) * 1e-2) / 100.0;
               solution = (SolType)((this->unpack_int32(60) >> 3) & 3); 
 
-              solutionAvail = true;
-              solutionTimeout = millis() + 1000; 
-
               if (!absolutePosSource)
               {
                 double accN = (double)(unsigned long)this->unpack_int32(36) * 0.1 / 1000.0;
                 double accE = (double)(unsigned long)this->unpack_int32(40) * 0.1 / 1000.0;
-                accuracy = sqrt(sq(accN) + sq(accE)); 
-              }                          
+                accuracy = sqrt(sq(accN) + sq(accE));
+
+                solutionAvail = true;
+                solutionTimeout = millis() + 1000; 
+              }                     
             }
             break;            
         }
@@ -519,7 +525,6 @@ long UBLOX::unpack(int offset, int size) {
 void UBLOX::run()
 {
 	if (millis() > solutionTimeout){
-    //CONSOLE.println("UBLOX::solutionTimeout");
     solution = SOL_INVALID;
     solutionTimeout = millis() + 1000;
     solutionAvail = true;
@@ -532,16 +537,11 @@ void UBLOX::run()
   while (_bus->available()) {		
     byte data = _bus->read();        
 		parse(data);
-#ifdef GPS_DUMP
-    if (data == 0xB5) CONSOLE.println("\n");
-    CONSOLE.print(data, HEX);
-    CONSOLE.print(",");    
-#endif
   }
 
   // HACKY: force high precision float to fixed
-  if (solutionAvail && solution == SOL_FLOAT && accuracy <= 0.03)
-    solution = SOL_FIXED;
+  //if (solutionAvail && solution == SOL_FLOAT && accuracy <= 0.03)
+  //  solution = SOL_FIXED;
 }
 
 

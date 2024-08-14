@@ -188,12 +188,12 @@ double distanceLL(double lat1, double lon1, double lat2, double lon2)
   return delta * 6372795.0; 
 }
 
-void relativeLL(double lat1, double lon1, double lat2, double lon2, double &n, double &e){  
-  // compute relative north/east coordinates (n,e) in meters between (lat,lon1) and (lat2,lon2)  
-  int slat = sign(lat2-lat1);
-  int slon = sign(lon2-lon1);
-  n = slat * distanceLL(lat1, lon1, lat2, lon1);
-  e = slon * distanceLL(lat1, lon1, lat1, lon2);
+void relativeLL(double latOrigin, double lonOrigin, double lat, double lon, double &n, double &e){  
+  // compute relative north/east coordinates (n,e) in meters between (latOrigin,lonOrigin) and (lat,lon)  
+  int slat = sign(lat-latOrigin);
+  int slon = sign(lon-lonOrigin);
+  n = slat * distanceLL(latOrigin, lonOrigin, lat, lonOrigin);
+  e = slon * distanceLL(latOrigin, lonOrigin, latOrigin, lon);
 }
 
 int freeRam () {
