@@ -994,22 +994,20 @@ bool Map::startDocking(float stateX, float stateY){
   }
 }
 
-bool Map::startMowing(float stateX, float stateY){  
+bool Map::startMowing(float stateX, float stateY)
+{  
   CONSOLE.println("Map::startMowing");
-  //stressTest();
-  //testIntegerCalcs();
-  //return false;
-  // ------
+
   if ((memoryCorruptions != 0) || (memoryAllocErrors != 0)){
     CONSOLE.println("ERROR startMowing: memory errors");
     return false; 
   }  
+
   shouldDock = false;
   shouldRetryDock = false;
   shouldMow = true;    
   if (mowPoints.numPoints > 0){
     // find valid path from robot (or first docking point) to mowing point    
-    //freePoints.alloc(0);
     Point src;
     Point dst;
     src.setXY(stateX, stateY);
@@ -1019,9 +1017,7 @@ bool Map::startMowing(float stateX, float stateY){
       wayMode = WAY_FREE;      
       freePointsIdx = 0;    
     }        
-    if (findObstacleSafeMowPoint(dst)){
-      //dst.assign(mowPoints.points[mowPointsIdx]);      
-      //findPathFinderSafeStartPoint(src, dst);      
+    if (findObstacleSafeMowPoint(dst)){    
       if (findPath(src, dst)){        
         return true;
       } else {
@@ -1811,7 +1807,8 @@ bool Map::findPath(Point &src, Point &dst){
     
     // create path-finder obstacles    
     int idx = 0;
-    if (!pathFinderObstacles.alloc(1 + exclusions.numPolygons + obstacles.numPolygons)) return false;
+    if (!pathFinderObstacles.alloc(1 + exclusions.numPolygons + obstacles.numPolygons)) 
+      return false;
     
     if (freeMemory () < 5000){
       CONSOLE.println("OUT OF MEMORY");
@@ -1822,26 +1819,20 @@ bool Map::findPath(Point &src, Point &dst){
     // and end point. To have something to check intersection with, we offset the perimeter (make bigger) and exclusions
     //  (maker schmaller) and use them as 'obstacles'.
     
-    if (!polygonOffset(perimeterPoints, pathFinderObstacles.polygons[idx], 0.04)) return false;
+    if (!polygonOffset(perimeterPoints, pathFinderObstacles.polygons[idx], 0.04))
+      return false;
     idx++;
     
     for (int i=0; i < exclusions.numPolygons; i++){
-      if (!polygonOffset(exclusions.polygons[i], pathFinderObstacles.polygons[idx], -0.04)) return false;
+      if (!polygonOffset(exclusions.polygons[i], pathFinderObstacles.polygons[idx], -0.04))
+        return false;
       idx++;
     }      
     for (int i=0; i < obstacles.numPolygons; i++){
-      if (!polygonOffset(obstacles.polygons[i], pathFinderObstacles.polygons[idx], -0.04)) return false;
+      if (!polygonOffset(obstacles.polygons[i], pathFinderObstacles.polygons[idx], -0.04))
+        return false;
       idx++;
     }  
-    
-    //CONSOLE.println("perimeter");
-    //perimeterPoints.dump();
-    //CONSOLE.println("exclusions");
-    //exclusions.dump();
-    //CONSOLE.println("obstacles");
-    //obstacles.dump();
-    //CONSOLE.println("pathFinderObstacles");
-    //pathFinderObstacles.dump();
     
     // create nodes
     int allocNodeCount = exclusions.numPoints() + obstacles.numPoints() + perimeterPoints.numPoints + 2;
@@ -1853,10 +1844,11 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.print(sizeof(Node) * allocNodeCount);
     CONSOLE.println(" bytes)");
 
-    if (!pathFinderNodes.alloc(allocNodeCount)) return false;
-    for (int i=0; i < pathFinderNodes.numNodes; i++){
+    if (!pathFinderNodes.alloc(allocNodeCount))
+      return false;
+    for (int i=0; i < pathFinderNodes.numNodes; i++)
       pathFinderNodes.nodes[i].init();
-    }
+
     // exclusion nodes
     idx = 0;
     for (int i=0; i < exclusions.numPolygons; i++){
@@ -1865,6 +1857,7 @@ bool Map::findPath(Point &src, Point &dst){
         idx++;
       }
     }
+
     // obstacle nodes    
     for (int i=0; i < obstacles.numPolygons; i++){
       for (int j=0; j < obstacles.polygons[i].numPoints; j++){    
@@ -1872,11 +1865,15 @@ bool Map::findPath(Point &src, Point &dst){
         idx++;
       }
     }
+
     // perimeter nodes
-    for (int j=0; j < perimeterPoints.numPoints; j++){    
-      pathFinderNodes.nodes[idx].point = &perimeterPoints.points[j];
+    Polygon tmp;
+    polygonOffset(perimeterPoints, tmp, -PERIMETER_OFFFSET);
+    for (int j=0; j < tmp.numPoints; j++){    
+      pathFinderNodes.nodes[idx].point = &tmp.points[j];
       idx++;
     }      
+
     // start node
     Node *start = &pathFinderNodes.nodes[idx];
     start->point = &src;
@@ -1886,14 +1883,7 @@ bool Map::findPath(Point &src, Point &dst){
     Node *end = &pathFinderNodes.nodes[idx];
     end->point = &dst;    
     idx++;
-    //CONSOLE.print("nodes=");
-    //CONSOLE.print(nodes.numNodes);
-    //CONSOLE.print(" idx=");
-    //CONSOLE.println(idx);
-    
-    
-    //CONSOLE.print("sz=");
-    //CONSOLE.println(sizeof(visitedPoints));
+
     
     int timeout = 1000;    
     Node *currentNode = NULL;
@@ -1902,70 +1892,52 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.println (freeMemory ());
     
     CONSOLE.println("starting path-finder");
-    while(true) {       
+    while(true) 
+    {       
       if (millis() >= nextProgressTime){
-        nextProgressTime = millis() + 1000;          
+        nextProgressTime = millis() + WATCHDOG_TIMER/5;          
         CONSOLE.print(".");
         watchdogReset();     
       }
+
       timeout--;            
       if (timeout == 0){
         CONSOLE.println("timeout");
         break;
       }
+
       // Grab the lowest f(x) to process next
       int lowInd = -1;
-      //CONSOLE.println("finding lowest cost node...");
-      for(int i=0; i<pathFinderNodes.numNodes; i++) {
-        if ((pathFinderNodes.nodes[i].opened) && ((lowInd == -1) || (pathFinderNodes.nodes[i].f < pathFinderNodes.nodes[lowInd].f))) { 
+      for(int i=0; i<pathFinderNodes.numNodes; i++)
+        if (pathFinderNodes.nodes[i].opened && (lowInd == -1 || pathFinderNodes.nodes[i].f < pathFinderNodes.nodes[lowInd].f))
           lowInd = i;
-          /*CONSOLE.print("opened node i=");
-          CONSOLE.print(i);
-          CONSOLE.print(" x=");
-          CONSOLE.print(pathFinderNodes.nodes[i].point->x());
-          CONSOLE.print(" y=");
-          CONSOLE.print(pathFinderNodes.nodes[i].point->y());
-          CONSOLE.print(" f=");          
-          CONSOLE.print(pathFinderNodes.nodes[i].f); 
-          CONSOLE.print(" lowInd=");          
-          CONSOLE.print(lowInd);                    
-          CONSOLE.println();*/           
-        }              
-      }
-      //CONSOLE.print("lowInd=");
-      //CONSOLE.println(lowInd);
-      if (lowInd == -1) break;
-      currentNode = &pathFinderNodes.nodes[lowInd]; 
-      // console.log('ol '+openList.length + ' cl ' + closedList.length + ' ' + currentNode.pos.X + ',' + currentNode.pos.Y);
+
+      if (lowInd == -1)
+        break;
+
+      currentNode = &pathFinderNodes.nodes[lowInd];
+
       // End case -- result has been found, return the traced path
-      if (distance(*currentNode->point, *end->point) < 0.02) break;        
+      if (distance(*currentNode->point, *end->point) < 0.02)
+        break;        
       // Normal case -- move currentNode from open to closed, process each of its neighbors      
       currentNode->opened = false;
       currentNode->closed = true;
-      //console.log('cn  pos'+currentNode.pos.X+','+currentNode.pos.Y);            
-      //console.log('neighbors '+neighbors.length);      
-      int neighborIdx = -1;
-      //CONSOLE.print("currentNode ");
-      //CONSOLE.print(currentNode->point->x);
-      //CONSOLE.print(",");
-      //CONSOLE.println(currentNode->point->y);      
-      while (true) {        
+      
+      int neighborIdx = -1;      
+      while (true)
+      {        
         neighborIdx = findNextNeighbor(pathFinderNodes, pathFinderObstacles, *currentNode, neighborIdx); 
-        if (neighborIdx == -1) break;
+        if (neighborIdx == -1)
+          break;
         Node* neighbor = &pathFinderNodes.nodes[neighborIdx];                
         
         if (millis() >= nextProgressTime){
-          nextProgressTime = millis() + 1000;          
+          nextProgressTime = millis() + WATCHDOG_TIMER/5;          
           CONSOLE.print("+");
           watchdogReset();     
         }
-        //CONSOLE.print("neighbor=");
-        //CONSOLE.print(neighborIdx);
-        //CONSOLE.print(":");
-        //CONSOLE.print(neighbor->point->x());
-        //CONSOLE.print(",");
-        //CONSOLE.println(neighbor->point->y());
-        //this.debugPaths.push( [currentNode.pos, neighbor.pos] );
+
         // g score is the shortest distance from start to current node, we need to check if
         //   the path we have arrived at this neighbor is the shortest one we have seen yet
         //var gScore = currentNode.g + 1; // 1 is the distance from a node to it's neighbor
@@ -1979,17 +1951,16 @@ bool Map::findPath(Point &src, Point &dst){
           neighbor->h = calcHeuristic(*neighbor->point, *end->point);
           neighbor->opened = true;
         }
-        else if(gScore < neighbor->g) {
+        else if (gScore < neighbor->g) {
           // We have already seen the node, but last time it had a worse g (distance from start)
           gScoreIsBest = true;
         } 
-        if(gScoreIsBest) {
+        if (gScoreIsBest) {
           // Found an optimal (so far) path to this node.   Store info on how we got here and
           //  just how good it really is...
           neighbor->parent = currentNode;
           neighbor->g = gScore;
           neighbor->f = neighbor->g + neighbor->h;
-          //neighbor.debug = "F: " + neighbor.f + "<br />G: " + neighbor.g + "<br />H: " + neighbor.h;
         }
       }
     } 
@@ -1999,18 +1970,20 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.print(" duration=");
     CONSOLE.println(millis()-startTime);  
 
-    //delay(8000); // simulate a busy path finder
-
     resetImuTimeout();
 
-    if ((currentNode != NULL) && (distance(*currentNode->point, *end->point) < 0.02)) {
+    if (currentNode != NULL && distance(*currentNode->point, *end->point) < 0.02)
+    {
       Node *curr = currentNode;
       int nodeCount = 0;
       while(curr) {                
         nodeCount++;
         curr = curr->parent;        
       }      
-      if (!freePoints.alloc(nodeCount)) return false;
+
+      if (!freePoints.alloc(nodeCount))
+        return false;
+        
       curr = currentNode;
       int idx = nodeCount-1;
       while(curr) {                                
@@ -2025,12 +1998,10 @@ bool Map::findPath(Point &src, Point &dst){
     } else {
       // No result was found
       CONSOLE.println("pathfinder: no path");      
-      return false;
-      //freePoints.alloc(2);
-      //freePoints.points[0].assign(src);    
-      //freePoints.points[1].assign(dst);        
+      return false;      
     }       
-  } else {  // path finder not enabled (ENABLE_PATH_FINDER=false)    
+  } 
+  else {  // path finder not enabled (ENABLE_PATH_FINDER=false)    
     if (!freePoints.alloc(2)) return false;
     freePoints.points[0].assign(src);    
     freePoints.points[1].assign(dst);        
