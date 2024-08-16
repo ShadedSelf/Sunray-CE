@@ -347,6 +347,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define DISABLE_MOW_MOTOR_AT_OBSTACLE true // switch off mow motor while escape at detected obstacle; set false if mow motor shall not be stopped at detected obstacles
 
 #define PERIMETER_OFFFSET 0.0 // perimeter offset in meters for pathfinder
+#define EXCLUSION_OFFFSET 0.0 // exclusion offset in meters for pathfinder
 
 #define KIDNAP_DETECT true  // recommended
 #define KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE 1.0  // allowed path tolerance (m) 

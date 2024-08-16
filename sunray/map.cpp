@@ -1852,8 +1852,10 @@ bool Map::findPath(Point &src, Point &dst){
     // exclusion nodes
     idx = 0;
     for (int i=0; i < exclusions.numPolygons; i++){
-      for (int j=0; j < exclusions.polygons[i].numPoints; j++){    
-        pathFinderNodes.nodes[idx].point = &exclusions.polygons[i].points[j];
+      Polygon tmp;
+      polygonOffset(exclusions.polygons[i], tmp, EXCLUSION_OFFFSET);
+      for (int j=0; j < tmp.numPoints; j++){    
+        pathFinderNodes.nodes[idx].point = &tmp.points[j];
         idx++;
       }
     }
