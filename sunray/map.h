@@ -74,7 +74,7 @@ class PolygonList // owns polygons!
 class Node   // nodes just hold references to points and other nodes
 {
   public:
-    Point *point;
+    Point point;
     Node *parent;
     bool opened;
     bool closed;
@@ -82,7 +82,7 @@ class Node   // nodes just hold references to points and other nodes
     float h;
     float f;
     Node();
-    Node(Point *aPoint, Node *aParentNode);
+    Node(Point aPoint, Node *aParentNode);
     void init();
     void dealloc();
 };
@@ -146,8 +146,6 @@ class Map
     PolygonList exclusions;   // list of exclusion points    
     PolygonList obstacles;     
     PolygonList pathFinderObstacles;
-    Polygon pathFinderPerimeter;
-    PolygonList pathFinderExclusions;
     NodeList pathFinderNodes;
     File mapFile;
     int exclusionPointsCount;        
@@ -219,7 +217,7 @@ class Map
     
     // -----misc-----------------------------------------------
     bool pointIsInsidePolygon( Polygon &polygon, Point &pt);
-    bool findPath(Point &src, Point &dst);    
+    bool findPath(Point src, Point dst);    
     void generateRandomMap();    
     // check if given point is inside perimeter (and outside exclusions) of current map 
     bool isInsidePerimeterOutsideExclusions(Point &pt);
@@ -230,12 +228,8 @@ class Map
     bool nextDockPoint(bool sim);
     bool nextFreePoint(bool sim);        
     float distance(Point &src, Point &dst);        
-    float pointsAngle(float x1, float y1, float x2, float y2);
-    float scalePI(float v);
-    float distancePI(float x, float w);
     float distanceManhattan(Point &pos0, Point &pos1);
     float calcHeuristic(Point &pos0, Point &pos1);
-    float scalePIangles(float setAngle, float currAngle);
     bool lineIntersects (Point &p0, Point &p1, Point &p2, Point &p3);        
     bool linePolygonIntersection( Point &src, Point &dst, Polygon &poly);
     float polygonArea(Polygon &poly);

@@ -333,7 +333,7 @@ Node::Node(){
   init();
 }
 
-Node::Node(Point *aPoint, Node *aParentNode){
+Node::Node(Point aPoint, Node *aParentNode){
   init();
   point = aPoint;
   parent = aParentNode;  
@@ -345,7 +345,7 @@ void Node::init(){
   f = 0;
   opened = false;
   closed = false;
-  point = NULL;
+  point = Point(0, 0);
   parent = NULL;
 }
 
@@ -375,18 +375,23 @@ NodeList::~NodeList(){
   //dealloc();
 }
 
-bool NodeList::alloc(short aNumNodes){  
-  if (aNumNodes == numNodes) return true;
-  if ((aNumNodes < 0) || (aNumNodes > 20000)) {
+bool NodeList::alloc(short aNumNodes)
+{  
+  if (aNumNodes == numNodes)
+    return true;
+
+  if (aNumNodes < 0 || aNumNodes > 20000) {
     CONSOLE.println("ERROR NodeList::alloc invalid number");    
     return false;
   }
+
   Node* newNodes = new Node[aNumNodes+CHECK_CORRUPT];  
   if (newNodes == NULL){
     CONSOLE.println("ERROR NodeList::alloc");
     memoryAllocErrors++;
     return false;
   }
+
   if (nodes != NULL){
     memcpy(newNodes, nodes, sizeof(Node)* min(numNodes, aNumNodes));        
     if (aNumNodes < numNodes){
@@ -394,21 +399,24 @@ bool NodeList::alloc(short aNumNodes){
         //nodes[i].dealloc();        
       }  
     }
-    if (nodes[numNodes].point != CHECK_POINT) memoryCorruptions++;
+    //if (nodes[numNodes].point != CHECK_POINT) memoryCorruptions++;
     delete[] nodes;    
   } 
   nodes = newNodes;              
   numNodes = aNumNodes;  
-  nodes[numNodes].point=CHECK_POINT;
+  //nodes[numNodes].point=CHECK_POINT;
   return true;
 }
 
 void NodeList::dealloc(){
-  if (nodes == NULL) return;
-  for (int i=0; i < numNodes; i++){
+  if (nodes == NULL)
+    return;
+
+  for (int i=0; i < numNodes; i++)
     nodes[i].dealloc();        
-  }  
-  if (nodes[numNodes].point != CHECK_POINT) memoryCorruptions++;
+
+  //if (nodes[numNodes].point != CHECK_POINT)
+    //memoryCorruptions++;
   delete[] nodes;
   nodes = NULL;
   numNodes = 0;  
@@ -417,51 +425,6 @@ void NodeList::dealloc(){
 
 
 // ---------------------------------------------------------------------
-
-// rescale to -PI..+PI
-float Map::scalePI(float v)
-{
-  float d = v;
-  while (d < 0) d+=2*PI;
-  while (d >= 2*PI) d-=2*PI;
-  if (d >= PI) return (-2*PI+d);
-  else if (d < -PI) return (2*PI+d);
-  else return d;
-}
-
-
-// scale setangle, so that both PI angles have the same sign
-float Map::scalePIangles(float setAngle, float currAngle){
-  if ((setAngle >= PI/2) && (currAngle <= -PI/2)) return (setAngle-2*PI);
-    else if ((setAngle <= -PI/2) && (currAngle >= PI/2)) return (setAngle+2*PI);
-    else return setAngle;
-}
-
-
-// compute course (angle in rad) between two points
-float Map::pointsAngle(float x1, float y1, float x2, float y2){
-  float dX = x2 - x1;
-  float dY = y2 - y1;
-  float angle = scalePI(atan2(dY, dX));           
-  return angle;
-}
-
-
-
-// computes minimum distance between x radiant (current-value) and w radiant (set-value)
-float Map::distancePI(float x, float w)
-{
-  // cases:
-  // w=330 degree, x=350 degree => -20 degree
-  // w=350 degree, x=10  degree => -20 degree
-  // w=10  degree, x=350 degree =>  20 degree
-  // w=0   degree, x=190 degree => 170 degree
-  // w=190 degree, x=0   degree => -170 degree
-  float d = scalePI(w - x);
-  if (d < -PI) d = d + 2*PI;
-  else if (d > PI) d = d - 2*PI;
-  return d; 
-}
 
 // This is the Manhattan distance
 float Map::distanceManhattan(Point &pos0, Point &pos1){
@@ -667,8 +630,6 @@ void Map::clearMap(){
   freePoints.dealloc();
   obstacles.dealloc();
   pathFinderObstacles.dealloc();
-  pathFinderPerimeter.dealloc();
-  pathFinderExclusions.dealloc();
   pathFinderNodes.dealloc();
 }
 
@@ -1659,111 +1620,65 @@ float Map::calcHeuristic(Point &pos0, Point &pos1) {
 // 2. if start node is inside exclusion, it must be within a certain distance to section point with exclusion (to next node) 
 // 3. otherwise: line between start node and next node node must not intersect any obstacle  
   
-int Map::findNextNeighbor(NodeList &nodes, PolygonList &obstacles, Node &node, int startIdx) {
-  Point dbgSrcPt(4.2, 6.2);
-  Point dbgDstPt(3.6, 6.8);  
-  float dbgSrcDist = distance(*node.point, dbgSrcPt);
-  bool verbose = false; 
-  if (dbgSrcDist < 0.2){
-    verbose = true;
-  }
-  //CONSOLE.print("start=");
-  //CONSOLE.print((*node.point).x());
-  //CONSOLE.print(",");
-  //CONSOLE.println((*node.point).y());   
-  for (int idx = startIdx+1; idx < nodes.numNodes; idx++){
+int Map::findNextNeighbor(NodeList &nodes, PolygonList &obstacles, Node &node, int startIdx)
+{
+  for (int idx = startIdx+1; idx < nodes.numNodes; idx++)
+  {
     if (nodes.nodes[idx].opened) continue;
     if (nodes.nodes[idx].closed) continue;                
-    if (nodes.nodes[idx].point == node.point) continue;     
-    Point *pt = nodes.nodes[idx].point;            
-    
-    if (verbose){
-      float dbgDstDist = distance(*pt, dbgDstPt);
-      if (dbgDstDist < 0.2){
-        CONSOLE.println("findNextNeighbor trigger debug");        
-      } else verbose = false;
-    }
-    //if (pt.visited) continue;
-    //if (this.distance(pt, node.pos) > 10) continue;
+    if (&nodes.nodes[idx] == &node) continue;
+    Point *pt = &nodes.nodes[idx].point;            
+
     bool safe = true;            
     Point sectPt;
-    //CONSOLE.print("----check new path with all polygons---dest=");
-    //CONSOLE.print((*pt).x());
-    //CONSOLE.print(",");
-    //CONSOLE.println((*pt).y());  
-  
+
     // check new path with all obstacle polygons (perimeter, exclusions, obstacles)     
-    for (int idx3 = 0; idx3 < obstacles.numPolygons; idx3++){             
-       bool isPeri = ((perimeterPoints.numPoints > 0) && (idx3 == 0));  // if first index, it's perimeter, otherwise exclusions                           
-       if (isPeri){ // we check with the perimeter?         
-         //CONSOLE.println("we check with perimeter");
-         bool insidePeri = pointIsInsidePolygon(obstacles.polygons[idx3], *node.point);
-         if (verbose){
-           CONSOLE.print("insidePeri ");
-           CONSOLE.println(insidePeri);
-         }
-         if (!insidePeri) { // start point outside perimeter?                                                                                      
-             //CONSOLE.println("start point oustide perimeter");
-             if (linePolygonIntersectPoint( *node.point, *pt, obstacles.polygons[idx3], sectPt)){               
-               float dist = distance(*node.point, sectPt);          
-               if (verbose){
-                  CONSOLE.print("dist ");
-                  CONSOLE.println(dist);
-               }
-               if (dist > ALLOW_ROUTE_OUTSIDE_PERI_METER){ safe = false; break; } // entering perimeter with long distance is not safe                             
-               if (linePolygonIntersectionCount( *node.point, *pt, obstacles.polygons[idx3]) != 1){ 
-                 if (verbose) CONSOLE.println("not safe");
-                 safe = false; break; 
-               }
-               continue;           
-             } else { safe = false; break; }                                          
-         }
-       } else {
-         //CONSOLE.println("we check with exclusion");
-         bool insideObstacle = pointIsInsidePolygon(obstacles.polygons[idx3], *node.point);
-         if (insideObstacle) { // start point inside obstacle?                                                                         
-             if (verbose) CONSOLE.println("inside exclusion");         
-             //CONSOLE.println("start point inside exclusion");          
-             if (linePolygonIntersectPoint( *node.point, *pt, obstacles.polygons[idx3], sectPt)){               
-               float dist = distance(*node.point, sectPt);          
-               if (verbose){
-                 CONSOLE.print("dist ");
-                 CONSOLE.println(dist);
-               }
-               if (dist > ALLOW_ROUTE_OUTSIDE_PERI_METER){ 
-                 if (verbose) CONSOLE.println("not safe");
-                 safe = false; break; 
-               } // exiting obstacle with long distance is not safe                             
-               continue;           
-             } else { safe = false; break; }                                          
-         }
-       }        
-       if (linePolygonIntersection (*node.point, *pt, obstacles.polygons[idx3])){
-         if (verbose) CONSOLE.println("inside intersection");
-         safe = false;
-         break;
-       }             
+    for (int idx3 = 0; idx3 < obstacles.numPolygons; idx3++)
+    {                                
+      bool isPeri = perimeterPoints.numPoints > 0 && idx3 == 0;  // if first index, it's perimeter, otherwise exclusions                           
+      if (isPeri)
+      { 
+        if (!pointIsInsidePolygon(obstacles.polygons[idx3], node.point)) // start point outside perimeter?  
+        {                                                                                     
+          if (linePolygonIntersectPoint(node.point, *pt, obstacles.polygons[idx3], sectPt))
+          {                       
+            if (distance(node.point, sectPt) > ALLOW_ROUTE_OUTSIDE_PERI_METER) { 
+              safe = false; break; } // entering perimeter with long distance is not safe
+            continue;           
+          }
+          else { safe = false; break; }                                 
+        }
+      }
+      else // exclusions
+      {
+        bool insideObstacle = pointIsInsidePolygon(obstacles.polygons[idx3], node.point);
+        if (insideObstacle) { // start point inside obstacle?                                                                                  
+          if (linePolygonIntersectPoint(node.point, *pt, obstacles.polygons[idx3], sectPt)){                        
+            if (distance(node.point, sectPt) > ALLOW_ROUTE_OUTSIDE_PERI_METER){ 
+              safe = false; break; 
+            } // exiting obstacle with long distance is not safe                             
+            continue;           
+          } else { safe = false; break; }                                          
+        }
+      }
+      
+      if (linePolygonIntersection(node.point, *pt, obstacles.polygons[idx3])){
+        safe = false;
+        break;
+      }             
     }
-    //CONSOLE.print("----check done---safe=");
-    //CONSOLE.println(safe);
-    if (verbose){
-      CONSOLE.print("safe ");
-      CONSOLE.println(safe);
-    }
-    if (safe) {          
-      //pt.visited = true;
-      //var anode = {pos: pt, parent: node, f:0, g:0, h:0};          
-      //ret.push(anode);
+
+    if (safe)
       return idx;
-    }            
-  }       
+  }
+
   return -1;
 }  
 
 
 // astar path finder 
 // https://briangrinstead.com/blog/astar-search-algorithm-in-javascript/
-bool Map::findPath(Point &src, Point &dst){
+bool Map::findPath(Point src, Point dst){
   if (memoryCorruptions != 0 || memoryAllocErrors != 0){
     CONSOLE.println("ERROR findPath: memory errors");
     return false; 
@@ -1789,13 +1704,10 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.println();
     
     // create path-finder obstacles    
+    int idx = 0;
     if (!pathFinderObstacles.alloc(1 + exclusions.numPolygons + obstacles.numPolygons)) 
       return false;
-
-    // create path-finder offset perimeter  
-    if (!pathFinderExclusions.alloc(exclusions.numPolygons)) 
-      return false;
-
+    
     if (freeMemory () < 5000){
       CONSOLE.println("OUT OF MEMORY");
       return false;
@@ -1803,8 +1715,8 @@ bool Map::findPath(Point &src, Point &dst){
 
     // For validating a potential route, we will use  'linePolygonIntersectPoint' and check for intersections between route start point 
     // and end point. To have something to check intersection with, we offset the perimeter (make bigger) and exclusions
-    //  (maker schmaller) and use them as 'obstacles'.    
-    int idx = 0;
+    //  (maker schmaller) and use them as 'obstacles'.
+    
     if (!polygonOffset(perimeterPoints, pathFinderObstacles.polygons[idx], 0.04))
       return false;
     idx++;
@@ -1819,18 +1731,7 @@ bool Map::findPath(Point &src, Point &dst){
         return false;
       idx++;
     }  
-
     
-    // offset perimeter
-    if (!polygonOffset(perimeterPoints, pathFinderPerimeter, -PERIMETER_OFFFSET))
-      return false;
-
-    // offset exclusions
-    for (int i=0; i < exclusions.numPolygons; i++)
-      if (!polygonOffset(exclusions.polygons[i], pathFinderExclusions.polygons[i], EXCLUSION_OFFFSET))
-        return false;
-
-
     // create nodes
     int allocNodeCount = exclusions.numPoints() + obstacles.numPoints() + perimeterPoints.numPoints + 2;
     CONSOLE.print ("freem=");
@@ -1846,68 +1747,46 @@ bool Map::findPath(Point &src, Point &dst){
     for (int i=0; i < pathFinderNodes.numNodes; i++)
       pathFinderNodes.nodes[i].init();
 
-    // exclusion nodes
-    idx = 0;
-    /*for (int i=0; i < exclusions.numPolygons; i++){
-      Polygon tmp;
-      polygonOffset(exclusions.polygons[i], tmp, EXCLUSION_OFFFSET);
-      for (int j=0; j < tmp.numPoints; j++){    
-        pathFinderNodes.nodes[idx].point = &tmp.points[j];
-        idx++;
-      }
-    }*/
-
     // perimeter nodes
-    for (int j=0; j < pathFinderPerimeter.numPoints; j++)
+    Polygon offsetPerimeter;
+    polygonOffset(perimeterPoints, offsetPerimeter, -PERIMETER_OFFFSET);
+    for (int j=0; j < offsetPerimeter.numPoints; j++)
     {
-      //if (isInsidePerimeter(tmp.points[j].x(), tmp.points[j].y()))
-        pathFinderNodes.nodes[idx].point = &pathFinderPerimeter.points[j];
+      //if (isInsidePerimeter(offsetPerimeter.points[j].x(), offsetPerimeter.points[j].y()))
+        pathFinderNodes.nodes[idx].point = offsetPerimeter.points[j];
       //else
-        //pathFinderNodes.nodes[idx].point = &perimeterPoints.points[j];
+        //pathFinderNodes.nodes[idx].point = perimeterPoints.points[j];
         
       idx++;
-  }
-
-    // exclusion nodes
-    for (int i=0; i < pathFinderExclusions.numPolygons; i++){
-      for (int j=0; j < pathFinderExclusions.polygons[i].numPoints; j++){
-        //if (isInsidePerimeter(pathfinder.polygons[i].points[j].x(), pathfinder.polygons[i].points[j].y()))   
-          pathFinderNodes.nodes[idx].point = &pathFinderExclusions.polygons[i].points[j];
-        /*else
-        {
-            pathFinderNodes.nodes[idx].point = &exclusions.polygons[i].points[j];
-        }*/
-        idx++;
-      }
     } 
 
-    // obstacle nodes    
-    for (int i=0; i < obstacles.numPolygons; i++){
-      for (int j=0; j < obstacles.polygons[i].numPoints; j++){    
-        pathFinderNodes.nodes[idx].point = &obstacles.polygons[i].points[j];
+    // exclusion nodes
+    idx = 0;
+    for (int i=0; i < exclusions.numPolygons; i++){
+      Polygon offsetExclusion;
+      polygonOffset(exclusions.polygons[i], offsetExclusion, EXCLUSION_OFFFSET);
+      for (int j=0; j < offsetExclusion.numPoints; j++){    
+        pathFinderNodes.nodes[idx].point = offsetExclusion.points[j];
         idx++;
       }
     }
 
-    // perimeter nodes
-    /*for (int j=0; j < tmp.numPoints; j++)
-    {
-      if (isInsidePerimeter(tmp.points[j].x(), tmp.points[j].y()))
-        pathFinderNodes.nodes[idx].point = &tmp.points[j];
-      else
-        pathFinderNodes.nodes[idx].point = &perimeterPoints.points[j];
-        
-      idx++;
-    }   */   
+    // obstacle nodes    
+    for (int i=0; i < obstacles.numPolygons; i++){
+      for (int j=0; j < obstacles.polygons[i].numPoints; j++){    
+        pathFinderNodes.nodes[idx].point = obstacles.polygons[i].points[j];
+        idx++;
+      }
+    }     
 
     // start node
     Node *start = &pathFinderNodes.nodes[idx];
-    start->point = &src;
+    start->point = src;
     start->opened = true;
     idx++;
     // end node
     Node *end = &pathFinderNodes.nodes[idx];
-    end->point = &dst;    
+    end->point = dst;    
     idx++;
 
     
@@ -1915,8 +1794,7 @@ bool Map::findPath(Point &src, Point &dst){
     Node *currentNode = NULL;
     
     CONSOLE.print ("freem=");
-    CONSOLE.println (freeMemory ());
-    
+    CONSOLE.println (freeMemory());
     CONSOLE.println("starting path-finder");
     while(true) 
     {       
@@ -1944,7 +1822,7 @@ bool Map::findPath(Point &src, Point &dst){
       currentNode = &pathFinderNodes.nodes[lowInd];
 
       // End case -- result has been found, return the traced path
-      if (distance(*currentNode->point, *end->point) < 0.02)
+      if (distance(currentNode->point, end->point) < 0.02)
         break;        
       // Normal case -- move currentNode from open to closed, process each of its neighbors      
       currentNode->opened = false;
@@ -1967,14 +1845,14 @@ bool Map::findPath(Point &src, Point &dst){
         // g score is the shortest distance from start to current node, we need to check if
         //   the path we have arrived at this neighbor is the shortest one we have seen yet
         //var gScore = currentNode.g + 1; // 1 is the distance from a node to it's neighbor
-        float gScore = currentNode->g + distance(*currentNode->point, *neighbor->point);
+        float gScore = currentNode->g + distance(currentNode->point, neighbor->point);
         bool gScoreIsBest = false;
         bool found = neighbor->opened;        
         if (!found){          
           // This the the first time we have arrived at this node, it must be the best
           // Also, we need to take the h (heuristic) score since we haven't done so yet 
           gScoreIsBest = true;
-          neighbor->h = calcHeuristic(*neighbor->point, *end->point);
+          neighbor->h = calcHeuristic(neighbor->point, end->point);
           neighbor->opened = true;
         }
         else if (gScore < neighbor->g) {
@@ -1994,11 +1872,14 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.print("finish nodes=");
     CONSOLE.print(pathFinderNodes.numNodes);
     CONSOLE.print(" duration=");
-    CONSOLE.println(millis()-startTime);  
+    CONSOLE.println(millis()-startTime);
+
+    
+    pathFinderNodes.dealloc();
 
     resetImuTimeout();
 
-    if (currentNode != NULL && distance(*currentNode->point, *end->point) < 0.02)
+    if (currentNode != NULL && distance(currentNode->point, end->point) < 0.02)
     {
       Node *curr = currentNode;
       int nodeCount = 0;
@@ -2013,29 +1894,30 @@ bool Map::findPath(Point &src, Point &dst){
       curr = currentNode;
       int idx = nodeCount-1;
       while(curr) {                                
-        freePoints.points[idx].assign( *curr->point );
+        freePoints.points[idx].assign(curr->point);
         CONSOLE.print("node pt=");
-        CONSOLE.print(curr->point->x());
+        CONSOLE.print(curr->point.x());
         CONSOLE.print(",");
-        CONSOLE.println(curr->point->y());
+        CONSOLE.println(curr->point.y());
         idx--;
         curr = curr->parent;                
       }            
-    } 
-    else {
-      // No result was found
+    }
+    else // No result was found
+    {
       CONSOLE.println("pathfinder: no path");      
       return false;      
     }       
   } 
-  else {  // path finder not enabled (ENABLE_PATH_FINDER=false)    
+  else  // path finder not enabled (ENABLE_PATH_FINDER=false)  
+  {  
     if (!freePoints.alloc(2)) return false;
     freePoints.points[0].assign(src);    
     freePoints.points[1].assign(dst);        
   }    
-  freePointsIdx=0;  
+  freePointsIdx=0;
   
-  checkMemoryErrors();  
+  checkMemoryErrors(); 
   resetImuTimeout();
   return true;  
 }
