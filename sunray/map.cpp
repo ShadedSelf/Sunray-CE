@@ -1752,10 +1752,11 @@ bool Map::findPath(Point src, Point dst){
     polygonOffset(perimeterPoints, offsetPerimeter, -PERIMETER_OFFFSET);
     for (int j=0; j < offsetPerimeter.numPoints; j++)
     {
-      //if (isInsidePerimeter(offsetPerimeter.points[j].x(), offsetPerimeter.points[j].y()))
-        pathFinderNodes.nodes[idx].point = offsetPerimeter.points[j];
-      //else
-        //pathFinderNodes.nodes[idx].point = perimeterPoints.points[j];
+      pathFinderNodes.nodes[idx].point = offsetPerimeter.points[j];
+      #if VERIFY_OFFSET
+        if (!isInsidePerimeter(offsetPerimeter.points[j].x(), offsetPerimeter.points[j].y()))
+          pathFinderNodes.nodes[idx].point = perimeterPoints.points[j];
+      #endif
         
       idx++;
     } 
@@ -1767,6 +1768,11 @@ bool Map::findPath(Point src, Point dst){
       polygonOffset(exclusions.polygons[i], offsetExclusion, EXCLUSION_OFFFSET);
       for (int j=0; j < offsetExclusion.numPoints; j++){    
         pathFinderNodes.nodes[idx].point = offsetExclusion.points[j];
+        #if VERIFY_OFFSET
+          if (!isInsidePerimeter(offsetExclusion.points[j].x(), offsetExclusion.points[j].y()))
+            pathFinderNodes.nodes[idx].point = exclusions.polygons[i].points[j];
+        #endif
+        
         idx++;
       }
     }

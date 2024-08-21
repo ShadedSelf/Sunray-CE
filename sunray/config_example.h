@@ -348,6 +348,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define PERIMETER_OFFFSET 0.0 // perimeter offset in meters for pathfinder
 #define EXCLUSION_OFFFSET 0.0 // exclusion offset in meters for pathfinder
+#define VERIFY_OFFSET false    // make sure pathfinder offsets fall inside perimeter
 
 #define KIDNAP_DETECT true  // recommended
 #define KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE 1.0  // allowed path tolerance (m) 
