@@ -146,6 +146,8 @@ class Map
     PolygonList exclusions;   // list of exclusion points    
     PolygonList obstacles;     
     PolygonList pathFinderObstacles;
+    Polygon pathFinderPerimeter;
+    PolygonList pathFinderExclusions;
     NodeList pathFinderNodes;
     File mapFile;
     int exclusionPointsCount;        
@@ -244,7 +246,6 @@ class Map
     bool lineLineIntersection(Point &A, Point &B, Point &C, Point &D, Point &pt);
     bool isPointInBoundingBox(Point &pt, Point &A, Point &B);
     int linePolygonIntersectionCount(Point &src, Point &dst, Polygon &poly);
-    void testIntegerCalcs();
 };
 
 

@@ -7,6 +7,7 @@
 #include "config.h"
 #include "StateEstimator.h"
 #include <Arduino.h>
+#include "helper.h"
 
 
 #ifndef _SAM3XA_                 // not Arduino Due
@@ -34,11 +35,11 @@ void Point::init(){
 }
 
 float Point::x(){
-  return ((float)px) / 100.0;
+  return px / 100.0;
 }
 
 float Point::y(){
-  return ((float)py) / 100.0;
+  return py / 100.0;
 }
 
 
@@ -666,6 +667,8 @@ void Map::clearMap(){
   freePoints.dealloc();
   obstacles.dealloc();
   pathFinderObstacles.dealloc();
+  pathFinderPerimeter.dealloc();
+  pathFinderExclusions.dealloc();
   pathFinderNodes.dealloc();
 }
 
@@ -1006,88 +1009,68 @@ bool Map::startMowing(float stateX, float stateY)
   shouldDock = false;
   shouldRetryDock = false;
   shouldMow = true;    
-  if (mowPoints.numPoints > 0){
+  if (mowPoints.numPoints > 0)
+  {
     // find valid path from robot (or first docking point) to mowing point    
     Point src;
     Point dst;
     src.setXY(stateX, stateY);
-    if ((wayMode == WAY_DOCK) && (dockPoints.numPoints > 0)) {
+    if (wayMode == WAY_DOCK && dockPoints.numPoints > 0) {
       src.assign(dockPoints.points[0]);
-    } else {
+    } 
+    else {
       wayMode = WAY_FREE;      
       freePointsIdx = 0;    
-    }        
-    if (findObstacleSafeMowPoint(dst)){    
-      if (findPath(src, dst)){        
+    }   
+
+    if (findObstacleSafeMowPoint(dst))
+    {    
+      if (findPath(src, dst))      
         return true;
-      } else {
+      else {
         CONSOLE.println("ERROR: no path");
         return false;      
       }
-    } else {
+    }
+    else {
       CONSOLE.println("ERROR: no safe start point");
       return false;
     }
-  } else {
+  } 
+  else
+  {
     CONSOLE.println("ERROR: no points");
     return false; 
   }
 }
 
 
-void Map::clearObstacles(){  
-  CONSOLE.println("clearObstacles");
+void Map::clearObstacles(){
   obstacles.dealloc();  
 }
 
 // add dynamic octagon obstacle in front of robot on line going from robot to target point
-bool Map::addObstacle(float stateX, float stateY){     
-  float d1 = OBSTACLE_DIAMETER / 6.0;   // distance from center to nearest octagon edges
-  float d2 = OBSTACLE_DIAMETER / 2.0;  // distance from center to farest octagon edges
-  
-  float angleCurr = pointsAngle(stateX, stateY, targetPoint.x(), targetPoint.y());
+bool Map::addObstacle(float stateX, float stateY)
+{     
+  float d2 = OBSTACLE_DIAMETER / 2.0;
   float r = d2 + 0.05;
-  float x = stateX + cos(angleCurr) * r;
-  float y = stateY + sin(angleCurr) * r;
+  float x = stateX + cos(heading) * r;
+  float y = stateY + sin(heading) * r;
   
-  CONSOLE.print("addObstacle ");
-  CONSOLE.print(x);
-  CONSOLE.print(",");
-  CONSOLE.println(y);
-  if (obstacles.numPolygons > 50){
-    CONSOLE.println("error: too many obstacles");
-    return false;
-  }
+  if (obstacles.numPolygons > 50) return false;
   int idx = obstacles.numPolygons;
   if (!obstacles.alloc(idx+1)) return false;
   if (!obstacles.polygons[idx].alloc(8)) return false;
-  
-  obstacles.polygons[idx].points[0].setXY(x-d2, y-d1);
-  obstacles.polygons[idx].points[1].setXY(x-d1, y-d2);
-  obstacles.polygons[idx].points[2].setXY(x+d1, y-d2);
-  obstacles.polygons[idx].points[3].setXY(x+d2, y-d1);
-  obstacles.polygons[idx].points[4].setXY(x+d2, y+d1);
-  obstacles.polygons[idx].points[5].setXY(x+d1, y+d2);
-  obstacles.polygons[idx].points[6].setXY(x-d1, y+d2);
-  obstacles.polygons[idx].points[7].setXY(x-d2, y+d1);         
-  return true;
-}
 
-
-// check if given point is inside perimeter (and outside exclusions) of current map 
-/*bool Map::isInsidePerimeterOutsideExclusions(Point &pt){
-  if (!maps.pointIsInsidePolygon( maps.perimeterPoints, pt)) return false;    
-
-  for (int idx=0; idx < maps.obstacles.numPolygons; idx++){
-    if (!maps.pointIsInsidePolygon( maps.obstacles.polygons[idx], pt)) return false;
+  for (int i = 0; i < 8; i++)
+  {
+    float xx = cos((float)i / 8.0 * TAU + heading) * d2;
+    float yy = sin((float)i / 8.0 * TAU + heading) * d2;
+    obstacles.polygons[idx].points[i].setXY(x + xx, y + yy); 
   }
 
-  for (int idx=0; idx < maps.exclusions.numPolygons; idx++){
-    if (maps.pointIsInsidePolygon( maps.exclusions.polygons[idx], pt)) return false;
-  }    
   return true;
-}*/
-
+}
 
 // check if mowing point is inside any obstacle, and if so, find next mowing point (outside any obstacles)
 // returns: valid path start point (outside any obstacle) going to the mowing point (which can be used as input for pathfinder)
@@ -1781,7 +1764,7 @@ int Map::findNextNeighbor(NodeList &nodes, PolygonList &obstacles, Node &node, i
 // astar path finder 
 // https://briangrinstead.com/blog/astar-search-algorithm-in-javascript/
 bool Map::findPath(Point &src, Point &dst){
-  if ((memoryCorruptions != 0) || (memoryAllocErrors != 0)){
+  if (memoryCorruptions != 0 || memoryAllocErrors != 0){
     CONSOLE.println("ERROR findPath: memory errors");
     return false; 
   }  
@@ -1806,10 +1789,13 @@ bool Map::findPath(Point &src, Point &dst){
     CONSOLE.println();
     
     // create path-finder obstacles    
-    int idx = 0;
     if (!pathFinderObstacles.alloc(1 + exclusions.numPolygons + obstacles.numPolygons)) 
       return false;
-    
+
+    // create path-finder offset perimeter  
+    if (!pathFinderExclusions.alloc(exclusions.numPolygons)) 
+      return false;
+
     if (freeMemory () < 5000){
       CONSOLE.println("OUT OF MEMORY");
       return false;
@@ -1817,8 +1803,8 @@ bool Map::findPath(Point &src, Point &dst){
 
     // For validating a potential route, we will use  'linePolygonIntersectPoint' and check for intersections between route start point 
     // and end point. To have something to check intersection with, we offset the perimeter (make bigger) and exclusions
-    //  (maker schmaller) and use them as 'obstacles'.
-    
+    //  (maker schmaller) and use them as 'obstacles'.    
+    int idx = 0;
     if (!polygonOffset(perimeterPoints, pathFinderObstacles.polygons[idx], 0.04))
       return false;
     idx++;
@@ -1833,7 +1819,18 @@ bool Map::findPath(Point &src, Point &dst){
         return false;
       idx++;
     }  
+
     
+    // offset perimeter
+    if (!polygonOffset(perimeterPoints, pathFinderPerimeter, -PERIMETER_OFFFSET))
+      return false;
+
+    // offset exclusions
+    for (int i=0; i < exclusions.numPolygons; i++)
+      if (!polygonOffset(exclusions.polygons[i], pathFinderExclusions.polygons[i], EXCLUSION_OFFFSET))
+        return false;
+
+
     // create nodes
     int allocNodeCount = exclusions.numPoints() + obstacles.numPoints() + perimeterPoints.numPoints + 2;
     CONSOLE.print ("freem=");
@@ -1851,14 +1848,38 @@ bool Map::findPath(Point &src, Point &dst){
 
     // exclusion nodes
     idx = 0;
-    for (int i=0; i < exclusions.numPolygons; i++){
+    /*for (int i=0; i < exclusions.numPolygons; i++){
       Polygon tmp;
       polygonOffset(exclusions.polygons[i], tmp, EXCLUSION_OFFFSET);
       for (int j=0; j < tmp.numPoints; j++){    
         pathFinderNodes.nodes[idx].point = &tmp.points[j];
         idx++;
       }
-    }
+    }*/
+
+    // perimeter nodes
+    for (int j=0; j < pathFinderPerimeter.numPoints; j++)
+    {
+      //if (isInsidePerimeter(tmp.points[j].x(), tmp.points[j].y()))
+        pathFinderNodes.nodes[idx].point = &pathFinderPerimeter.points[j];
+      //else
+        //pathFinderNodes.nodes[idx].point = &perimeterPoints.points[j];
+        
+      idx++;
+  }
+
+    // exclusion nodes
+    for (int i=0; i < pathFinderExclusions.numPolygons; i++){
+      for (int j=0; j < pathFinderExclusions.polygons[i].numPoints; j++){
+        //if (isInsidePerimeter(pathfinder.polygons[i].points[j].x(), pathfinder.polygons[i].points[j].y()))   
+          pathFinderNodes.nodes[idx].point = &pathFinderExclusions.polygons[i].points[j];
+        /*else
+        {
+            pathFinderNodes.nodes[idx].point = &exclusions.polygons[i].points[j];
+        }*/
+        idx++;
+      }
+    } 
 
     // obstacle nodes    
     for (int i=0; i < obstacles.numPolygons; i++){
@@ -1869,12 +1890,15 @@ bool Map::findPath(Point &src, Point &dst){
     }
 
     // perimeter nodes
-    Polygon tmp;
-    polygonOffset(perimeterPoints, tmp, -PERIMETER_OFFFSET);
-    for (int j=0; j < tmp.numPoints; j++){    
-      pathFinderNodes.nodes[idx].point = &tmp.points[j];
+    /*for (int j=0; j < tmp.numPoints; j++)
+    {
+      if (isInsidePerimeter(tmp.points[j].x(), tmp.points[j].y()))
+        pathFinderNodes.nodes[idx].point = &tmp.points[j];
+      else
+        pathFinderNodes.nodes[idx].point = &perimeterPoints.points[j];
+        
       idx++;
-    }      
+    }   */   
 
     // start node
     Node *start = &pathFinderNodes.nodes[idx];
@@ -1997,7 +2021,8 @@ bool Map::findPath(Point &src, Point &dst){
         idx--;
         curr = curr->parent;                
       }            
-    } else {
+    } 
+    else {
       // No result was found
       CONSOLE.println("pathfinder: no path");      
       return false;      
@@ -2033,30 +2058,5 @@ void Map::stressTest(){
   checkMemoryErrors();
 }
   
-  
-
-// integer calculation correctness test
-void Map::testIntegerCalcs(){  
-  Point pt;
-  float d = 30.0;
-  for (int i=0 ; i < 5000; i++){
-    pt.setXY( ((float)random(d*10))/10.0-d/2, ((float)random(d*10))/10.0-d/2 );
-    pointIsInsidePolygon( perimeterPoints, pt);    
-    CONSOLE.print(".");
-  }
-  
-  Point p1;
-  Point p2;
-  Point p3;
-  Point p4;
-  for (int i=0 ; i < 5000; i++){
-    p1.setXY( ((float)random(d*10))/10.0-d/2, ((float)random(d*10))/10.0-d/2 );
-    p2.setXY( ((float)random(d*10))/10.0-d/2, ((float)random(d*10))/10.0-d/2 );
-    p3.setXY( ((float)random(d*10))/10.0-d/2, ((float)random(d*10))/10.0-d/2 );
-    p4.setXY( ((float)random(d*10))/10.0-d/2, ((float)random(d*10))/10.0-d/2 );
-    lineIntersects (p1, p2, p3, p4);
-    CONSOLE.print(",");
-  }   
-}
   
   

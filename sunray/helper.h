@@ -11,6 +11,7 @@
 #include <Arduino.h>
 
 
+#define TAU TWO_PI
 #define lerp(a, b, t) (a*(1.0-t) + b*t)
 
 
