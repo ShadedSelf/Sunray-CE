@@ -74,7 +74,7 @@ class PolygonList // owns polygons!
 class Node   // nodes just hold references to points and other nodes
 {
   public:
-    Point point;
+    Point *point;
     Node *parent;
     bool opened;
     bool closed;
@@ -82,7 +82,7 @@ class Node   // nodes just hold references to points and other nodes
     float h;
     float f;
     Node();
-    Node(Point aPoint, Node *aParentNode);
+    Node(Point *aPoint, Node *aParentNode);
     void init();
     void dealloc();
 };
@@ -217,7 +217,7 @@ class Map
     
     // -----misc-----------------------------------------------
     bool pointIsInsidePolygon( Polygon &polygon, Point &pt);
-    bool findPath(Point src, Point dst);    
+    bool findPath(Point &src, Point &dst);    
     void generateRandomMap();    
     // check if given point is inside perimeter (and outside exclusions) of current map 
     bool isInsidePerimeterOutsideExclusions(Point &pt);
