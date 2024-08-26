@@ -1596,8 +1596,8 @@ bool Map::polygonOffset(Polygon &srcPoly, Polygon &dstPoly, float dist){
 
       
 float Map::calcHeuristic(Point &pos0, Point &pos1) {
-  return distanceManhattan(pos0, pos1);
-  //return distance(pos0, pos1) ;  
+  //return distanceManhattan(pos0, pos1);
+  return distance(pos0, pos1) ;  
 }
   
 // given a start node, we check potential next node with all obstacle nodes:
@@ -1913,7 +1913,8 @@ bool Map::findPath(Point &src, Point &dst){
           neighbor->f = neighbor->g + neighbor->h;
         }
       }
-    } 
+    }
+    
 
     CONSOLE.print("finish nodes=");
     CONSOLE.print(pathFinderNodes.numNodes);
