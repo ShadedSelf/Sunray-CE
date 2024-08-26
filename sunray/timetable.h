@@ -81,48 +81,30 @@ class TimeTable
     weektime_t autostopTime;    // next autostop time
     weektime_t currentTime;  // current time to compare time table against
     bool mowingCompletedInCurrentTimeFrame;  // has mowing completed in current time frame?
+    
     TimeTable(); 
 
     bool shouldAutostartNow();  // robot should autostart now?
     bool shouldAutostopNow();  // robot should autostop now?
 
-
-    // dump timetable
-    void dump();    
+    void dump(); // dump timetable   
     void dumpWeekTime(weektime_t time);
 
     int crc();
-
-    // clear timetable
-    void clear();
-
-    // set current UTC time
-    void setCurrentTime(int hour, int min, int weekOfDay); 
-
-    // enable/disable timetable
-    void setEnabled(bool flag);
-
+    void clear(); // clear timetable
+    void setCurrentTime(int hour, int min, int weekOfDay); // set current UTC time
+    void setEnabled(bool flag); // enable/disable timetable
     void setMowingCompletedInCurrentTimeFrame(bool completed);
-
-    // set day mask for hour 
-    bool setDayMask(int hour, daymask_t mask);
-
-
-    // ------ misc functions -----------------------------------    
+    bool setDayMask(int hour, daymask_t mask); // set day mask for hour 
+  
     bool findAutostartTime(weektime_t &time);    
     bool findAutostopTime(weektime_t &time);    
+    bool mowingAllowed(weektime_t time); // mowing allowed for given UTC week time?
+    bool mowingAllowed(); // mowing allowed for current UTC week time?
 
-    // mowing allowed for given UTC week time?
-    bool mowingAllowed(weektime_t time);  
+    void resetTriggers();
 
-    // calc dayOfWeek(0=Monday) for given UTC date  (untested and not used!)
-    int calcDayOfWeek(int year, int month, int day); 
-
-    // mowing allowed for current UTC week time?
-    bool mowingAllowed();
-
-    // run loop
-    void run(); 
+    void run(); // run loop
 
   protected:
       unsigned long nextCheckTime; 

@@ -105,7 +105,8 @@ bool shouldResetHeadingPos(vec3_t gpsPos)
   || fabs(motor.linearSpeedSet) < 0.02
   || degrees(distancePI(heading, lastHeading)) > 10.0
   || maps.distanceToLastTargetPoint(gpsPos.x, gpsPos.y) < 0.25
-  || maps.distanceToTargetPoint(gpsPos.x, gpsPos.y) < 0.25;
+  || maps.distanceToTargetPoint(gpsPos.x, gpsPos.y) < 0.25
+  || (maps.wayMode == WAY_FREE && fabs(motor.linearSpeedSet) < 0.2); // Try to avoid in path-planner obstacles
 }
 
 // https://learn.sparkfun.com/tutorials/9dof-razor-imu-m0-hookup-guide#using-the-mpu-9250-dmp-arduino-library

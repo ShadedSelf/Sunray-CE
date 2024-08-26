@@ -72,8 +72,6 @@ void TimeTable::dumpWeekTime(weektime_t time){
     CONSOLE.print(s);
     CONSOLE.print("  hour=");
     CONSOLE.println(time.hour);
-    //CONSOLE.print("  min=");
-    //CONSOLE.println(time.min);
 }
 
 
@@ -119,27 +117,21 @@ void TimeTable::dump(){
 
 
 void TimeTable::clear(){    
-    for (int i=0; i  < 24; i++){
+    for (int i=0; i  < 24; i++)
         timetable.hours[i] = 0;
-    }
 }    
 
 int TimeTable::crc(){
     int crc = 0;
-    for (int i=0; i  < 24; i++){
+    for (int i=0; i  < 24; i++)
         crc += i * timetable.hours[i];
-    }
     crc += ((byte)timetable.enable);
     return crc;
 }
 
 // set day mask for hour 
 bool TimeTable::setDayMask(int hour, daymask_t mask){
-    if ((hour < 0) || (hour > 23)) return false;
-    //CONSOLE.print("setDayMask hour=");
-    //CONSOLE.print(hour);
-    //CONSOLE.print("  mask=");
-    //CONSOLE.println(mask);
+    if (hour < 0 || hour > 23) return false;
     timetable.hours[hour] = mask;
     return true;
 }
@@ -152,7 +144,7 @@ void TimeTable::setEnabled(bool flag){
 bool TimeTable::mowingAllowed(weektime_t time){
     if (!timetable.enable) return true; // timetable not enabled => mowing allowed
     int hour = time.hour; 
-    if ((hour < 0) || (hour > 23)) return false;    
+    if (hour < 0 || hour > 23) return false;    
     int mask = (1 << time.dayOfWeek);
 
     bool allowed = ( (timetable.hours[hour] & mask) != 0); // if mowing allowed, mask is set for that day
@@ -211,14 +203,17 @@ bool TimeTable::findAutostartTime(weektime_t &time){
         CONSOLE.println("AUTOSTART: not defined DOCKING_STATION");
         return false; 
     }
-    if (!DOCK_AUTO_START) {// automatic continue mowing allowed?
+    /*if (!DOCK_AUTO_START) {// automatic continue mowing allowed?
         CONSOLE.println("AUTOSTART: not defined DOCK_AUTO_START");
         return false;     
-    }
+    }*/
     if ( !battery.isDocked() ) { // robot is in dock?
         CONSOLE.println("AUTOSTART: not docked automatically (use DOCK command first)");
         return false;   
     }
+    if (!timetable.enable)
+        return false;
+
     bool autostart = false;    
     weektime_t checktime = currentTime;
     bool checkstate = false;
@@ -226,53 +221,57 @@ bool TimeTable::findAutostartTime(weektime_t &time){
     unsigned long waitmillis = millis(); 
     
     // check timetable and rain timeouts    
-    for (int hour =0; hour < 24 * 7; hour++){
-        if ( (!dockOp.dockReasonRainTriggered) || (waitmillis > dockOp.dockReasonRainAutoStartTime) ) {  // raining timeout 
-            if (!timetable.enable){  // timetable disabled
-                if ((!dockOp.initiatedByOperator) && (maps.mowPointsIdx > 0)) { // mowing not completed yet                    
+    for (int hour = 0; hour < 24 * 7; hour++){
+        if (!dockOp.dockReasonRainTriggered || waitmillis > dockOp.dockReasonRainAutoStartTime) {  // raining timeout 
+            /*if (!timetable.enable){  // timetable disabled
+                if (!dockOp.initiatedByOperator && maps.mowPointsIdx > 0) { // mowing not completed yet                    
                     CONSOLE.print("AUTOSTART: mowing not completed yet ");
                     time = checktime;
                     dumpWeekTime(time);
                     autostart = true;
                     break;
                 }
-            } else {   // timetable enabled
-                bool allowed = mowingAllowed(checktime);
-                if (allowed != checkstate){   
-                    if ((allowed) && (!triggered))    {         
-                        // timetable status transition
-                        CONSOLE.print("AUTOSTART: timetable transition ");                    
-                        time = checktime;
-                        dumpWeekTime(time);
-                        autostart = true;
-                        break;
-                    }
-                    triggered = false;
-                    checkstate = allowed;
+            } 
+            else */
+           // {   // timetable enabled
+            bool allowed = mowingAllowed(checktime);
+            if (allowed != checkstate){   
+                if (allowed && !triggered) {         
+                    // timetable status transition
+                    CONSOLE.print("AUTOSTART: timetable transition ");                    
+                    time = checktime;
+                    dumpWeekTime(time);
+                    autostart = true;
+                    break;
                 }
-                if (allowed){   // timetable status
-                    if ( (!dockOp.initiatedByOperator) && ((!mowingCompletedInCurrentTimeFrame) || (maps.mowPointsIdx > 0)) )  {
-                        CONSOLE.print("AUTOSTART: timetable state ");                    
-                        time =checktime;
-                        dumpWeekTime(time);
-                        autostart = true;
-                        break;
-                    }
+                triggered = false;
+                checkstate = allowed;
+            }
+            if (allowed){   // timetable status
+                if (!dockOp.initiatedByOperator && (!mowingCompletedInCurrentTimeFrame || maps.mowPointsIdx > 0))  {
+                    CONSOLE.print("AUTOSTART: timetable state ");                    
+                    time = checktime;
+                    dumpWeekTime(time);
+                    autostart = true;
+                    break;
                 }
             }
+            //}
         }
+
         // continue to next hour in timetable
         checktime.hour++;
         waitmillis += 1000 * 60 * 60; // 1 hour
         if (checktime.hour > 23){
             checktime.dayOfWeek++;
-            if (checktime.dayOfWeek > 6){
+            if (checktime.dayOfWeek > 6)
                 checktime.dayOfWeek = 0;
-            }
             checktime.hour=0;
         }
-    }     
-    if (!autostart) CONSOLE.println("AUTOSTART: no time found");
+    }
+
+    if (!autostart)
+        CONSOLE.println("AUTOSTART: no time found");
     return autostart;
 }
 
@@ -295,52 +294,31 @@ bool TimeTable::shouldAutostopNow(){
     return false;
 }
 
-// called every 30s in robot
-void TimeTable::run(){    
-    //if (millis() < nextCheckTime) return;
-    //nextCheckTime = millis() + 30000;    
+void TimeTable::resetTriggerS()
+{
+    autostartTriggered = false; // reset trigger
+    autostopTriggered = false; // reset trigger 
+}
 
+// called every 30s in robot
+void TimeTable::run()
+{    
     // reset triggers on timetable changes
     bool allowed = mowingAllowed(currentTime);
     if (allowed != lastMowingAllowedState){
         lastMowingAllowedState = allowed;
-        autostartTriggered = false; // reset trigger
-        autostopTriggered = false; // reset trigger    
+        resetTriggers();
     }
 
     autostopNow = false;
-    if (findAutostopTime(autostopTime)){ 
-        if (autostopTime.dayOfWeek == currentTime.dayOfWeek){
-            if (autostopTime.hour == currentTime.hour){                                
-                autostopNow = true;
-            }
-        }
-    }
+    if (findAutostopTime(autostopTime) 
+    && autostopTime.dayOfWeek == currentTime.dayOfWeek
+    && autostopTime.hour == currentTime.hour)                     
+        autostopNow = true;
 
     autostartNow = false;
-    if (findAutostartTime(autostartTime)){
-        if (autostartTime.dayOfWeek == currentTime.dayOfWeek){
-            if (autostartTime.hour == currentTime.hour){
-                autostartNow = true;
-            }
-        } 
-    }
+    if (findAutostartTime(autostartTime)
+    && autostartTime.dayOfWeek == currentTime.dayOfWeek
+    && autostartTime.hour == currentTime.hour)
+        autostartNow = true;
 }
-
-
-// calc dayOfWeek(0=Monday) for given UTC date (untested and not used!)
-// not needed as GPS signal gives us millis since start of a week
-int TimeTable::calcDayOfWeek(int year, int month, int day){
-    int a, b, c, d;
-    long int e;
-    a = day;
-    b = month;
-    c = year;
-
-    for (d = 1, e = (365 * (c - 1)) + (a - 1) + ((c / 4) - (c / 100) + (c / 400)); d < b; d++)
-        e += (d == 2) ? (28) : ((d == 4 || d == 6 || d == 9 || d == 11) ? (30) : (31));
-    int dayOfWeek = (e % 7);
-    return dayOfWeek;
-}
-
-

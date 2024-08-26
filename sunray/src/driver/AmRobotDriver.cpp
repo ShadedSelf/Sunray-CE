@@ -35,10 +35,6 @@ volatile int odomTicksLeft  = 0;
 volatile int odomTicksRight = 0;
 volatile int odomTicksMow = 0;
 
-volatile unsigned long motorLeftTicksTimeout = 0;
-volatile unsigned long motorRightTicksTimeout = 0;
-volatile unsigned long motorMowTicksTimeout = 0;
-
 volatile bool leftPressed = false;
 volatile bool rightPressed = false;
 
@@ -108,18 +104,11 @@ float AmRobotDriver::getCpuTemperature(){
 
 void OdometryMowISR(){			  
   unsigned long now = micros();
-  if (now - motorMowThen < motorMowTicksTimeout) return; // eliminate spikes 
+  if (now - motorMowThen < 1000) return; // eliminate spikes 
   motorMowTickTime = now - motorMowThen;
   motorMowThen = now; 
   #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
     mowOdo.add(motorMowTickTime);
-  #endif
-  #ifdef SUPER_SPIKE_ELIMINATOR
-    unsigned long duration = motorMowTickTime;
-    if (duration > 5000) duration = 0;
-    motorMowTicksTimeout = 0.7 * max(motorMowTicksTimeout, ((float)duration));
-  #else
-    motorMowTicksTimeout = 1000;
   #endif
   odomTicksMow++;
 }
@@ -127,36 +116,22 @@ void OdometryMowISR(){
 
 void OdometryLeftISR(){
   unsigned long now = micros();
-  if (now - motorLeftThen < motorLeftTicksTimeout) return; // eliminate spikes 
+  if (now - motorLeftThen < 1000) return; // eliminate spikes 
   motorLeftTickTime = now - motorLeftThen;
   motorLeftThen = now; 
   #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
     leftOdo.add(motorLeftTickTime);
-  #endif
-  #ifdef SUPER_SPIKE_ELIMINATOR
-    unsigned long duration = motorLeftTickTime;
-    if (duration > 5000) duration = 0;
-    motorLeftTicksTimeout = 0.7 * max(motorLeftTicksTimeout, ((float)duration));
-  #else
-    motorLeftTicksTimeout = 1000;
   #endif
   odomTicksLeft++;    
 }
 
 void OdometryRightISR(){			
   unsigned long now = micros();
-  if (now - motorRightThen < motorRightTicksTimeout) return; // eliminate spikes
+  if (now - motorRightThen < 1000) return; // eliminate spikes
   motorRightTickTime = now - motorRightThen;
   motorRightThen = now;
   #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
     rightOdo.add(motorRightTickTime);
-  #endif
-  #ifdef SUPER_SPIKE_ELIMINATOR
-    unsigned long duration = motorRightTickTime;
-    if (duration > 5000) duration = 0;  
-    motorRightTicksTimeout = 0.7 * max(motorRightTicksTimeout, ((float)duration));  
-  #else
-    motorRightTicksTimeout = 1000;
   #endif
   odomTicksRight++;        
 }

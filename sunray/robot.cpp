@@ -536,12 +536,12 @@ void start(){
   maps.begin();      
 
   // initialize ESP module
-  startWIFI();
+  //startWIFI();
   #ifdef ENABLE_NTRIP
     ntrip.begin();  
   #endif
   
-  watchdogEnable(WATCHDOG_TIMER);   // 5 seconds  
+  watchdogEnable(WATCHDOG_TIMER);
   
   buzzer.sound(SND_READY);  
   battery.resetIdle();        
@@ -793,7 +793,7 @@ void run(){
     
   // state saving
   if (millis() >= nextSaveTime){  
-    nextSaveTime = millis() + 5000;
+    nextSaveTime = millis() + 1 * 60 * 1000;
     saveState();
   }
   
@@ -806,13 +806,12 @@ void run(){
     CONSOLE.print(batTemp,0);
     CONSOLE.print("  cpuTemp=");
     CONSOLE.print(cpuTemp,0);    
-    //logCPUHealth();
     CONSOLE.println();    
-    if (batTemp < -999){
+    if (batTemp < -999)
       stateTemp = cpuTemp;
-    } else {
+    else
       stateTemp = batTemp;    
-    }
+
     statTempMin = min(statTempMin, stateTemp);
     statTempMax = max(statTempMax, stateTemp);    
   }
@@ -919,9 +918,8 @@ void run(){
 
   //##############################################################################
 
-  if(millis() > wdResetTimer + WATCHDOG_TIMER/5){
+  if (millis() > wdResetTimer + WATCHDOG_TIMER/5)
     watchdogReset();
-  }   
 
   loopTimeNow = (micros() - loopTime) / 1000.0;
   loopTimeMin = min(loopTimeNow, loopTimeMin); 
@@ -929,12 +927,12 @@ void run(){
   loopTimeMean = 0.99 * loopTimeMean + 0.01 * loopTimeNow; 
   loopTime = micros();
 
-  if(millis() > loopTimeTimer + 10000){
-    if(loopTimeMax > 500){
+  if (millis() > loopTimeTimer + 10000){
+    if (loopTimeMax > 500)
       CONSOLE.print("WARNING - LoopTime: ");
-    }else{
+    else
       CONSOLE.print("Info - LoopTime: now: ");
-    }
+
     CONSOLE.print(loopTimeNow);
     CONSOLE.print(" - min: ");
     CONSOLE.print(loopTimeMin);
