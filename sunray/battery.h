@@ -22,8 +22,7 @@ class Battery {
     float batFullCurrent;
 	  float batteryVoltage;   // volts
     float batteryVoltageLast;
-    float chargingVoltBatteryVoltDiff;    
-    float batteryVoltageSlope; // slope (volts/minute)	  
+    float chargingVoltBatteryVoltDiff;      
     float chargingVoltage;  // volts
 	  float chargingCurrent;  // amps
     bool chargingEnabled;
@@ -42,11 +41,9 @@ class Battery {
     void resetIdle();
     void switchOff();
   protected:       
-    int batteryVoltageSlopeLowCounter;
     int startupPhase;    
     unsigned long nextBatteryTime ;
     bool switchOffByOperator;    
-    unsigned long timeMinutes;
 		bool chargerConnectedState;
     bool badChargerContactState;
     bool switchOffAllowedUndervoltage;
@@ -54,9 +51,7 @@ class Battery {
     unsigned long switchOffTime;
     unsigned long chargingStartTime;
 	  unsigned long nextCheckTime;	  
-    unsigned long nextEnableTime;	  
-		unsigned long nextPrintTime;
-    unsigned long nextSlopeTime;	  		
+    unsigned long nextEnableTime;  		
 };
 
 
