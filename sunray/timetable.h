@@ -103,6 +103,7 @@ class TimeTable
     bool mowingAllowed(); // mowing allowed for current UTC week time?
 
     void resetTriggers();
+    bool isEnabled();
 
     void run(); // run loop
 

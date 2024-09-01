@@ -1079,7 +1079,8 @@ bool Map::mowingCompleted(){
 } 
 
 // check if point is inside perimeter and outside exclusions/obstacles
-bool Map::isInsidePerimeter(float x, float y){
+bool Map::isInsidePerimeter(float x, float y, bool checkObstacles)
+{
   Point src = Point(x, y);
 
   if (!maps.pointIsInsidePolygon( maps.perimeterPoints, src))
@@ -1089,9 +1090,10 @@ bool Map::isInsidePerimeter(float x, float y){
     if (maps.pointIsInsidePolygon( maps.exclusions.polygons[i], src))
        return false;
 
-  //for (int i=0; i < obstacles.numPolygons; i++)
-    //if (maps.pointIsInsidePolygon( maps.obstacles.polygons[i], src))
-      // return false;
+  if (checkObstacles)
+    for (int i=0; i < obstacles.numPolygons; i++)
+      if (maps.pointIsInsidePolygon( maps.obstacles.polygons[i], src))
+        return false;
 
   return true;
 }
@@ -1914,7 +1916,7 @@ bool Map::findPath(Point &src, Point &dst){
         }
       }
     }
-    
+
 
     CONSOLE.print("finish nodes=");
     CONSOLE.print(pathFinderNodes.numNodes);

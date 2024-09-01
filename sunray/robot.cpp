@@ -834,7 +834,7 @@ void run(){
   gps.run();
 
   if (millis() > nextTimetableTime){
-    nextTimetableTime = millis() + 30000;
+    nextTimetableTime = millis() + 30 * 1000;
     gps.decodeTOW();
     timetable.setCurrentTime(gps.hour, gps.mins, gps.dayOfWeek);
     timetable.run();
@@ -862,7 +862,8 @@ void run(){
       lastGPSMotionY = 0;
     }
 
-    if (battery.chargerConnected() != stateChargerConnected) {    
+    if (battery.chargerConnected() != stateChargerConnected)
+    {    
       stateChargerConnected = battery.chargerConnected(); 
       if (stateChargerConnected){      
         // charger connected event        
@@ -873,33 +874,28 @@ void run(){
         //buzzer.sound(SND_UNPLUG);
       }            
     }
-    if (millis() > nextBadChargingContactCheck) {
-      if (battery.badChargerContact()){
-        nextBadChargingContactCheck = millis() + 60000; // 1 min.
-        activeOp->onBadChargingContactDetected();
-      }
+
+    if (millis() > nextBadChargingContactCheck && battery.badChargerContact()) {
+      nextBadChargingContactCheck = millis() + 60000; // 1 min.
+      activeOp->onBadChargingContactDetected();
     } 
 
-    if (battery.underVoltage()){
+    if (battery.underVoltage())
       activeOp->onBatteryUndervoltage();
-    } 
     else
     {      
-      if (USE_TEMP_SENSOR)
-        if (stateTemp > DOCK_OVERHEAT_TEMP
-        ||  stateTemp < DOCK_TOO_COLD_TEMP)
+      if (USE_TEMP_SENSOR 
+      && (stateTemp > DOCK_OVERHEAT_TEMP
+      ||  stateTemp < DOCK_TOO_COLD_TEMP))
           activeOp->onTempOutOfRangeTriggered();
 
-      if (RAIN_ENABLE)
-        if (rainDriver.triggered())
+      if (RAIN_ENABLE && rainDriver.triggered())
           activeOp->onRainTriggered();                                                                                                       
       
-      if (DOCKING_STATION)
-       if (battery.shouldGoHome())
+      if (DOCKING_STATION && battery.shouldGoHome())
            activeOp->onBatteryLowShouldDock();
        
-      if (battery.chargerConnected())
-        if (battery.chargingHasCompleted())
+      if (battery.chargerConnected() && battery.chargingHasCompleted())
           activeOp->onChargingCompleted();     
     } 
 
@@ -962,6 +958,29 @@ void setOperation(OperationType op, bool allowRepeat){
 void processButtonState()
 {
 #if BUTTON_CONTROL
+  // compute button state (stateButton)
+  if (stopButton.triggered())
+  {
+    if (millis() > stateButtonTimeout){
+      stateButtonTimeout = millis() + 1000;
+      stateButtonTemp++; // next state
+      buzzer.sound(SND_READY, true);
+
+      CONSOLE.print("BUTTON ");
+      CONSOLE.print(stateButtonTemp);
+      CONSOLE.println("s");}                      
+  }
+  else
+  {
+    if (stateButtonTemp > 0){ // button released => set stateButton
+      stateButtonTimeout = 0;
+      stateButton = stateButtonTemp;
+      stateButtonTemp = 0;
+
+      CONSOLE.print("stateButton ");
+      CONSOLE.println(stateButton);}
+  } 
+
   // process button state
   if (stateButton == 1) {      // start-stop            
     if (stateOp == OP_MOW || stateOp == OP_DOCK)
@@ -979,25 +998,5 @@ void processButtonState()
     stateButton = 0;
     stateSensor = SENS_STOP_BUTTON;
   }
-
-  // compute button state (stateButton)
-  if (stopButton.triggered()) {
-    if (millis() > stateButtonTimeout){
-      stateButtonTimeout = millis() + 1000;
-      stateButtonTemp++; // next state
-      buzzer.sound(SND_READY, true);
-      CONSOLE.print("BUTTON ");
-      CONSOLE.print(stateButtonTemp);
-      CONSOLE.println("s");}                      
-  }
-  else {
-    if (stateButtonTemp > 0){
-      // button released => set stateButton
-      stateButtonTimeout = 0;
-      stateButton = stateButtonTemp;
-      stateButtonTemp = 0;
-      CONSOLE.print("stateButton ");
-      CONSOLE.println(stateButton);}
-  } 
 #endif  
 }

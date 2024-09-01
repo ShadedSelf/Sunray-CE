@@ -29,7 +29,9 @@ void ChargeOp::begin(){
   //motor.stopImmediately(true); // do not use PID to get to stop 
   motor.setLinearAngularSpeed(0, 0, false); 
   motor.setMowState(false);     
-  //motor.enableTractionMotors(false); // keep traction motors off (motor drivers tend to generate some incorrect encoder values when stopped while not turning)                 
+  //motor.enableTractionMotors(false); // keep traction motors off (motor drivers tend to generate some incorrect encoder values when stopped while not turning)
+
+  timetable.resetTriggers();               
 }
 
 
@@ -98,7 +100,8 @@ void ChargeOp::run(){
         CONSOLE.print(finishAndRestart);                
         CONSOLE.println(")");
       }
-      if (timetable.shouldAutostartNow()){
+      if (timetable.isEnabled() && timetable.mowingAllowed() && battery.isDocked() && millis() > dockOp.dockReasonRainAutoStartTime) {
+      //if (timetable.shouldAutostartNow()){
         CONSOLE.println("DOCK_AUTO_START: will automatically continue mowing now");
         changeOp(mowOp); // continue mowing                                                    
       }
@@ -148,7 +151,7 @@ void ChargeOp::onBatteryUndervoltage(){
 
 void ChargeOp::onRainTriggered(){
   if (DOCKING_STATION){
-    dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60; // ensure rain sensor is dry for one hour                       
+    dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * RAIN_DOCK_TIME; // ensure rain sensor is dry for one hour                       
     //CONSOLE.print("RAIN TRIGGERED dockOp.dockReasonRainAutoStartTime=");
     //CONSOLE.println(dockOp.dockReasonRainAutoStartTime);
   }

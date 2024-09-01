@@ -294,10 +294,15 @@ bool TimeTable::shouldAutostopNow(){
     return false;
 }
 
-void TimeTable::resetTriggerS()
+void TimeTable::resetTriggers()
 {
     autostartTriggered = false; // reset trigger
     autostopTriggered = false; // reset trigger 
+}
+
+bool TimeTable::isEnabled()
+{
+    return timetable.enable;
 }
 
 // called every 30s in robot

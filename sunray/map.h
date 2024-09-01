@@ -174,7 +174,7 @@ class Map
     long calcMapCRC();
 
     // -------mowing operation--------------------------------------
-    bool isInsidePerimeter(float x, float y);
+    bool isInsidePerimeter(float x, float y, bool checkObstacles = false);
     // call to inform mapping to start mowing  
     bool startMowing(float stateX, float stateY);    
     // has mowing completed?

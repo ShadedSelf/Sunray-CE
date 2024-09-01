@@ -225,7 +225,8 @@ class GpsWaitFloatOp: public Op {
 
 // escape obstacle (drive backwards)
 class EscapeReverseOp: public Op {
-  public:        
+  public:
+    bool drive;
     unsigned long driveReverseStopTime;
     virtual String name() override;
     virtual void begin() override;

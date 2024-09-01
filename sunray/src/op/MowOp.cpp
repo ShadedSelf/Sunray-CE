@@ -30,7 +30,7 @@ void MowOp::begin()
    
     motor.enableTractionMotors(true); // allow traction motors to operate         
     motor.setLinearAngularSpeed(0,0);      
-    if (((previousOp != &escapeReverseOp) && (previousOp != &escapeForwardOp)) || (DISABLE_MOW_MOTOR_AT_OBSTACLE))
+    if ((previousOp != &escapeReverseOp && previousOp != &escapeForwardOp) || DISABLE_MOW_MOTOR_AT_OBSTACLE)
         motor.setMowState(false);              
     battery.setIsDocked(false);                
     timetable.setMowingCompletedInCurrentTimeFrame(false);                
@@ -39,14 +39,14 @@ void MowOp::begin()
 
     dockOp.dockReasonRainTriggered = false;    
 
-    if (((initiatedByOperator) && (previousOp == &idleOp)) || (lastMapRoutingFailed))
+    if ((initiatedByOperator && previousOp == &idleOp) || lastMapRoutingFailed)
         maps.clearObstacles();
 
     if (maps.startMowing(position.x, position.y)){
         if (maps.nextPoint(true, position.x, position.y)) {
             lastFixTime = millis();                
             maps.setLastTargetPoint(position.x, position.y);        
-            motor.setMowState(true);                
+            motor.setMowState(true);            
         } else {
             error = true;
             CONSOLE.println("error: no waypoints!");              
@@ -81,15 +81,16 @@ void MowOp::end(){
 }
 
 void MowOp::run(){
-    if (!detectObstacle()){
+    if (!detectObstacle())
         detectObstacleRotation();                              
-    }        
+     
     // line tracking
     trackLine(true); 
     detectSensorMalfunction();    
     battery.resetIdle();
     
-    if (timetable.shouldAutostopNow()){
+    //if (timetable.shouldAutostopNow()){
+    if (timetable.isEnabled() && !timetable.mowingAllowed()){
         if (DOCKING_STATION){
             CONSOLE.println("TIMETABLE - DOCKING");
             dockOp.setInitiatedByOperator(false);
@@ -104,13 +105,10 @@ void MowOp::run(){
 void MowOp::onRainTriggered(){
     if (DOCKING_STATION){
         CONSOLE.println("RAIN TRIGGERED");
+
         stateSensor = SENS_RAIN;
         dockOp.dockReasonRainTriggered = true;
-        #ifdef DRV_SIM_ROBOT
-            dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 3; // try again after 3 minutes 
-        #else
-            dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60; // try again after one hour 
-        #endif
+        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * RAIN_DOCK_TIME; // try again after one hour 
         dockOp.setInitiatedByOperator(false);
         changeOp(dockOp);              
     }
@@ -119,9 +117,10 @@ void MowOp::onRainTriggered(){
 void MowOp::onTempOutOfRangeTriggered(){
     if (DOCKING_STATION){
         CONSOLE.println("TEMP OUT-OF-RANGE TRIGGERED");
+        
         stateSensor = SENS_TEMP_OUT_OF_RANGE;
         dockOp.dockReasonRainTriggered = true;
-        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60; // try again after one hour      
+        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * 5; // try again after one hour      
         dockOp.setInitiatedByOperator(false);
         changeOp(dockOp);              
     }
@@ -129,6 +128,7 @@ void MowOp::onTempOutOfRangeTriggered(){
 
 void MowOp::onBatteryLowShouldDock(){    
     CONSOLE.println("BATTERY LOW TRIGGERED - DOCKING");
+
     dockOp.setInitiatedByOperator(false);
     changeOp(dockOp);
 }
@@ -142,17 +142,18 @@ void MowOp::onTimetableStartMowing(){
 void MowOp::onObstacle(){
     CONSOLE.println("triggerObstacle");      
     statMowObstacles++;      
-    if (maps.isDocking()) {    
-        if (maps.retryDocking(position.x, position.y)) {
-            changeOp(escapeReverseOp, true);                      
-            return;
-        }
-    } 
-    if ((OBSTACLE_AVOIDANCE) && (maps.wayMode != WAY_DOCK)){    
-        changeOp(escapeReverseOp, true);      
-    } else {     
+
+    if (maps.isDocking() && maps.retryDocking(position.x, position.y)) {
+        changeOp(escapeReverseOp, true);                      
+        return;
+    }
+
+    if (OBSTACLE_AVOIDANCE && maps.wayMode != WAY_DOCK)   
+        changeOp(escapeReverseOp, true);
+    else {     
+        CONSOLE.println("error: obstacle!");         
+           
         stateSensor = SENS_OBSTACLE;
-        CONSOLE.println("error: obstacle!");            
         changeOp(errorOp);                
     }
 }

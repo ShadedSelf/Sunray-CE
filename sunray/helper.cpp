@@ -52,18 +52,12 @@ float distancePI(float x, float w)
   // w=10  degree, x=350 degree =>  20 degree
   // w=0   degree, x=190 degree => 170 degree
   // w=190 degree, x=0   degree => -170 degree
-  float d = scalePI(w - x);
-  //if (d < -PI) d = d + 2*PI;
-  //else if (d > PI) d = d - 2*PI;
-  return d;
+  return scalePI(w - x);
 }
 
 float distance180(float x, float w)
 {
-  float d = scale180(w - x);
-  //if (d < -180) d = d + 2*180;
-  //else if (d > 180) d = d - 2*180;
-  return d;
+  return scale180(w - x);
 }
 
 // compute distance to (infinite) line (https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points)

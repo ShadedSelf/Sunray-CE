@@ -250,6 +250,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 // ------ rain sensor ----------------------------------------------------------
 #define RAIN_ENABLE true                 // if activated, mower will dock when rain sensor triggers
+#define RAIN_DOCK_TIME 12   // time to wait (in hours) to mow again after docking for rain sensor triggering
 
 // ------ time-of-flight distance sensor (VL53L0X) -----------------------------
 // do not use this sensor (not recommended)
@@ -394,6 +395,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define DOCK_OVERHEAT_TEMP 32    // if temperature above this degreeC, mower will dock 
 #define DOCK_TOO_COLD_TEMP 10    // if temperature below this degreeC, mower will dock 
+
+#define TEMP_DOCK_TIME 5     // time to wait (in hours) to mow again after docking for temp sensor triggering
 
 // activate support for model R/C control?
 // use PCB pin 'mow' for R/C model control speed and PCB pin 'steering' for R/C model control steering, 
