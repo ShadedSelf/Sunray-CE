@@ -79,12 +79,7 @@ bool shouldUseGps()
   // avoids fix jumps
   bool dockGPS = true;
   #ifdef DOCK_IGNORE_GPS_DISTANCE
-    vec3_t dockPos = {0,0,0};
-    float dockDelta = 0;
-    maps.getDockingPos(dockPos.x, dockPos.y, dockDelta);
-
-    float dockDist = (dockPos - position).mag();
-    if (maps.isDocking() && dockDist < DOCK_IGNORE_GPS_DISTANCE)
+    if (maps.isDocking() && maps.getDockDistance() < DOCK_IGNORE_GPS_DISTANCE)
       dockGPS = false;
   #endif
 

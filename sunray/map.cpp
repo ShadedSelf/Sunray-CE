@@ -1609,78 +1609,37 @@ float Map::calcHeuristic(Point &pos0, Point &pos1) {
 // 3. otherwise: line between start node and next node node must not intersect any obstacle  
   
 int Map::findNextNeighbor(NodeList &nodes, PolygonList &obstacles, Node &node, int startIdx) {
-  Point dbgSrcPt(4.2, 6.2);
-  Point dbgDstPt(3.6, 6.8);  
-  float dbgSrcDist = distance(*node.point, dbgSrcPt);
-  bool verbose = false; 
-  if (dbgSrcDist < 0.2){
-    verbose = true;
-  }
-  //CONSOLE.print("start=");
-  //CONSOLE.print((*node.point).x());
-  //CONSOLE.print(",");
-  //CONSOLE.println((*node.point).y());   
+  
   for (int idx = startIdx+1; idx < nodes.numNodes; idx++){
     if (nodes.nodes[idx].opened) continue;
     if (nodes.nodes[idx].closed) continue;                
     if (nodes.nodes[idx].point == node.point) continue;     
     Point *pt = nodes.nodes[idx].point;            
-    
-    if (verbose){
-      float dbgDstDist = distance(*pt, dbgDstPt);
-      if (dbgDstDist < 0.2){
-        CONSOLE.println("findNextNeighbor trigger debug");        
-      } else verbose = false;
-    }
-    //if (pt.visited) continue;
-    //if (this.distance(pt, node.pos) > 10) continue;
+
     bool safe = true;            
     Point sectPt;
-    //CONSOLE.print("----check new path with all polygons---dest=");
-    //CONSOLE.print((*pt).x());
-    //CONSOLE.print(",");
-    //CONSOLE.println((*pt).y());  
-  
+
     // check new path with all obstacle polygons (perimeter, exclusions, obstacles)     
     for (int idx3 = 0; idx3 < obstacles.numPolygons; idx3++){             
        bool isPeri = ((perimeterPoints.numPoints > 0) && (idx3 == 0));  // if first index, it's perimeter, otherwise exclusions                           
        if (isPeri){ // we check with the perimeter?         
-         //CONSOLE.println("we check with perimeter");
          bool insidePeri = pointIsInsidePolygon(obstacles.polygons[idx3], *node.point);
-         if (verbose){
-           CONSOLE.print("insidePeri ");
-           CONSOLE.println(insidePeri);
-         }
          if (!insidePeri) { // start point outside perimeter?                                                                                      
-             //CONSOLE.println("start point oustide perimeter");
              if (linePolygonIntersectPoint( *node.point, *pt, obstacles.polygons[idx3], sectPt)){               
                float dist = distance(*node.point, sectPt);          
-               if (verbose){
-                  CONSOLE.print("dist ");
-                  CONSOLE.println(dist);
-               }
                if (dist > ALLOW_ROUTE_OUTSIDE_PERI_METER){ safe = false; break; } // entering perimeter with long distance is not safe                             
                if (linePolygonIntersectionCount( *node.point, *pt, obstacles.polygons[idx3]) != 1){ 
-                 if (verbose) CONSOLE.println("not safe");
                  safe = false; break; 
                }
                continue;           
              } else { safe = false; break; }                                          
          }
        } else {
-         //CONSOLE.println("we check with exclusion");
          bool insideObstacle = pointIsInsidePolygon(obstacles.polygons[idx3], *node.point);
-         if (insideObstacle) { // start point inside obstacle?                                                                         
-             if (verbose) CONSOLE.println("inside exclusion");         
-             //CONSOLE.println("start point inside exclusion");          
+         if (insideObstacle) { // start point inside obstacle?                                                                                
              if (linePolygonIntersectPoint( *node.point, *pt, obstacles.polygons[idx3], sectPt)){               
                float dist = distance(*node.point, sectPt);          
-               if (verbose){
-                 CONSOLE.print("dist ");
-                 CONSOLE.println(dist);
-               }
                if (dist > ALLOW_ROUTE_OUTSIDE_PERI_METER){ 
-                 if (verbose) CONSOLE.println("not safe");
                  safe = false; break; 
                } // exiting obstacle with long distance is not safe                             
                continue;           
@@ -1688,23 +1647,13 @@ int Map::findNextNeighbor(NodeList &nodes, PolygonList &obstacles, Node &node, i
          }
        }        
        if (linePolygonIntersection (*node.point, *pt, obstacles.polygons[idx3])){
-         if (verbose) CONSOLE.println("inside intersection");
          safe = false;
          break;
        }             
     }
-    //CONSOLE.print("----check done---safe=");
-    //CONSOLE.println(safe);
-    if (verbose){
-      CONSOLE.print("safe ");
-      CONSOLE.println(safe);
-    }
-    if (safe) {          
-      //pt.visited = true;
-      //var anode = {pos: pt, parent: node, f:0, g:0, h:0};          
-      //ret.push(anode);
-      return idx;
-    }            
+
+    if (safe)       
+      return idx;           
   }       
   return -1;
 }  
@@ -1991,4 +1940,11 @@ void Map::stressTest(){
   checkMemoryErrors();
 }
   
-  
+float Map::getDockDistance()
+{
+    float dockX = 0;
+    float dockY = 0;
+    float dockDelta = 0;
+    getDockingPos(dockX, dockY, dockDelta);
+    return ::distance(dockX, dockY, position.x, position.y);
+}

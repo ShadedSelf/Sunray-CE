@@ -29,9 +29,6 @@ void Battery::begin()
   nextBatteryTime = 0;
   nextCheckTime = 0;
   nextEnableTime = 0;
-  //batteryVoltageSlopeLowCounter = 0;
-  //nextSlopeTime = 0;
-	timeMinutes=0;  
   chargingVoltage = 0;
   chargingCompletedDelay =0;
   batteryVoltage = 0;
@@ -51,7 +48,6 @@ void Battery::begin()
   enableChargingTimeout = BAT_FULL_CHARGE_RECONNECT; // if battery is full, wait this time before enabling charging again (seconds)
   batteryVoltage = 0;
   batteryVoltageLast = 0;
-  //batteryVoltageSlope = 0;
   chargingVoltBatteryVoltDiff = 0;
   switchOffByOperator = false;
   switchOffAllowedUndervoltage = BAT_SWITCH_OFF_UNDERVOLTAGE;

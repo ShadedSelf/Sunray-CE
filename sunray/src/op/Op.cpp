@@ -171,16 +171,6 @@ void Op::checkStop(){
     }
 }
 
-float Op::getDockDistance(){
-    float dockX = 0;
-    float dockY = 0;
-    float dockDelta = 0;
-    maps.getDockingPos(dockX, dockY, dockDelta);
-    float dist_dock = distance(dockX, dockY, position.x, position.y);
-
-    return dist_dock;
-}
-
 void Op::run(){
 }
 

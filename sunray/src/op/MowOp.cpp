@@ -225,7 +225,7 @@ void MowOp::onGpsFixTimeout(){
     // no gps solution
     if (REQUIRE_VALID_GPS){
 #ifdef UNDOCK_IGNORE_GPS_DISTANCE
-        if (!maps.isUndocking() || getDockDistance() > UNDOCK_IGNORE_GPS_DISTANCE){
+        if (!maps.isUndocking() || maps.getDockDistance() > UNDOCK_IGNORE_GPS_DISTANCE){
 #else
         if (!maps.isUndocking()){
 #endif
@@ -238,7 +238,7 @@ void MowOp::onGpsFixTimeout(){
 void MowOp::onGpsNoSignal(){
     if (REQUIRE_VALID_GPS){
 #ifdef UNDOCK_IGNORE_GPS_DISTANCE
-        if (!maps.isUndocking() || getDockDistance() > UNDOCK_IGNORE_GPS_DISTANCE){
+        if (!maps.isUndocking() || maps.getDockDistance() > UNDOCK_IGNORE_GPS_DISTANCE){
 #else
         if (!maps.isUndocking()){
 #endif

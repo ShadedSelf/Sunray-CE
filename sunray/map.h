@@ -221,6 +221,7 @@ class Map
     void generateRandomMap();    
     // check if given point is inside perimeter (and outside exclusions) of current map 
     bool isInsidePerimeterOutsideExclusions(Point &pt);
+    float getDockDistance();
   private:
     void finishedUploadingMap();
     void checkMemoryErrors();
