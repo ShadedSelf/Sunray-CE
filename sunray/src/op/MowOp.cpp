@@ -102,25 +102,13 @@ void MowOp::run(){
     }
 }
 
-void MowOp::onRainTriggered(){
-    if (DOCKING_STATION){
-        CONSOLE.println("RAIN TRIGGERED");
-
-        stateSensor = SENS_RAIN;
-        dockOp.dockReasonRainTriggered = true;
-        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * RAIN_DOCK_TIME; // try again after one hour 
-        dockOp.setInitiatedByOperator(false);
-        changeOp(dockOp);              
-    }
-}
-
 void MowOp::onTempOutOfRangeTriggered(){
     if (DOCKING_STATION){
         CONSOLE.println("TEMP OUT-OF-RANGE TRIGGERED");
         
         stateSensor = SENS_TEMP_OUT_OF_RANGE;
         dockOp.dockReasonRainTriggered = true;
-        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * 5; // try again after one hour      
+        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * TEMP_DOCK_TIME; // try again after one hour      
         dockOp.setInitiatedByOperator(false);
         changeOp(dockOp);              
     }
@@ -152,7 +140,7 @@ void MowOp::onObstacle(){
         changeOp(escapeReverseOp, true);
     else {     
         CONSOLE.println("error: obstacle!");         
-           
+
         stateSensor = SENS_OBSTACLE;
         changeOp(errorOp);                
     }

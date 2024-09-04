@@ -193,7 +193,18 @@ void Op::onGpsNoSignal(){
 void Op::onGpsFixTimeout(){
 }
 
-void Op::onRainTriggered(){
+void Op::onRainTriggered()
+{
+  if (!DOCKING_STATION || activeOp == &dockOp)
+    return;
+
+  CONSOLE.println("RAIN TRIGGERED");
+
+  stateSensor = SENS_RAIN;
+  dockOp.dockReasonRainTriggered = true;
+  dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * RAIN_DOCK_TIME; // try again after one hour 
+  dockOp.setInitiatedByOperator(false);
+  changeOp(dockOp);
 }
 
 void Op::onTempOutOfRangeTriggered(){

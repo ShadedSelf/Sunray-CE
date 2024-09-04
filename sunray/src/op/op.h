@@ -19,45 +19,29 @@ class Op {
   public:     
     virtual String name();
     // -------- transitions ----------------------------------       
-    // op inititated by operator?
-    bool initiatedByOperator;
-    // should this operation stop?
-    bool shouldStop;
-    // op start time
-    unsigned long startTime;
-    // previous op
-    Op *previousOp;
-    // next op to call after op exit
-    Op *nextOp; 
+    bool initiatedByOperator;    // op inititated by operator?
+    bool shouldStop;    // should this operation stop?
+    unsigned long startTime;    // op start time
+    
+    Op *previousOp;    // previous op
+    Op *nextOp;    // next op to call after op exit 
 
-    // returns chained op's as a string (starting with active op, going until goal op) 
-    // (example: "ImuCalibration->GpsWaitFix->Mow")
-    String getOpChain();
+    String getOpChain();    // returns chained op's as a string (starting with active op, going until goal op) (example: "ImuCalibration->GpsWaitFix->Mow")
     String OpChain;
 
-    // op's can be chained, this returns the current goal op:
-    // examples:    
-    // ImuCalibrationOp (active)-->GpsWaitFixOp-->mowOp            -->  mowOp    
-    // ImuCalibrationOp (active)-->dockOp                          -->  dockOp
-    Op* getGoalOp();
+    Op* getGoalOp();    // op's can be chained, this returns the current goal op: ImuCalibrationOp (active)-->GpsWaitFixOp-->mowOp   Goal: -->  mowOp 
 
     Op();
-    // trigger op exit (optionally allow returning back on called operation exit, e.g. generate an op chain)
-    virtual void changeOp(Op &anOp, bool returnBackOnExit = false);
 
-    // trigger op exit (optionally allow returning back on called operation exit, e.g. generate an op chain)
-    virtual void changeOperationTypeByOperator(OperationType op);
+    virtual void changeOp(Op &anOp, bool returnBackOnExit = false);    // trigger op exit (optionally allow returning back on called operation exit, e.g. generate an op chain)
+    virtual void changeOperationTypeByOperator(OperationType op);    // trigger op exit
     virtual OperationType getGoalOperationType();
 
     virtual void setInitiatedByOperator(bool flag);    
-    // op entry code
-    virtual void begin();
-    // checks if active operation should stop and if so, makes transition to new one
-    virtual void checkStop();
-    // op run code 
-    virtual void run();    
-    // op exit code
-    virtual void end();        
+    virtual void begin();    // op entry code
+    virtual void checkStop();    // checks if active operation should stop and if so, makes transition to new one
+    virtual void run();    // op run code     
+    virtual void end();    // op exit code        
     // --------- events --------------------------------------
     virtual void onImuCalibration();
     virtual void onGpsNoSignal();
@@ -102,7 +86,6 @@ class ImuCalibrationOp: public Op {
     unsigned long nextImuCalibrationSecond;
     int imuCalibrationSeconds;
     virtual String name() override;
-    //virtual void changeOp(Op &anOp, bool returnBackOnExit = false) override;
     virtual void begin() override;
     virtual void end() override;
     virtual void run() override;
@@ -123,7 +106,6 @@ class MowOp: public Op {
     virtual void onOdometryError() override;
     virtual void onMotorOverload() override; 
     virtual void onMotorError() override;
-    virtual void onRainTriggered() override;
     virtual void onTempOutOfRangeTriggered() override;    
     virtual void onBatteryLowShouldDock() override;
     virtual void onTimetableStartMowing() override;    
