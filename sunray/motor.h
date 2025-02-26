@@ -74,17 +74,15 @@ class Motor {
     float motorMowRpmCurr;    
   protected: 
     float motorLeftRpmSet; // set speed
-    float motorRightRpmSet;   
-    float motorLeftRpmCurrLP;
-    float motorRightRpmCurrLP;    
+    float motorRightRpmSet;  
     float motorMowRpmCurrLP;    
     float motorMowPWMSet;  
     float motorMowPWMCurr; 
     float motorLeftPWMCurr;
     float motorRightPWMCurr;    
-    float motorMowPWMCurrLP; 
+    /*float motorMowPWMCurrLP; 
     float motorLeftPWMCurrLP;
-    float motorRightPWMCurrLP;    
+    float motorRightPWMCurrLP; */   
     unsigned long lastControlTime;    
     //unsigned long nextSenseTime;          
     bool recoverMotorFault;
@@ -95,7 +93,7 @@ class Motor {
     bool setLinearAngularSpeedTimeoutActive;
     unsigned long setLinearAngularSpeedTimeout;    
     void speedPWM ( int pwmLeft, int pwmRight, int pwmMow );
-    void control();    
+    void control(bool updateLeft, bool updateRight, bool updateMow);    
     bool checkFault();
     void checkOverload();
     bool checkOdometryError();
