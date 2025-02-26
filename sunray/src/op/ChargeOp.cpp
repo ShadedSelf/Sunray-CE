@@ -20,11 +20,12 @@ void ChargeOp::begin(){
   nextConsoleDetailsTime = 0;
   retryTouchDock = false;
   betterTouchDock = false;
+
   CONSOLE.print("OP_CHARGE");
   CONSOLE.print(" dockOp.initiatedByOperator=");
   CONSOLE.print(dockOp.initiatedByOperator);
   CONSOLE.print(" dockReasonRainTriggered=");
-  CONSOLE.println(dockOp.dockReasonRainTriggered);
+  DEBUGLN(dockOp.dockReasonRainTriggered);
 
   //motor.stopImmediately(true); // do not use PID to get to stop 
   motor.setLinearAngularSpeed(0, 0, false); 
@@ -38,25 +39,30 @@ void ChargeOp::begin(){
 void ChargeOp::end(){
 }
 
-void ChargeOp::run(){
-  if ((retryTouchDock) || (betterTouchDock)){
+void ChargeOp::run()
+{
+  if (retryTouchDock || betterTouchDock)
+  {
     if (millis() > retryTouchDockSpeedTime){                            
       retryTouchDockSpeedTime = millis() + 1000;
       motor.enableTractionMotors(true); // allow traction motors to operate                               
       motor.setLinearAngularSpeed(0.1, 0);
     }
+
     if (retryTouchDock){
       if (millis() > retryTouchDockStopTime) {
         motor.setLinearAngularSpeed(0, 0);
         retryTouchDock = false;
-        CONSOLE.println("ChargeOp: retryTouchDock failed");
+        DEBUGLN("ChargeOp: retryTouchDock failed");
         motor.enableTractionMotors(true); // allow traction motors to operate                               
         maps.setIsDocked(false);
         changeOp(idleOp);    
       }
-    } else if (betterTouchDock){
+    } 
+    else if (betterTouchDock)
+    {
       if (millis() > betterTouchDockStopTime) {
-        CONSOLE.println("ChargeOp: betterTouchDock completed");
+        DEBUGLN("ChargeOp: betterTouchDock completed");
         motor.setLinearAngularSpeed(0, 0);            
         betterTouchDock = false;
       }        
@@ -65,7 +71,8 @@ void ChargeOp::run(){
   
   battery.resetIdle();
   
-  if (battery.chargerConnected()){        
+  if (battery.chargerConnected())
+  {        
     maps.setIsDocked(true);    
 
     // get robot position and yaw from docking pos
@@ -75,8 +82,10 @@ void ChargeOp::run(){
     maps.getDockingPos(position.x, position.y, dockHeading);
     headingOffset = distancePI(imuDriver.yaw, dockHeading);
                        
-    if (battery.chargingHasCompleted()){
-      if (millis() > nextConsoleDetailsTime){
+    if (battery.chargingHasCompleted())
+    {
+      if (millis() > nextConsoleDetailsTime)
+      {
         nextConsoleDetailsTime = millis() + 30000;
         CONSOLE.print("ChargeOp: charging completed (DOCKING_STATION=");
         CONSOLE.print(DOCKING_STATION);
@@ -98,39 +107,58 @@ void ChargeOp::run(){
         CONSOLE.print(timetable.mowingAllowed());
         CONSOLE.print(", finishAndRestart=");                
         CONSOLE.print(finishAndRestart);                
-        CONSOLE.println(")");
-      }
-      if (timetable.isEnabled() && timetable.mowingAllowed() && battery.isDocked() && millis() > dockOp.dockReasonRainAutoStartTime) {
-      //if (timetable.shouldAutostartNow()){
-        CONSOLE.println("DOCK_AUTO_START: will automatically continue mowing now");
-        changeOp(mowOp); // continue mowing                                                    
+        DEBUGLN(")");
       }
     }
-  }        
+  }
+
+    //if (timetable.shouldAutostartNow()){
+  if (timetable.isEnabled()
+  && timetable.mowingAllowed()
+  && battery.isDocked()
+  && battery.chargingHasCompleted()
+  && millis() > dockOp.dockReasonRainAutoStartTime)
+    onTimetableStartMowing();
+
+  // reset whole sketch after X days
+  if (millis() > 5 * 24 * 60 * 60 * 1000)
+    while (true) { }
 }
 
 void ChargeOp::onTimetableStopMowing(){        
 }
 
-void ChargeOp::onTimetableStartMowing(){        
+void ChargeOp::onTimetableStartMowing()
+{
+  DEBUGLN("TIMETABLE START");
+
+  changeOp(mowOp); // continue mowing           
 }
 
-void ChargeOp::onChargerDisconnected(){
-  if ((DOCKING_STATION) && (DOCK_RETRY_TOUCH)) {    
-    CONSOLE.println("ChargeOp::onChargerDisconnected - retryTouchDock");
+void ChargeOp::onChargerDisconnected()
+{
+  if (DOCKING_STATION && DOCK_RETRY_TOUCH)
+  {    
+    DEBUGLN("ChargeOp::onChargerDisconnected - retryTouchDock");
+
     retryTouchDock = true;
     retryTouchDockStopTime = millis() + 5000;
     retryTouchDockSpeedTime = millis();
-  } else {
+  } 
+  else
+  {
     motor.enableTractionMotors(true); // allow traction motors to operate                               
     maps.setIsDocked(false);
     changeOp(idleOp);    
   }
 }
 
-void ChargeOp::onBadChargingContactDetected(){
-  if ((DOCKING_STATION) && (DOCK_RETRY_TOUCH)) {    
-    CONSOLE.println("ChargeOp::onBadChargingContactDetected - betterTouchDock");
+void ChargeOp::onBadChargingContactDetected()
+{
+  if (DOCKING_STATION && DOCK_RETRY_TOUCH)
+  {    
+    DEBUGLN("ChargeOp::onBadChargingContactDetected - betterTouchDock");
+
     betterTouchDock = true;
     betterTouchDockStopTime = millis() + 5000;
     retryTouchDockSpeedTime = millis();
@@ -139,7 +167,7 @@ void ChargeOp::onBadChargingContactDetected(){
 
 void ChargeOp::onChargerConnected(){
   if (retryTouchDock){
-    CONSOLE.println("ChargeOp: retryTouchDock succeeded");        
+    DEBUGLN("ChargeOp: retryTouchDock succeeded");        
     motor.setLinearAngularSpeed(0, 0);
     retryTouchDock = false;
   }
@@ -150,9 +178,9 @@ void ChargeOp::onBatteryUndervoltage(){
 }
 
 void ChargeOp::onRainTriggered(){
-  if (DOCKING_STATION){
-    dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * RAIN_DOCK_TIME; // ensure rain sensor is dry for one hour                       
-    //CONSOLE.print("RAIN TRIGGERED dockOp.dockReasonRainAutoStartTime=");
-    //CONSOLE.println(dockOp.dockReasonRainAutoStartTime);
-  }
+  if (!DOCKING_STATION)
+    return;
+
+  // ensure rain sensor is dry for RAIN_DOCK_TIME hours
+  dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * RAIN_DOCK_TIME;
 }
