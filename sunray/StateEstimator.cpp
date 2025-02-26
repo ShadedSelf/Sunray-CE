@@ -101,7 +101,8 @@ bool shouldResetHeadingPos(vec3_t gpsPos)
   || degrees(distancePI(heading, lastHeading)) > 10.0
   || maps.distanceToLastTargetPoint(gpsPos.x, gpsPos.y) < 0.25
   || maps.distanceToTargetPoint(gpsPos.x, gpsPos.y) < 0.25
-  || (maps.wayMode == WAY_FREE && fabs(motor.linearSpeedSet) < 0.2); // Try to avoid in path-planner obstacles
+  //|| (maps.wayMode == WAY_FREE && fabs(motor.linearSpeedSet) < 0.2) // Try to avoid in path-planner obstacles
+  ;
 }
 
 // https://learn.sparkfun.com/tutorials/9dof-razor-imu-m0-hookup-guide#using-the-mpu-9250-dmp-arduino-library
@@ -215,6 +216,7 @@ void resetImuTimeout(){
 // with IMU: heading (stateDelta) is computed by gyro (stateDeltaIMU)
 // without IMU: heading (stateDelta) is computed by odometry (deltaOdometry)
 unsigned long lastTime = 0;
+float headingErrorLP = 0.0;
 void computeRobotState()
 {  
   long leftDelta = motor.motorLeftTicks-stateLeftTicks;
@@ -298,8 +300,10 @@ void computeRobotState()
   if (gps.solutionAvail && shouldUseGps())
   {
     gps.solutionAvail = false;
-    stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * abs(gps.groundSpeed);
+    stateGroundSpeed = 0.9 * stateGroundSpeed + 0.1 * fabs(gps.groundSpeed);
     lastGpsPos = gpsPos;
+
+    vec3_t headingPosDiff = gpsPos - lastHeadingPos;
 
     // -- Heading --
     if (shouldResetHeadingPos(gpsPos)) // reset last position and heading
@@ -307,23 +311,24 @@ void computeRobotState()
       lastHeadingPos = gpsPos;
       lastHeading = heading;
     }
-    else if ((gpsPos-lastHeadingPos).mag() > 0.1) // gps-imu heading fusion
+    else if (headingPosDiff.mag() > 0.1) // gps-imu heading fusion
     {                
-      float headingGPS = atan2(gpsPos.y-lastHeadingPos.y, gpsPos.x-lastHeadingPos.x);
+      float headingGPS = atan2(headingPosDiff.y, headingPosDiff.x);
       if (motor.linearSpeedSet < 0.0)
         headingGPS = scalePI(headingGPS + PI); // consider if driving reverse
 
       if (imuDriver.imuFound) // imu
       {
-        float headingDiff = distancePI(imuDriver.yaw, headingGPS);
-        headingOffset = angleInterpolation(headingOffset, headingDiff, 1.0 - GPS_IMU_FUSION);
+        headingErrorLP = 0.95 * headingErrorLP + 0.05 * fabs(distancePI(heading, headingGPS) / PI);
+        float headingInterpolation = lerp(1.0 - GPS_IMU_FUSION, 1.0, max(headingErrorLP - 0.05, 0.0));
 
-        if (degrees(fabs(distancePI(heading, headingGPS))) > 45.0) // IMU-based heading too far away => use GPS heading
-          headingOffset = headingDiff;
+        float headingDiff = distancePI(imuDriver.yaw, headingGPS);
+        headingOffset = angleInterpolation(headingOffset, headingDiff, headingInterpolation);
       }
       else // odometry
         heading = angleInterpolation(headingGPS, heading, 0.9);
 
+      // reset last position and heading
       lastHeadingPos = gpsPos;
       lastHeading = heading;
     } 

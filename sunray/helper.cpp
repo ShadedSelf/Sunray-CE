@@ -36,7 +36,7 @@ float scalePI(float v)
 float scale180(float v)
 {
   if (v >= -180.0 && v <= 180.0) return v;
-  float d = fmod(v, 2.0*180);
+  float d = fmod(v, 2.0*180.0);
   if(d < -180.0) d += 2.0*180.0;
   if(d >  180.0) d -= 2.0*180.0;
   return d;
@@ -64,7 +64,7 @@ float distance180(float x, float w)
 float distanceLineInfinite(float px, float py, float x1, float y1, float x2, float y2)
 {
   float len = sqrt( sq(y2-y1)+sq(x2-x1) );
-  if (abs(len) < 0.01) return 0;
+  if (fabs(len) < 0.01) return 0;
   float distToLine = ((y2-y1)*px-(x2-x1)*py+(x2*y1-y2*x1)) / len;
   return distToLine;
 }

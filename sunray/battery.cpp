@@ -128,7 +128,7 @@ void Battery::run(){
   // -- Voltage --
   // charging voltage
   float cVoltage = batteryDriver.getChargeVoltage();
-  if (abs(chargingVoltage - cVoltage) > 10.0) {
+  if (fabs(chargingVoltage - cVoltage) > 10.0) {
     chargingVoltage = cVoltage;
     chargingVoltBatteryVoltDiff = 0;
   }  

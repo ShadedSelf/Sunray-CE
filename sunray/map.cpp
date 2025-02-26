@@ -420,8 +420,8 @@ void NodeList::dealloc(){
 
 // This is the Manhattan distance
 float Map::distanceManhattan(Point &pos0, Point &pos1){
-  float d1 = abs (pos1.x() - pos0.x());
-  float d2 = abs (pos1.y() - pos0.y());
+  float d1 = fabs(pos1.x() - pos0.x());
+  float d2 = fabs(pos1.y() - pos0.y());
   return d1 + d2;
 }
 

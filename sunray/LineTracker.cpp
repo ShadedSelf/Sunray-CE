@@ -158,29 +158,27 @@ void trackLine(bool runControl){
   if (fixTimeout != 0 && millis() > lastFixTime + fixTimeout * 1000.0 && !maps.isDocking())
       activeOp->onGpsFixTimeout();            
 
-  if (gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT && !maps.isUndocking()) // && lastFix time - now > 1000
+  if ((gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT) && !maps.isUndocking()) // && lastFix time - now > 1000
   {  
-    if (GPS_SPEED_DETECTION && abs(linear) > 0.06
-    && millis() > linearMotionStartTime + 5000 && stateGroundSpeed < 0.03) // if in linear motion and not enough ground speed => obstacle
+    if (GPS_SPEED_DETECTION
+    && fabs(linear) > 0.06
+    && millis() > linearMotionStartTime + 5000
+    && stateGroundSpeed < 0.03) // if in linear motion and not enough ground speed => obstacle
     {         
       CONSOLE.println("gps no speed => obstacle!");
       statMowGPSNoSpeedCounter++;
       triggerObstacle();
-      //return;
     }
   }
-  else // no gps solution
+  else if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking())   // no gps solution
   {
-    if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking())
-    {
-      CONSOLE.println("WARN: no gps solution!");
-      activeOp->onGpsNoSignal();
-    }
+    CONSOLE.println("WARN: no gps solution!");
+    activeOp->onGpsNoSignal();
   }
 
   // kidnap detect
 #if KIDNAP_DETECT
-  if (fabs(distToPath) > KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE)
+  if (fabs(distToPath) > KIDNAP_DETECT_ALLOWED_PATH_TOLERANCE && !maps.isInsidePerimeter(position.x, position.y))
   {
     if (!stateKidnapped){
       stateKidnapped = true;
