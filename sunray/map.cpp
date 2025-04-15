@@ -1758,7 +1758,7 @@ bool Map::findPath(Point &src, Point &dst){
       {    
         pathFinderNodes.nodes[idx].point = &offsetExclusions.polygons[i].points[j];
         #if VERIFY_OFFSET
-          if (!isInsidePerimeter(offsetExclusions.points[j].x(), offsetExclusions.points[j].y()))
+          if (!isInsidePerimeter(offsetExclusions.polygons[i].points[j].x(), offsetExclusions.polygons[i].points[j].y()))
             pathFinderNodes.nodes[idx].point = &exclusions.polygons[i].points[j];
         #endif
 
