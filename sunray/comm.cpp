@@ -85,7 +85,7 @@ void cmdTuneParam(){
             case 3: 
               stanleyTrackingSlowK = floatValue;
               break;
-            /*case 4:
+            case 4:
               motor.motorLeftPID.Kp = floatValue;
               motor.motorRightPID.Kp = floatValue;              
               break;
@@ -96,7 +96,7 @@ void cmdTuneParam(){
             case 6:
               motor.motorLeftPID.Kd = floatValue;
               motor.motorRightPID.Kd = floatValue;              
-              break;*/
+              break;
           } 
       } 
       counter++;
@@ -125,7 +125,7 @@ void cmdControl(){
       float floatValue = cmd.substring(lastCommaIdx+1, ch==',' ? idx : idx+1).toFloat();
       if (counter == 1){                            
           if (intValue >= 0) {
-            motor.enableMowMotor = (intValue == 1);
+            //motor.enableMowMotor = (intValue == 1);
             motor.setMowState( (intValue == 1) );
           }
       } else if (counter == 2){                                      
@@ -155,19 +155,17 @@ void cmdControl(){
       lastCommaIdx = idx;
     }    
   }      
-  /*CONSOLE.print("linear=");
-  CONSOLE.print(linear);
-  CONSOLE.print(" angular=");
-  CONSOLE.println(angular);*/    
+ 
   OperationType oldStateOp = stateOp;
   if (restartRobot){
     // certain operations may require a start from IDLE state (https://github.com/Ardumower/Sunray/issues/66)
     setOperation(OP_IDLE);    
   }
-  if (op >= 0) setOperation((OperationType)op, false); // new operation by operator
-    else if (restartRobot){     // no operation given by operator, continue current operation from IDLE state
-      setOperation(oldStateOp);    
-    }  
+  if (op >= 0)
+    setOperation((OperationType)op, false); // new operation by operator
+  else if (restartRobot)     // no operation given by operator, continue current operation from IDLE state
+    setOperation(oldStateOp);    
+
   String s = F("C");
   cmdAnswer(s);
 }
@@ -502,6 +500,12 @@ void cmdTriggerWatchdog(){
     p.runShellCommand("reboot");    
   #endif
 
+  if (stateOp == OP_MOW)
+  {
+    setOperation(OP_IDLE, false);
+    saveState();
+  }
+
   while (true) { }
 }
 
@@ -654,13 +658,13 @@ void cmdStats(){
   s += ",";
   s += statImuRecoveries;
   s += ",";
-  s += statTempMin;
+  //s += statTempMin;
+  s += stateTemp;
   s += ",";
   s += statTempMax;
   s += ",";
   s += gps.chksumErrorCounter;
   s += ",";
-  //s += ((float)gps.dgpsChecksumErrorCounter) / ((float)(gps.dgpsPacketCounter));
   s += gps.dgpsChecksumErrorCounter;
   s += ",";
   s += statMaxControlCycleTime;
@@ -687,7 +691,8 @@ void cmdStats(){
   s += ",";
   s += statMowDurationMotorRecovery;
   s += ",";
-  s += statMowLiftCounter;
+  //s += statMowLiftCounter;
+  s += (int)imuDriver.imuFound;
   s += ",";
   s += statMowGPSNoSpeedCounter;  
   s += ",";
@@ -1025,9 +1030,7 @@ void outputConsole(){
       CONSOLE.print (*spReg, HEX);
     #endif
     CONSOLE.print(" bat=");
-    CONSOLE.print(battery.batteryVoltage);
-    CONSOLE.print(",");
-    CONSOLE.print(battery.batteryVoltageSlope, 3);    
+    CONSOLE.print(battery.batteryVoltage); 
     CONSOLE.print("(");    
     CONSOLE.print(motor.motorsSenseLP);    
     CONSOLE.print(") chg=");
