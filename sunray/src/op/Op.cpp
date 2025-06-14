@@ -153,22 +153,27 @@ void Op::end(){
 
 }
 
-void Op::checkStop(){
-    if (shouldStop){
-      if (newActiveOp == NULL){
-        CONSOLE.println("ERROR Op::checkStop: invalid newActiveOp=NULL");
-        return;
-      }
-      end();      
-      activeOp = newActiveOp;
-      newActiveOp = NULL;
-      activeOp->startTime = millis();
-      CONSOLE.print("==> changeOp:");
-      activeOp->OpChain =  activeOp->getOpChain();      
-      CONSOLE.println(activeOp->OpChain);
-      activeOp->shouldStop = false;
-      activeOp->begin();
-    }
+void Op::checkStop()
+{
+ if (!shouldStop)
+  return;
+
+  if (newActiveOp == NULL)
+  {
+    CONSOLE.println("ERROR Op::checkStop: invalid newActiveOp=NULL");
+    return;
+  }
+  
+  activeOp->end();      
+  activeOp = newActiveOp;
+  newActiveOp = NULL;
+  activeOp->shouldStop = false;
+  activeOp->startTime = millis();
+  activeOp->OpChain = activeOp->getOpChain();     
+  activeOp->begin();
+  
+  CONSOLE.print("==> changeOp:");
+  CONSOLE.println(activeOp->OpChain);
 }
 
 void Op::run(){

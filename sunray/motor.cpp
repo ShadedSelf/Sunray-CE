@@ -410,7 +410,7 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
     motorMowPWMCurr += motorMowPID.y;
     motorMowPWMCurr = constrain(motorMowPWMCurr, -pwmMaxMow, pwmMaxMow);
   #else
-    motorMowPWMCurr = 0.85 * motorMowPWMCurr + 0.15 * motorMowPWMSet;
+    motorMowPWMCurr = 0.75 * motorMowPWMCurr + 0.25 * motorMowPWMSet;
     //motorMowPWMCurr = 0.97 * motorMowPWMCurr + 0.03 * motorMowPWMSet;
     //motorMowPWMCurr = 0.98 * motorMowPWMCurr + 0.02 * motorMowPWMSet;
   #endif

@@ -392,11 +392,13 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
                                  //  1 beep=stop, 2 beeps=start, 3 beeps=dock, ? beeps=R/C mode ON/OFF, 10 beeps=shutdown, ? beeps=WiFi WPS
 
 #define USE_TEMP_SENSOR true  // only activate if temp sensor (htu21d) connected
-
 #define DOCK_OVERHEAT_TEMP 32    // if temperature above this degreeC, mower will dock 
 #define DOCK_TOO_COLD_TEMP 10    // if temperature below this degreeC, mower will dock 
 
 #define TEMP_DOCK_TIME 5     // time to wait (in hours) to mow again after docking for temp sensor triggering
+
+#define SWITH_OFF_AT_ERROR false    // Switch off mower if an error occurs after SWITH_OFF_AT_ERROR_TIME time
+#define SWITH_OFF_AT_ERROR_TIME 30  // Time in minutes to wait to switch of mower if erroe occurs
 
 // activate support for model R/C control?
 // use PCB pin 'mow' for R/C model control speed and PCB pin 'steering' for R/C model control steering, 

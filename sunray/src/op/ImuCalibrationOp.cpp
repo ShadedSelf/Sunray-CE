@@ -14,14 +14,6 @@ String ImuCalibrationOp::name(){
     return "ImuCalibration";
 }
 
-
-// this operation cannot be exited at once (it has to be completed), we remember operation to call on exit here
-/*void ImuCalibrationOp::changeOp(Op &anOp, bool returnBackOnExit){
-    if (&anOp == this) return;    
-    nextOp = &anOp;
-}*/
-
-
 void ImuCalibrationOp::begin(){
     nextImuCalibrationSecond = 0;
     imuCalibrationSeconds = 0;
@@ -45,9 +37,9 @@ void ImuCalibrationOp::run()
         CONSOLE.print("IMU gyro calibration (robot must be static)... ");        
         CONSOLE.println(imuCalibrationSeconds);        
         buzzer.sound(SND_PROGRESS, true);
-
-        // TODO/FIXME: let's try more than 9 seconds: it seems in Alfred (Linux), MPU6050 sometimes takes more than 9 secs to work stable?                 
-        if (imuCalibrationSeconds >= 5){                 
+               
+        if (imuCalibrationSeconds >= 5)
+        {                 
             imuDriver.resetData();
             resetImuTimeout();
             Op::changeOp(*nextOp);

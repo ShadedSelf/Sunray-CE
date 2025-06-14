@@ -201,7 +201,7 @@ void readIMU(){
   } 
   
   if (avail && ENABLE_TILT_DETECTION)
-    if (fabs(scalePI(imuDriver.roll) > 60.0/180.0*PI)
+    if (fabs(scalePI(imuDriver.roll) > 100.0/180.0*PI)
     ||  fabs(scalePI(imuDriver.pitch) > 100.0/180.0*PI))
       activeOp->onImuTilt();
 }

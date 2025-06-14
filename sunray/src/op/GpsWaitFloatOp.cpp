@@ -12,16 +12,11 @@ String GpsWaitFloatOp::name(){
   return "GpsWaitFloat";
 }
 
-void GpsWaitFloatOp::begin(){
-    // no gps solution
+void GpsWaitFloatOp::begin()
+{
     CONSOLE.println("WARN: no gps solution!");
     stateSensor = SENS_GPS_INVALID;
-    //setOperation(OP_ERROR);
-    //buzzer.sound(SND_STUCK, true);          
-    
-    //linear = 0;
-    //angular = 0;      
-    //mow = false;
+
     motor.setLinearAngularSpeed(0,0, false); 
     motor.setMowState(false);     
 }
@@ -30,11 +25,11 @@ void GpsWaitFloatOp::begin(){
 void GpsWaitFloatOp::end(){
 }
 
-void GpsWaitFloatOp::run(){
+void GpsWaitFloatOp::run()
+{
     battery.resetIdle();
-    if ((gps.solution == SOL_FIXED) || (gps.solution == SOL_FLOAT)){        
-        changeOp(*nextOp);
-    }     
+    if (gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT)    
+        changeOp(*nextOp);  
 }
 
 

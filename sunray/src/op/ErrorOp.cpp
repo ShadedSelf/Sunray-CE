@@ -7,34 +7,34 @@
 #include <Arduino.h>
 #include "../../robot.h"
 #include "../../map.h"
+#include "../../comm.h"
 
 
 String ErrorOp::name(){
     return "Error";
 }
 
-
-void ErrorOp::begin(){
+void ErrorOp::begin()
+{
     CONSOLE.println("OP_ERROR"); 
-    //if (stateOp == OP_CHARGE){
-    //  CONSOLE.println(" - ignoring because we are charging");
-    //  op = stateOp;
-    //} else {        
-    motor.stopImmediately(true); // do not use PID to get to stop
-    //motor.setLinearAngularSpeed(0,0);
+     
+    motor.stopImmediately(true);
     motor.setMowState(false);      
-    //}  
+  
     buzzer.sound(SND_ERROR, true);
 }
-
 
 void ErrorOp::end(){
 }
 
-void ErrorOp::run(){
-    if (battery.chargerConnected()){        
+void ErrorOp::run()
+{
+    if (battery.chargerConnected())  
         changeOp(chargeOp);
-    }    
+
+    // Switch off if too much time in error OP
+    if (SWITH_OFF_AT_ERROR && millis() - startTime > SWITH_OFF_AT_ERROR_TIME * 60 * 1000)
+        cmdSwitchOffRobot();
 }
 
 

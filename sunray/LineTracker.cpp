@@ -38,7 +38,7 @@ bool isNearPerimeter()
   return !isInside && maps.wayMode != WAY_DOCK;   
 }
 
-bool isCloseToDock()
+bool isCloseToDock(float dist = 0)
 {
   float dockX = 0;
   float dockY = 0;
@@ -46,7 +46,37 @@ bool isCloseToDock()
   maps.getDockingPos(dockX, dockY, dockDelta);
   float dist_dock = distance(dockX, dockY, position.x, position.y);
 
-  return dist_dock < DOCK_UNDOCK_TRACKSLOW_DISTANCE && (maps.isUndocking() || maps.isDocking());
+  if (dist < 0.001)
+    dist = DOCK_UNDOCK_TRACKSLOW_DISTANCE;
+
+  return dist_dock < dist;// && (maps.isUndocking() || maps.isDocking());
+}
+
+vec3_t lastStuckPos = {0};
+unsigned long lastStuckTime = 0;
+unsigned long stuckCounter = 0;
+bool isStuck()
+{
+  unsigned long now = millis();
+  
+  // check every 10 seconds
+  if (now - lastStuckTime > 10000)
+  {
+    if ((position-lastStuckPos).mag() < 0.1)
+      stuckCounter++;
+    else
+      stuckCounter = 0;
+
+    lastStuckPos = position;
+    lastStuckTime = now;
+  }
+
+  if (stuckCounter >= 6)
+  {
+    stuckCounter = 0;
+    return true;
+  }
+  return false;
 }
 
 // control robot velocity (linear,angular) to track line to next waypoint (target)
@@ -90,7 +120,7 @@ void trackLine(bool runControl){
   // rover angle too far away from target angle, rotate rover
   if (!angleToTargetFits)
   {
-    angular = 29.0 / 180.0 * PI * 1.25; //  29 degree/s (0.5 rad/s);                    
+    angular = 29.0 / 180.0 * PI * 1.5; //  29 degree/s (0.5 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
 
     //float aDistace = min(trackerDiffDelta, prevtrackerDiffDelta)
@@ -106,9 +136,10 @@ void trackLine(bool runControl){
       || motor.motorRightOverload
       || motor.motorMowOverload)
         linear = 0.1;                       // overload
-    else if (setSpeed > 0.2                 // reduce speed when approaching/leaving waypoints    
-      && (targetDist < 0.2 && !maps.nextPointIsStraight()) // approaching
-      || (lastTargetDist < 0.2))           // leaving  
+
+    else if (     // reduce speed when approaching/leaving waypoints
+      (targetDist <= 0.1 && !maps.nextPointIsStraight()) // approaching
+      || lastTargetDist <= 0.05)           // leaving  
         linear = 0.15;         
     else if (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
     else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
@@ -154,9 +185,16 @@ void trackLine(bool runControl){
     linear *= 1.0 - constrain(-imuDriver.pitch / (PI*0.5) - 0.1, 0.0, 1.0);              // slow down on uphill
   }
   
-  // check some pre-conditions that can make linear+angular speed zero
-  if (fixTimeout != 0 && millis() > lastFixTime + fixTimeout * 1000.0 && !maps.isDocking())
-      activeOp->onGpsFixTimeout();            
+  // stop OP if last fix is greater than timeout
+  if (fixTimeout != 0 && millis() > lastFixTime + fixTimeout * 1000.0 && !isCloseToDock(3.0))
+      activeOp->onGpsFixTimeout();
+   
+  // check if mower is stuck somewhere and stop current OP
+  if (isStuck() && gps.solution == SOL_FIXED)
+  {
+    stateSensor = SENS_LIFT;
+    activeOp->changeOp(errorOp); 
+  }
 
   if ((gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT) && !maps.isUndocking()) // && lastFix time - now > 1000
   {  
@@ -202,7 +240,7 @@ void trackLine(bool runControl){
     mow = false;
 
   // wait until mowing motor is running
-  if (mow && millis() < motor.motorMowSpinUpTime + 3000) { 
+  if (mow && millis() < motor.motorMowSpinUpTime + 2000) { 
     if (!buzzer.isPlaying())
       buzzer.sound(SND_WARNING, true);
     linear = 0;

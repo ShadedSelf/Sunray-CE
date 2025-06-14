@@ -127,8 +127,7 @@ int fixTimeout = 0;
 bool absolutePosSource = false;
 double absolutePosSourceLon = 0;
 double absolutePosSourceLat = 0;
-float lastGPSMotionX = 0;
-float lastGPSMotionY = 0;
+vec3_t lastGPSMotion = vec3_t(0);
 unsigned long nextGPSMotionCheckTime = 0;
 
 bool finishAndRestart = false;
@@ -633,27 +632,8 @@ bool detectLift(){
 // detect obstacle (bumper, sonar, ToF)
 // returns true, if obstacle detected, otherwise false
 bool detectObstacle(){   
-  if (! ((robotShouldMoveForward()) || (robotShouldRotate())) ) return false;  
+  if (!(robotShouldMoveForward() || robotShouldRotate())) return false;  
 
- /* #if (TOF_ENABLE)
-    if (millis() >= nextToFTime){
-      nextToFTime = millis() + 200;
-      int v = tof.readRangeContinuousMillimeters();        
-      if (!tof.timeoutOccurred()) {     
-        tofMeasurements.add(v);        
-        float avg = 0;
-        if (tofMeasurements.getAverage(avg) == tofMeasurements.OK){
-          //CONSOLE.println(avg);
-          if (avg < TOF_OBSTACLE_CM * 10){
-            CONSOLE.println("ToF obstacle!");    
-            triggerObstacle();                
-            return true; 
-          }
-        }      
-      } 
-    }
-  #endif  */
-  
   #ifdef ENABLE_LIFT_DETECTION
     #ifdef LIFT_OBSTACLE_AVOIDANCE
       if ( (millis() > linearMotionStartTime + BUMPER_DEADTIME) && (liftDriver.triggered()) ) {
@@ -696,23 +676,20 @@ bool detectObstacle(){
   }  
 
   // check if GPS motion (obstacle detection)  
-  if ((millis() > nextGPSMotionCheckTime) || (millis() > overallMotionTimeout)) {        
+  if (millis() > nextGPSMotionCheckTime || millis() > overallMotionTimeout)
+  {        
     updateGPSMotionCheckTime();
     resetOverallMotionTimeout(); // this resets overall motion timeout (overall motion timeout happens if e.g. 
     // motion between anuglar-only and linar-only toggles quickly, and their specific timeouts cannot apply due to the quick toggling)
-    float dX = lastGPSMotionX - position.x;
-    float dY = lastGPSMotionY - position.y;
-    float delta = sqrt( sq(dX) + sq(dY) );    
-    if (delta < 0.05){
-      if (GPS_MOTION_DETECTION){
-        CONSOLE.println("gps no motion => obstacle!");
-        statMowGPSMotionTimeoutCounter++;
-        triggerObstacle();
-        return true;
-      }
+    float delta = (position-lastGPSMotion).mag();
+    lastGPSMotion = position;   
+    if (GPS_MOTION_DETECTION && delta < 0.05)
+    {
+      CONSOLE.println("gps no motion => obstacle!");
+      statMowGPSMotionTimeoutCounter++;
+      triggerObstacle();
+      return true;
     }
-    lastGPSMotionX = position.x;      
-    lastGPSMotionY = position.y;      
   }    
   return false;
 }
@@ -858,8 +835,7 @@ void run(){
     }
     if (!robotShouldBeInMotion()){
       resetOverallMotionTimeout();
-      lastGPSMotionX = 0;
-      lastGPSMotionY = 0;
+      lastGPSMotion = vec3_t(0);
     }
 
     if (battery.chargerConnected() != stateChargerConnected)
