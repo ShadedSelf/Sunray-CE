@@ -32,8 +32,7 @@ void MowOp::begin()
     motor.setLinearAngularSpeed(0,0);      
     if ((previousOp != &escapeReverseOp && previousOp != &escapeForwardOp) || DISABLE_MOW_MOTOR_AT_OBSTACLE)
         motor.setMowState(false);              
-    battery.setIsDocked(false);                
-    timetable.setMowingCompletedInCurrentTimeFrame(false);                
+    battery.setIsDocked(false);                             
 
     // plan route to next target point 
 
@@ -90,13 +89,8 @@ void MowOp::run()
     detectSensorMalfunction();    
     battery.resetIdle();
     
-    //if (timetable.shouldAutostopNow()){
-    if (timetable.isEnabled() && !timetable.mowingAllowed())
+    if (timetable.shouldAutostopNow())
         onTimetableStopMowing();
-
-    // reboot gps if correction age > 1 min
-    if (millis() - gps.dgpsAge > 1 * 60 * 60 * 1000)
-        gps.reboot();
 }
 
 void MowOp::onTempOutOfRangeTriggered(){
@@ -275,8 +269,6 @@ void MowOp::onKidnapped(bool state){
 
 void MowOp::onNoFurtherWaypoints(){
     DEBUGLN("mowing finished!");
-
-    timetable.setMowingCompletedInCurrentTimeFrame(true);
 
     if (!finishAndRestart)
     {             
