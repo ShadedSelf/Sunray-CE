@@ -522,6 +522,7 @@ void cmdSwitchOffRobot(){
   String s = F("Y3");
   cmdAnswer(s);  
   setOperation(OP_IDLE);
+  saveState();
   battery.switchOff();
 }
 
@@ -624,13 +625,13 @@ void cmdSummary(){
   s += lateralError;
   s += ",";
   if (stateOp == OP_MOW){
-    s += timetable.autostopTime.dayOfWeek;
+    s += 0;
     s += ",";  
-    s += timetable.autostopTime.hour;
+    s += 0;
   } else if (stateOp == OP_CHARGE) {
-    s += timetable.autostartTime.dayOfWeek;
+    s += 0;
     s += ",";  
-    s += timetable.autostartTime.hour;
+    s += 0;
   } else {
     s += "-1,0";
   }
