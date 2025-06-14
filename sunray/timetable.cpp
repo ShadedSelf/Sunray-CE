@@ -5,16 +5,7 @@
 
 
 TimeTable::TimeTable()
-{
-    autostartNow = false;
-    autostopNow = false;
-    mowingCompletedInCurrentTimeFrame = false;
-    nextCheckTime = 0;
-    lastMowingAllowedState = false;
-    autostartTriggered = false;
-    autostopTriggered = false;    
-    autostopTime.dayOfWeek = NOT_SET;
-    autostartTime.dayOfWeek = NOT_SET;    
+{   
     timetable.enable = false; 
 
     timetable.hours[0] = 0;
@@ -42,11 +33,6 @@ TimeTable::TimeTable()
     timetable.hours[22] = 0;
     timetable.hours[23] = 0;    
 }
-
-void TimeTable::setMowingCompletedInCurrentTimeFrame(bool completed){
-    mowingCompletedInCurrentTimeFrame = completed;
-}
-
 
 // set current UTC time
 void TimeTable::setCurrentTime(int hour, int min, int dayOfWeek){
@@ -156,174 +142,27 @@ bool TimeTable::mowingAllowed(){
 }
 
 
-bool TimeTable::findAutostopTime(weektime_t &time){
-    time.dayOfWeek = NOT_SET;
-    if (!timetable.enable) {
-        CONSOLE.println("AUTOSTOP: timetable is disabled");
-        return false;
-    }
-    bool autostop = false;
-    bool triggered = autostopTriggered;
-    weektime_t checktime = currentTime;
-    bool checkstate = true;
-
-    // check timetable
-    for (int hour =0; hour < 24 * 7; hour++){
-        bool allowed = mowingAllowed(checktime);
-        if (allowed != checkstate){   
-            if ( (!allowed ) && (!triggered) )   {         
-                // timetable status transition                                
-                CONSOLE.print("AUTOSTOP: timetable transition ");                                    
-                time = checktime;
-                dumpWeekTime(time);
-                autostop = true;
-                break;
-            } 
-            triggered = false;
-            checkstate = allowed;
-        }
-        // continue to next hour in timetable
-        checktime.hour++;
-        if (checktime.hour > 23){
-            checktime.dayOfWeek++;
-            if (checktime.dayOfWeek > 6){
-                checktime.dayOfWeek = 0;
-            }
-            checktime.hour=0;
-        }
-    }
-    if (!autostop) CONSOLE.println("AUTOSTOP: no time found");
-    return autostop;
-}
-
-
-bool TimeTable::findAutostartTime(weektime_t &time){    
-    time.dayOfWeek = NOT_SET;
-    if ( !DOCKING_STATION ){
-        CONSOLE.println("AUTOSTART: not defined DOCKING_STATION");
-        return false; 
-    }
-    /*if (!DOCK_AUTO_START) {// automatic continue mowing allowed?
-        CONSOLE.println("AUTOSTART: not defined DOCK_AUTO_START");
-        return false;     
-    }*/
-    if ( !battery.isDocked() ) { // robot is in dock?
-        CONSOLE.println("AUTOSTART: not docked automatically (use DOCK command first)");
-        return false;   
-    }
-    if (!timetable.enable)
-        return false;
-
-    bool autostart = false;    
-    weektime_t checktime = currentTime;
-    bool checkstate = false;
-    bool triggered = autostartTriggered;    
-    unsigned long waitmillis = millis(); 
-    
-    // check timetable and rain timeouts    
-    for (int hour = 0; hour < 24 * 7; hour++){
-        if (!dockOp.dockReasonRainTriggered || waitmillis > dockOp.dockReasonRainAutoStartTime) {  // raining timeout 
-            /*if (!timetable.enable){  // timetable disabled
-                if (!dockOp.initiatedByOperator && maps.mowPointsIdx > 0) { // mowing not completed yet                    
-                    CONSOLE.print("AUTOSTART: mowing not completed yet ");
-                    time = checktime;
-                    dumpWeekTime(time);
-                    autostart = true;
-                    break;
-                }
-            } 
-            else */
-           // {   // timetable enabled
-            bool allowed = mowingAllowed(checktime);
-            if (allowed != checkstate){   
-                if (allowed && !triggered) {         
-                    // timetable status transition
-                    CONSOLE.print("AUTOSTART: timetable transition ");                    
-                    time = checktime;
-                    dumpWeekTime(time);
-                    autostart = true;
-                    break;
-                }
-                triggered = false;
-                checkstate = allowed;
-            }
-            if (allowed){   // timetable status
-                if (!dockOp.initiatedByOperator && (!mowingCompletedInCurrentTimeFrame || maps.mowPointsIdx > 0))  {
-                    CONSOLE.print("AUTOSTART: timetable state ");                    
-                    time = checktime;
-                    dumpWeekTime(time);
-                    autostart = true;
-                    break;
-                }
-            }
-            //}
-        }
-
-        // continue to next hour in timetable
-        checktime.hour++;
-        waitmillis += 1000 * 60 * 60; // 1 hour
-        if (checktime.hour > 23){
-            checktime.dayOfWeek++;
-            if (checktime.dayOfWeek > 6)
-                checktime.dayOfWeek = 0;
-            checktime.hour=0;
-        }
-    }
-
-    if (!autostart)
-        CONSOLE.println("AUTOSTART: no time found");
-    return autostart;
-}
-
 // called from charge operation
 bool TimeTable::shouldAutostartNow(){
-    if (autostartNow){
-        autostartTriggered = true; // remember trigger
-        return true;
-    }
-    return false;
+ return isEnabled()
+  && mowingAllowed()
+  && battery.isDocked()
+  && battery.chargingHasCompleted()
+  && millis() > dockOp.dockReasonRainAutoStartTime;
 }
 
 
 // called from mow operation
 bool TimeTable::shouldAutostopNow(){
-    if (autostopNow){        
-        autostopTriggered = true;  // remember trigger
-        return true;
-    }
-    return false;
+    return isEnabled() && !mowingAllowed();
 }
 
-void TimeTable::resetTriggers()
-{
-    autostartTriggered = false; // reset trigger
-    autostopTriggered = false; // reset trigger 
-}
-
-bool TimeTable::isEnabled()
-{
+bool TimeTable::isEnabled(){
     return timetable.enable;
 }
 
 // called every 30s in robot
 void TimeTable::run()
 {    
-    // reset triggers on timetable changes
-    bool allowed = mowingAllowed(currentTime);
-    if (allowed != lastMowingAllowedState){
-        lastMowingAllowedState = allowed;
-        resetTriggers();
-    }
 
-    autostopNow = false;
-    if (findAutostopTime(autostopTime) 
-    && autostopTime.dayOfWeek == currentTime.dayOfWeek
-    && autostopTime.hour == currentTime.hour)                     
-        autostopNow = true;
-
-    autostartNow = false;
-    if (findAutostartTime(autostartTime)
-    && autostartTime.dayOfWeek == currentTime.dayOfWeek
-    && autostartTime.hour == currentTime.hour)
-        autostartNow = true;
 }

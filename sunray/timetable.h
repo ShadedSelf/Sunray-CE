@@ -77,10 +77,7 @@ class TimeTable
 {
   public:
     timetable_t timetable;
-    weektime_t autostartTime;   // next autostart time
-    weektime_t autostopTime;    // next autostop time
     weektime_t currentTime;  // current time to compare time table against
-    bool mowingCompletedInCurrentTimeFrame;  // has mowing completed in current time frame?
     
     TimeTable(); 
 
@@ -94,26 +91,16 @@ class TimeTable
     void clear(); // clear timetable
     void setCurrentTime(int hour, int min, int weekOfDay); // set current UTC time
     void setEnabled(bool flag); // enable/disable timetable
-    void setMowingCompletedInCurrentTimeFrame(bool completed);
     bool setDayMask(int hour, daymask_t mask); // set day mask for hour 
   
-    bool findAutostartTime(weektime_t &time);    
-    bool findAutostopTime(weektime_t &time);    
     bool mowingAllowed(weektime_t time); // mowing allowed for given UTC week time?
     bool mowingAllowed(); // mowing allowed for current UTC week time?
 
-    void resetTriggers();
     bool isEnabled();
 
     void run(); // run loop
 
-  protected:
-      unsigned long nextCheckTime; 
-      bool lastMowingAllowedState;
-      bool autostartTriggered;  // remember transition triggers
-      bool autostopTriggered;  // remember transition triggers      
-      bool autostartNow;  
-      bool autostopNow;   
+  protected: 
 };
 
 
