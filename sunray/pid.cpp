@@ -53,10 +53,13 @@ float PID::compute() {
   // anti wind-up
   if (esum < -max_output)  esum = -max_output;
   if (esum > max_output)  esum = max_output;
+
   y = Kp * e
       + Ki * Ta * esum
       + Kd/Ta * (e - eold);
+
   eold = e;
+
   // restrict output to min/max
   if (y > y_max) y = y_max;
   if (y < y_min) y = y_min;

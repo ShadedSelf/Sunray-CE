@@ -20,7 +20,7 @@ void Motor::begin() {
   ticksPerCm = ((float)ticksPerRevolution) / (((float)wheelDiameter) / 10.0) / PI;    // computes encoder ticks per cm (do not change)  
 
   // Motor PIDs -------
-  motorLeftPID.Kp = motorRightPID.Kp = MOTOR_PID_KP;  // 2.0;  
+  motorLeftPID.Kp = motorRightPID.Kp = MOTOR_PID_KP / 10.0;  // 2.0;  
   motorLeftPID.Ki = motorRightPID.Ki = MOTOR_PID_KI;  // 0.03; 
   motorLeftPID.Kd = motorRightPID.Kd = MOTOR_PID_KD;  // 0.03;
   
@@ -325,7 +325,7 @@ void Motor::run()
   prevTimeLeft = timeLeft;
   prevTimeRight = timeRight;
 
-  // calculat speed via tick time
+  // calculate speed via tick time
   motorLeftRpmCurr =  (60000000.0 / (timeLeft  * ticksPerRevolution)) * (float)(fabs(motorLeftPWMCurr) > 0.5);
   motorRightRpmCurr = (60000000.0 / (timeRight * ticksPerRevolution)) * (float)(fabs(motorRightPWMCurr) > 0.5);
   motorMowRpmCurr =   (60000000.0 / (timeMow   * 6))                  * (float)(fabs(motorMowPWMCurr) > 0.5);
@@ -375,10 +375,10 @@ void Motor::sense()
 //unsigned long leftTimeUpdate;
 void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
   //########################  Calculate PWM for left driving motor ############################
-  if (updateLeft)
+  //if (updateLeft)
   {
-    motorLeftPID.Kp = 0.9 * (3.0/50.0);
-    motorLeftPID.Kp = 0.1;
+    /*motorLeftPID.Kp = 0.9 * (3.0/50.0);
+    motorLeftPID.Kp = 0.1;*/
 
     motorLeftPID.x = motorLeftRpmCurr;
     motorLeftPID.w = motorLeftRpmSet;
@@ -388,16 +388,18 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
   }
 
   //########################  Calculate PWM for right driving motor ############################
-  if (updateRight)
+  //if (updateRight)
   {
-    motorRightPID.Kp = 0.9 * (3.0/50.0);
-    motorRightPID.Kp = 0.1;
+    /*motorRightPID.Kp = 0.9 * (3.0/50.0);
+    motorRightPID.Kp = 0.1;*/
 
     motorRightPID.x = motorRightRpmCurr;
     motorRightPID.w = motorRightRpmSet;
     motorRightPID.compute();
     motorRightPWMCurr += motorRightPID.y;
     motorRightPWMCurr = constrain(motorRightPWMCurr, -pwmMax, pwmMax);
+
+ // DEBUGLN(motorRightRpmSet - motorRightRpmCurr);
   }
 
   //########################  Calculate PWM for mowing motor ############################
@@ -410,7 +412,7 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
     motorMowPWMCurr += motorMowPID.y;
     motorMowPWMCurr = constrain(motorMowPWMCurr, -pwmMaxMow, pwmMaxMow);
   #else
-    motorMowPWMCurr = 0.75 * motorMowPWMCurr + 0.25 * motorMowPWMSet;
+    motorMowPWMCurr = 0.7 * motorMowPWMCurr + 0.3 * motorMowPWMSet;
     //motorMowPWMCurr = 0.97 * motorMowPWMCurr + 0.03 * motorMowPWMSet;
     //motorMowPWMCurr = 0.98 * motorMowPWMCurr + 0.02 * motorMowPWMSet;
   #endif

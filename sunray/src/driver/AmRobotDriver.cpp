@@ -543,7 +543,7 @@ void AmMotorDriver::getMotorTickTime(unsigned long &leftTime, unsigned long &rig
   // estimate deceleration
   unsigned long now = micros();
 
-#if FILTER_ODOMETRY
+#if FILTER_ODOMETRY // Uneven magnet distribution
   float time;
 
   leftOdo.getAverage(time);
