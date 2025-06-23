@@ -85,7 +85,7 @@ bool isStuck()
 void trackLine(bool runControl){  
 
   // target reached
-  if (maps.distanceToTargetPoint(position.x, position.y) < (SMOOTH_CURVES ? 0.2 : TARGET_REACHED_TOLERANCE)){
+  if (maps.distanceToTargetPoint(position.x, position.y) < TARGET_REACHED_TOLERANCE){
     activeOp->onTargetReached();
     if (!maps.nextPoint(false, position.x, position.y))   
       activeOp->onNoFurtherWaypoints(); // finish    
@@ -96,7 +96,7 @@ void trackLine(bool runControl){
 
   //float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());   
   float targetDelta = pointsAngle(position.x, position.y, target.x(), target.y());    
-  if (maps.trackReverse)targetDelta = scalePI(targetDelta + PI);
+  if (maps.trackReverse )targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, heading);
   
   float trackerDiffDelta = distancePI(heading, targetDelta);                         
@@ -106,41 +106,34 @@ void trackLine(bool runControl){
   float targetDist = maps.distanceToTargetPoint(position.x, position.y);
   float lastTargetDist = maps.distanceToLastTargetPoint(position.x, position.y);  
 
-  // allow rotations only near last or next waypoint or if too far away from path
-  bool angleToTargetFits = true;
-  if (targetDist < 0.25 || lastTargetDist < 0.25 || fabs(distToPath) > 0.25) {
-    if (SMOOTH_CURVES) angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 120);
-    else               angleToTargetFits = (fabs(trackerDiffDelta)/PI*180.0 < 10);
-  }
-
 
   float linear = 0.0;  
   float angular = 0.0; 
 
-  // rover angle too far away from target angle, rotate rover
-  if (!angleToTargetFits)
+  // allow rotations only near last or next waypoint or if too far away from path
+  bool stillRotation = (targetDist < 0.25 || lastTargetDist < 0.25 || fabs(distToPath) > 0.25)  // at rotation condition
+    && fabs(trackerDiffDelta) > radians(10.0)                                                   // and too much angular error
+    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch))) > radians(25.0);        // and too much tilt
+
+  // requires still rotation
+  if (stillRotation)
   {
     angular = 29.0 / 180.0 * PI * 1.5; //  29 degree/s (0.5 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
-
-    //float aDistace = min(trackerDiffDelta, prevtrackerDiffDelta)
-    //float aDistance = degrees(fabs(trackerDiffDelta));
-    //angular *= constrain(1.0 - degrees(aDistance)/10.0, 0.0, 10.);
   } 
-  else // line control (stanley)    
+  else // otherwise line control (stanley)
   {
     // linear speed modifiers
     if (maps.trackSlow && isCloseToDock())  // planner forces slow tracking (e.g. docking etc)
       linear = 0.1;     
     else if (motor.motorLeftOverload
       || motor.motorRightOverload
-      || motor.motorMowOverload)
-        linear = 0.1;                       // overload
-
-    else if (     // reduce speed when approaching/leaving waypoints
-      (targetDist <= 0.1 && !maps.nextPointIsStraight()) // approaching
-      || lastTargetDist <= 0.05)           // leaving  
-        linear = 0.15;         
+      || motor.motorMowOverload)            // overload
+        linear = 0.1;
+    else if (targetDist <= 0.1 && !maps.nextPointIsStraight()) // approaching waypoint
+      linear = 0.15;    
+    else if (lastTargetDist <= 0.05)           // leaving  
+      linear = 0.15;    
     else if (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
     else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
     else if (SET_PERIMETER_SPEED && isNearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter

@@ -195,10 +195,10 @@ bool Polygon::write(File &file){
 }
 
 void Polygon::getCenter(Point &pt){
-  float minX = 9999;
-  float maxX = -9999;
-  float minY = 9999;
-  float maxY = -9999;
+  float minX = 99999;
+  float maxX = -99999;
+  float minY = 99999;
+  float maxY = -99999;
   for (int i=0; i < numPoints; i++){
     minX = min(minX, points[i].x());
     maxX = max(maxX, points[i].x());
