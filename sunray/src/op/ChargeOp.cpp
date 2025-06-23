@@ -31,12 +31,13 @@ void ChargeOp::begin(){
   motor.setLinearAngularSpeed(0, 0, false); 
   motor.setMowState(false);     
   //motor.enableTractionMotors(false); // keep traction motors off (motor drivers tend to generate some incorrect encoder values when stopped while not turning)
-
-  timetable.resetTriggers();               
+  
+  buzzer.sound(SND_PLUG, true);
 }
 
 
 void ChargeOp::end(){
+
 }
 
 void ChargeOp::run()
@@ -101,8 +102,6 @@ void ChargeOp::run()
         CONSOLE.print(dockOp.dockReasonRainTriggered);
         CONSOLE.print(", dockOp.dockReasonRainAutoStartTime(min remain)=");
         CONSOLE.print( ((int)(dockOp.dockReasonRainAutoStartTime - millis())) / 60000 );                                
-        CONSOLE.print(", timetable.mowingCompletedInCurrentTimeFrame=");                
-        CONSOLE.print(timetable.mowingCompletedInCurrentTimeFrame);
         CONSOLE.print(", timetable.mowingAllowed=");                
         CONSOLE.print(timetable.mowingAllowed());
         CONSOLE.print(", finishAndRestart=");                
@@ -112,12 +111,7 @@ void ChargeOp::run()
     }
   }
 
-    //if (timetable.shouldAutostartNow()){
-  if (timetable.isEnabled()
-  && timetable.mowingAllowed()
-  && battery.isDocked()
-  && battery.chargingHasCompleted()
-  && millis() > dockOp.dockReasonRainAutoStartTime)
+  if (timetable.shouldAutostartNow())
     onTimetableStartMowing();
 
   // reset whole sketch after X days
