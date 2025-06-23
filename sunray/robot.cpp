@@ -676,7 +676,7 @@ bool detectObstacle(){
   }  
 
   // check if GPS motion (obstacle detection)  
-  if (millis() > nextGPSMotionCheckTime || millis() > overallMotionTimeout)
+  /*if (millis() > nextGPSMotionCheckTime || millis() > overallMotionTimeout)
   {        
     updateGPSMotionCheckTime();
     resetOverallMotionTimeout(); // this resets overall motion timeout (overall motion timeout happens if e.g. 
@@ -690,7 +690,7 @@ bool detectObstacle(){
       triggerObstacle();
       return true;
     }
-  }    
+  }   */ 
   return false;
 }
 
