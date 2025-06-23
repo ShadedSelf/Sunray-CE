@@ -27,28 +27,6 @@ void GpsWaitFixOp::end(){
 
 void GpsWaitFixOp::run()
 {
-    // reboot gps every 5 min
-    if (millis() - startTime > 5 * 60 * 1000)
-    {
-        startTime = millis();
-        gps.reboot();
-        // try hard reset if more time passes??
-        /*
-        the CFG-RST command enables to issue different types of resets:
-
-        COLD_START_SOFT_RESET: (0xFF, 0xFF, 0x01, 0x00)
-
-        HOT_START_SOFT_RESET:  (0x00, 0x00, 0x01, 0x00)
-
-        COLD_START_CONTROLLED_HARD_RESET: (0xFF, 0xFF, 0x04, 0x00)                
-        
-        HOT_START_CONTROLLED_HARD_RESET:(0x00, 0x00, 0x04, 0x00)
-
-        STOP_GNSS: (0x00, 0x00, 0x08, 0x00)
-
-        START_GNSS: (0x00, 0x00, 0x09, 0x00)*/
-    }
-
     battery.resetIdle();
     if (gps.solution == SOL_FIXED)
         changeOp(*nextOp);
