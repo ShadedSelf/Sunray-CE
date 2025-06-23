@@ -84,10 +84,10 @@ void Buzzer::run(){
       break;   
     case SND_PLUG:
       switch (toneIdx){
-        case 0: tone(2100); nextToneTime = m + 500; break;
-        case 1: noTone();  nextToneTime = m + 200; break;
-        case 2: tone(4200); nextToneTime = m + 500; break;
-        case 3: noTone();  nextToneTime = m + 200; break;
+        case 0: tone(3000); nextToneTime = m + 20; break;
+        case 1: noTone();  nextToneTime = m + 100; break;
+        case 2: tone(5000); nextToneTime = m + 20; break;
+        case 3: noTone();  nextToneTime = m + 20; break;
         case 4:            nextToneTime = 0;       break;
       }
       break;     

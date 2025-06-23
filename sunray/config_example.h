@@ -281,6 +281,7 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define GO_HOME_VOLTAGE   23.1  // start going to dock below this voltage
 #define BAT_FULL_VOLTAGE  28.2  // start mowing again at this voltage
+#define BAT_UNDERVOLTAGE  21.5  // battery switch off voltage
 #define BAT_FULL_CURRENT  0.1   // start mowing again below this charging current (amps)
 
 // https://wiki.ardumower.de/index.php?title=Ardumower_Sunray#Automatic_battery_switch_off

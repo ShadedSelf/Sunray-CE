@@ -40,7 +40,7 @@ void Battery::begin()
 
   batMonitor = true;              // monitor battery and charge voltage?      
   batGoHomeIfBelow = GO_HOME_VOLTAGE; // 21.5  drive home voltage (Volt)  
-  batSwitchOffIfBelow = 21.5;  // switch off battery if below voltage (Volt)  
+  batSwitchOffIfBelow = BAT_UNDERVOLTAGE;  // switch off battery if below voltage (Volt)  
   batSwitchOffIfIdle = 300;      // switch off battery if idle (seconds)
   // The battery will charge if both battery voltage is below that value and charging current is above that value.
   batFullCurrent  = BAT_FULL_CURRENT;  // 0.2  current flowing when battery is fully charged (A)
@@ -159,7 +159,7 @@ void Battery::run(){
   if (!chargerConnectedState && chargingVoltage > 7.0)
   {
       chargerConnectedState = true;
-      buzzer.sound(SND_OVERCURRENT, true); 
+      //buzzer.sound(SND_OVERCURRENT, true); 
 
 		  DEBUG(F("CHARGER CONNECTED chgV="));      	                    
       DEBUG(chargingVoltage);      
