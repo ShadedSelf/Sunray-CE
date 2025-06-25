@@ -821,7 +821,7 @@ void run(){
   
   
   if (millis() >= nextControlTime){        
-    nextControlTime = millis() + 20; 
+    nextControlTime = millis() + 20*0; 
     controlLoops++;    
     
     computeRobotState();
