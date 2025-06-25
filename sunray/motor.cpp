@@ -375,11 +375,8 @@ void Motor::sense()
 //unsigned long leftTimeUpdate;
 void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
   //########################  Calculate PWM for left driving motor ############################
-  //if (updateLeft)
+  if (updateLeft)
   {
-    /*motorLeftPID.Kp = 0.9 * (3.0/50.0);
-    motorLeftPID.Kp = 0.1;*/
-
     motorLeftPID.x = motorLeftRpmCurr;
     motorLeftPID.w = motorLeftRpmSet;
     motorLeftPID.compute();
@@ -388,18 +385,13 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
   }
 
   //########################  Calculate PWM for right driving motor ############################
-  //if (updateRight)
+  if (updateRight)
   {
-    /*motorRightPID.Kp = 0.9 * (3.0/50.0);
-    motorRightPID.Kp = 0.1;*/
-
     motorRightPID.x = motorRightRpmCurr;
     motorRightPID.w = motorRightRpmSet;
     motorRightPID.compute();
     motorRightPWMCurr += motorRightPID.y;
     motorRightPWMCurr = constrain(motorRightPWMCurr, -pwmMax, pwmMax);
-
- // DEBUGLN(motorRightRpmSet - motorRightRpmCurr);
   }
 
   //########################  Calculate PWM for mowing motor ############################
@@ -412,7 +404,7 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
     motorMowPWMCurr += motorMowPID.y;
     motorMowPWMCurr = constrain(motorMowPWMCurr, -pwmMaxMow, pwmMaxMow);
   #else
-    motorMowPWMCurr = 0.7 * motorMowPWMCurr + 0.3 * motorMowPWMSet;
+    motorMowPWMCurr = 0.9 * motorMowPWMCurr + 0.1 * motorMowPWMSet;
     //motorMowPWMCurr = 0.97 * motorMowPWMCurr + 0.03 * motorMowPWMSet;
     //motorMowPWMCurr = 0.98 * motorMowPWMCurr + 0.02 * motorMowPWMSet;
   #endif
