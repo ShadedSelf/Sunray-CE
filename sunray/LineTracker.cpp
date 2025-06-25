@@ -53,25 +53,38 @@ bool isCloseToDock(float dist = 0)
 }
 
 vec3_t lastStuckPos = {0};
+float lastStuckRot = 0.0;
 unsigned long lastStuckTime = 0;
 unsigned long stuckCounter = 0;
 bool isStuck()
 {
   unsigned long now = millis();
   
-  // check every 10 seconds
-  if (now - lastStuckTime > 10000)
+  // check every 3 seconds for lack of movement
+  if (now - lastStuckTime > 3000)
   {
-    if ((position-lastStuckPos).mag() < 0.1)
+    float dist = (position-lastStuckPos).mag();
+    float rot = fabs(distancePI(imuDriver.yaw, lastStuckRot));
+
+    if (gps.solution == SOL_FIXED
+    && dist < 0.05
+    && rot < radians(10.0))
+    {
       stuckCounter++;
+
+      statMowGPSNoSpeedCounter++;
+      triggerObstacle();
+    }
     else
       stuckCounter = 0;
 
     lastStuckPos = position;
+    lastStuckRot = imuDriver.yaw;
     lastStuckTime = now;
   }
 
-  if (stuckCounter >= 6)
+  // if no movement for 1 minute return true
+  if (stuckCounter >= 20)
   {
     stuckCounter = 0;
     return true;
@@ -112,14 +125,16 @@ void trackLine(bool runControl){
 
   // allow rotations only near last or next waypoint or if too far away from path
   bool stillRotation = (targetDist < 0.25 || lastTargetDist < 0.25 || fabs(distToPath) > 0.25)  // at rotation condition
-    && fabs(trackerDiffDelta) > radians(10.0)                                                   // and too much angular error
-    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch))) > radians(25.0);        // and too much tilt
+    && fabs(trackerDiffDelta) > radians(5.0)                                                   // and too much angular error
+    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch))) > radians(15.0);        // and too much tilt
+    // waymode == free?
 
   // requires still rotation
   if (stillRotation)
   {
     angular = 29.0 / 180.0 * PI * 1.5; //  29 degree/s (0.5 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
+        DEBUGLN(degrees(fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch))));
   } 
   else // otherwise line control (stanley)
   {
@@ -183,7 +198,7 @@ void trackLine(bool runControl){
       activeOp->onGpsFixTimeout();
    
   // check if mower is stuck somewhere and stop current OP
-  if (isStuck() && gps.solution == SOL_FIXED)
+  if (isStuck())
   {
     stateSensor = SENS_LIFT;
     activeOp->changeOp(errorOp); 
@@ -191,15 +206,15 @@ void trackLine(bool runControl){
 
   if ((gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT) && !maps.isUndocking()) // && lastFix time - now > 1000
   {  
-    if (GPS_SPEED_DETECTION
-    && fabs(linear) > 0.06
+   /* if (GPS_SPEED_DETECTION
+    && fabs(linear) > 0.05
     && millis() > linearMotionStartTime + 5000
-    && stateGroundSpeed < 0.03) // if in linear motion and not enough ground speed => obstacle
+    && stateGroundSpeed < 0.02) // if in linear motion and not enough ground speed => obstacle
     {         
       CONSOLE.println("gps no speed => obstacle!");
       statMowGPSNoSpeedCounter++;
       triggerObstacle();
-    }
+    }*/
   }
   else if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking())   // no gps solution
   {
