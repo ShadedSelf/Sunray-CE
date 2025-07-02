@@ -17,7 +17,7 @@ void GpsWaitFixOp::begin()
     CONSOLE.println("WARN: no gps solution!");
     stateSensor = SENS_GPS_INVALID;
 
-    motor.setLinearAngularSpeed(0,0, false); 
+    motor.setLinearAngularSpeed(0,0, true); 
     motor.setMowState(false);     
 }
 

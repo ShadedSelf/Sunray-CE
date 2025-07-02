@@ -150,12 +150,18 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 // motor speed control (PID coefficients) - these values are tuned for Ardumower motors
 // general information about PID controllers: https://wiki.ardumower.de/index.php?title=PID_control
-#define MOTOR_PID_KP     0.9   // do not change 2.0 (for non-Ardumower motors or if the motor speed control is too fast you may try: KP=1.0, KI=0, KD=0)
-#define MOTOR_PID_KI     0.0   // do not change 0.03
+#define MOTOR_PID_KP     0.0   // do not change 2.0 (for non-Ardumower motors or if the motor speed control is too fast you may try: KP=1.0, KI=0, KD=0)
+#define MOTOR_PID_KI     10.0   // do not change 0.03
 #define MOTOR_PID_KD     0.0   // do not change 0.03
 
 #define MOTOR_LEFT_SWAP_DIRECTION 1  // uncomment to swap left motor direction
 #define MOTOR_RIGHT_SWAP_DIRECTION 1  // uncomment to swap right motor direction
+
+// Feed-fordward
+#define FRICTION_FF 0.0           // PWM needed to get motors turning
+#define VELOCITY_COEF_FF 0.0      // linear relationship between PWM and RPM
+
+#define PRINT_PWM_VALUES false    // Print values to help tune motors
 
 
 // ----- mowing motor -------------------------------------------------

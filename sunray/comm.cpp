@@ -86,16 +86,22 @@ void cmdTuneParam(){
               stanleyTrackingSlowK = floatValue;
               break;
             case 4:
-              motor.motorLeftPID.Kp = floatValue / 10.0;
-              motor.motorRightPID.Kp = floatValue / 10.0;              
+              motor.motorLeftPID.Kp = floatValue;
+              motor.motorRightPID.Kp = floatValue;
+              motor.motorLeftPIDv1.SetP(floatValue);       
+              motor.motorRightPIDv1.SetP(floatValue);       
               break;
             case 5:
               motor.motorLeftPID.Ki = floatValue;
               motor.motorRightPID.Ki = floatValue;
+              motor.motorLeftPIDv1.SetI(floatValue);   
+              motor.motorRightPIDv1.SetI(floatValue);   
               break;
             case 6:
               motor.motorLeftPID.Kd = floatValue;
-              motor.motorRightPID.Kd = floatValue;              
+              motor.motorRightPID.Kd = floatValue;
+              motor.motorLeftPIDv1.SetD(floatValue);   
+              motor.motorRightPIDv1.SetD(floatValue);              
               break;
           } 
       } 
@@ -196,7 +202,7 @@ void cmdMotor(){
   CONSOLE.print(linear);
   CONSOLE.print(" angular=");
   CONSOLE.println(angular);*/
-  motor.setLinearAngularSpeed(linear, angular, false);
+  motor.setLinearAngularSpeed(linear, angular, true);
   String s = F("M");
   cmdAnswer(s);
 }

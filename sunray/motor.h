@@ -57,6 +57,8 @@ class Motor {
     bool motorRecoveryState; 
     PID motorLeftPID;
     PID motorRightPID;   
+    PIDv1 motorLeftPIDv1;
+    PIDv1 motorRightPIDv1;   
   #if MOW_RPM_CONTROL
     PID motorMowPID; 
   #endif
@@ -65,7 +67,7 @@ class Motor {
     void test();
     void plot();
     void enableTractionMotors(bool enable);
-    void setLinearAngularSpeed(float linear, float angular, bool useLinearRamp = true);
+    void setLinearAngularSpeed(float linear, float angular, bool useLinearRamp = true, bool useAngularRamp = false);
     void setMowState(bool switchOn);   
     void setMowMaxPwm( int val );
     void stopImmediately(bool includeMowerMotor);

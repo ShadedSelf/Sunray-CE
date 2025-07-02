@@ -59,20 +59,32 @@ unsigned long stuckCounter = 0;
 bool isStuck()
 {
   unsigned long now = millis();
-  
+
+  // wait for motor to spin up before checking for obstacles
+  if (millis() - motor.motorMowSpinUpTime < 2000)
+  {
+    lastStuckTime = now;
+    return false;
+  }
+
   // check every 3 seconds for lack of movement
   if (now - lastStuckTime > 3000)
   {
     float dist = (position-lastStuckPos).mag();
     float rot = fabs(distancePI(imuDriver.yaw, lastStuckRot));
 
+    // no linear or angular movement
     if (gps.solution == SOL_FIXED
     && dist < 0.05
     && rot < radians(10.0))
     {
       stuckCounter++;
 
-      statMowGPSNoSpeedCounter++;
+      if (dist < 0.05)
+        statMowGPSNoSpeedCounter++;
+      if (rot < radians(10.0))
+        statMowRotationTimeoutCounter++;
+        
       triggerObstacle();
     }
     else
@@ -95,13 +107,16 @@ bool isStuck()
 // control robot velocity (linear,angular) to track line to next waypoint (target)
 // uses a stanley controller for line tracking
 // https://medium.com/@dingyan7361/three-methods-of-vehicle-lateral-control-pure-pursuit-stanley-and-mpc-db8cc1d32081
+float lastTargetHeading;
 void trackLine(bool runControl){  
 
   // target reached
   if (maps.distanceToTargetPoint(position.x, position.y) < TARGET_REACHED_TOLERANCE){
     activeOp->onTargetReached();
     if (!maps.nextPoint(false, position.x, position.y))   
-      activeOp->onNoFurtherWaypoints(); // finish    
+      activeOp->onNoFurtherWaypoints(); // finish
+     
+    lastTargetHeading = heading;  
   }  
   
   Point target = maps.targetPoint;
@@ -124,17 +139,16 @@ void trackLine(bool runControl){
   float angular = 0.0; 
 
   // allow rotations only near last or next waypoint or if too far away from path
-  bool stillRotation = (targetDist < 0.25 || lastTargetDist < 0.25 || fabs(distToPath) > 0.25)  // at rotation condition
-    && fabs(trackerDiffDelta) > radians(5.0)                                                   // and too much angular error
-    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch))) > radians(15.0);        // and too much tilt
-    // waymode == free?
+  bool stillRotation = (/*targetDist < 0.25 ||*/ lastTargetDist < 0.25 || fabs(distToPath) > 0.25)  // at rotation condition
+    && fabs(trackerDiffDelta) > radians(5.0)                                                        // and too much angular error
+    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch)) > radians(18.0) || maps.wayMode != WAY_MOW);        // and too much tilt
+
 
   // requires still rotation
   if (stillRotation)
   {
-    angular = 29.0 / 180.0 * PI * 1.5; //  29 degree/s (0.5 rad/s);                    
+    angular = 0.75; //  29 degree/s (0.5 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
-        DEBUGLN(degrees(fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch))));
   } 
   else // otherwise line control (stanley)
   {
@@ -248,15 +262,17 @@ void trackLine(bool runControl){
     mow = false;
 
   // wait until mowing motor is running
-  if (mow && millis() < motor.motorMowSpinUpTime + 2000) { 
+  if (mow && millis() - motor.motorMowSpinUpTime < 2000)
+  { 
     if (!buzzer.isPlaying())
       buzzer.sound(SND_WARNING, true);
+
     linear = 0;
     angular = 0;     
   }
 
   if (runControl){
-    motor.setLinearAngularSpeed(linear, angular);      
+    motor.setLinearAngularSpeed(linear, angular, true);      
     motor.setMowState(mow);    
   }
 }
