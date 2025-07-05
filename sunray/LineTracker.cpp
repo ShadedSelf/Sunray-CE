@@ -104,27 +104,27 @@ bool isStuck()
   return false;
 }
 
+bool shouldRotateInPlace(float trackerDiffDelta)
+{
+    // allow rotations only near last or next waypoint or if too far away from path
+  //return (lastTargetDist < 0.1 || fabs(distToPath) > 0.25)  // at rotation condition
+    return fabs(trackerDiffDelta) > radians(10.0)                             // and too much angular error
+    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch)) > radians(18.0) || maps.wayMode != WAY_MOW);        // and too much tilt
+}
+
 // control robot velocity (linear,angular) to track line to next waypoint (target)
 // uses a stanley controller for line tracking
 // https://medium.com/@dingyan7361/three-methods-of-vehicle-lateral-control-pure-pursuit-stanley-and-mpc-db8cc1d32081
 float lastTargetHeading;
-void trackLine(bool runControl){  
-
-  // target reached
-  if (maps.distanceToTargetPoint(position.x, position.y) < TARGET_REACHED_TOLERANCE){
-    activeOp->onTargetReached();
-    if (!maps.nextPoint(false, position.x, position.y))   
-      activeOp->onNoFurtherWaypoints(); // finish
-     
-    lastTargetHeading = heading;  
-  }  
-  
+bool stillRotation = false;
+void trackLine(bool runControl)
+{
+  // calculate variables
   Point target = maps.targetPoint;
   Point lastTarget = maps.lastTargetPoint;
-
-  //float targetDelta = pointsAngle(lastTarget.x(), lastTarget.y(), target.x(), target.y());   
+ 
   float targetDelta = pointsAngle(position.x, position.y, target.x(), target.y());    
-  if (maps.trackReverse )targetDelta = scalePI(targetDelta + PI);
+  if (maps.trackReverse) targetDelta = scalePI(targetDelta + PI);
   targetDelta = scalePIangles(targetDelta, heading);
   
   float trackerDiffDelta = distancePI(heading, targetDelta);                         
@@ -132,30 +132,41 @@ void trackLine(bool runControl){
   
   float distToPath = distanceLine(position.x, position.y, lastTarget.x(), lastTarget.y(), target.x(), target.y());        
   float targetDist = maps.distanceToTargetPoint(position.x, position.y);
-  float lastTargetDist = maps.distanceToLastTargetPoint(position.x, position.y);  
+  float lastTargetDist = maps.distanceToLastTargetPoint(position.x, position.y);
+
+  // target reached
+  bool newWaypoint = false;
+  if (maps.distanceToTargetPoint(position.x, position.y) < TARGET_REACHED_TOLERANCE)
+  {
+    activeOp->onTargetReached();
+
+    if (!maps.nextPoint(false, position.x, position.y))   
+      activeOp->onNoFurtherWaypoints(); // finish
+    else if (shouldRotateInPlace(trackerDiffDelta))
+      stillRotation = true;             // rotation
+     
+    lastTargetHeading = heading;  
+  }  
 
 
   float linear = 0.0;  
-  float angular = 0.0; 
-
-  // allow rotations only near last or next waypoint or if too far away from path
-  bool stillRotation = (lastTargetDist < 0.1 || fabs(distToPath) > 0.25)  // at rotation condition
-    && fabs(trackerDiffDelta) > radians(10.0)                             // and too much angular error
-    && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch)) > radians(18.0) || maps.wayMode != WAY_MOW);        // and too much tilt
+  float angular = 0.0;
 
   // requires still rotation
   if (stillRotation)
   {
-    angular = 0.75; // (0.75 rad/s);                    
-    if (trackerDiffDelta < 0) angular *= -1.0;
+    // rotation sped (0.75 rad/s))
+    angular = 0.75 * sign(trackerDiffDelta);
 
     // slow down rotation when close to target
     float outBound = fabs(distancePI(heading, lastTargetHeading));
     float inBound  = fabs(distancePI(heading, targetDelta));
 
     float x = inBound;
-    x = min(0.2 + x, radians(25.0)) / radians(25.0);
-    angular *= x;
+    angular *= min(0.2 + x, radians(25.0)) / radians(25.0);
+
+    if (fabs(trackerDiffDelta) < 10.0)
+      stillRotation = false;
   } 
   else // otherwise line control (stanley)
   {
