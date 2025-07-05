@@ -136,9 +136,7 @@ void PIDv1::Init(float* Input, float* Output, float* Setpoint,
     mySetpoint = Setpoint;
     inAuto = false;
 
-    PIDv1::SetOutputLimits(0, 255);				//default output limit corresponds to
-												//the arduino pwm limits
-
+    PIDv1::SetOutputLimits(0, 255);
     PIDv1::SetControllerDirection(ControllerDirection);
     PIDv1::SetTunings(Kp, Ki, Kd, POn);
 
@@ -178,7 +176,7 @@ bool PIDv1::Compute()
 
     // if error positive error*P, else myOutpu - error*k
 
-    //outputSum *= max(1.0 - timeChange * 0.01, 0.0);
+    outputSum *= max(1.0 - timeChange * 0.01, 0.0);
     //outputSum *= exp(-timeChange);
     outputSum += (ki * timeChange * error);
 

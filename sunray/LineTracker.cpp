@@ -139,16 +139,23 @@ void trackLine(bool runControl){
   float angular = 0.0; 
 
   // allow rotations only near last or next waypoint or if too far away from path
-  bool stillRotation = (/*targetDist < 0.25 ||*/ lastTargetDist < 0.25 || fabs(distToPath) > 0.25)  // at rotation condition
-    && fabs(trackerDiffDelta) > radians(5.0)                                                        // and too much angular error
+  bool stillRotation = (lastTargetDist < 0.1 || fabs(distToPath) > 0.25)  // at rotation condition
+    && fabs(trackerDiffDelta) > radians(10.0)                             // and too much angular error
     && (fabs(scalePI(imuDriver.roll)) + fabs(scalePI(imuDriver.pitch)) > radians(18.0) || maps.wayMode != WAY_MOW);        // and too much tilt
-
 
   // requires still rotation
   if (stillRotation)
   {
-    angular = 0.75; //  29 degree/s (0.5 rad/s);                    
+    angular = 0.75; // (0.75 rad/s);                    
     if (trackerDiffDelta < 0) angular *= -1.0;
+
+    // slow down rotation when close to target
+    float outBound = fabs(distancePI(heading, lastTargetHeading));
+    float inBound  = fabs(distancePI(heading, targetDelta));
+
+    float x = inBound;
+    x = min(0.2 + x, radians(25.0)) / radians(25.0);
+    angular *= x;
   } 
   else // otherwise line control (stanley)
   {
@@ -159,31 +166,15 @@ void trackLine(bool runControl){
       || motor.motorRightOverload
       || motor.motorMowOverload)            // overload
         linear = 0.1;
-    else if (targetDist <= 0.1 && !maps.nextPointIsStraight()) // approaching waypoint
+    else if (targetDist <= 0.15 && !maps.nextPointIsStraight()) // approaching waypoint
       linear = 0.15;    
-    else if (lastTargetDist <= 0.05)           // leaving  
+    else if (lastTargetDist <= 0.1)           // leaving  
       linear = 0.15;    
     else if (gps.solution == SOL_FLOAT) linear = 0.1;   // slown down for float solution
     else if (sonar.nearObstacle()) linear = 0.1;        // slow down near obstacles
     else if (SET_PERIMETER_SPEED && isNearPerimeter()) linear = PERIMETER_SPEED; // set speed near perimeter
     else if (ADAPTIVE_SPEED && !maps.trackReverse && maps.wayMode != WAY_DOCK)
-    {    
-      /*adaptiveSpeedPID.Kp = 0.0025;
-      adaptiveSpeedPID.Ki = 0;
-      adaptiveSpeedPID.Kd = 0;
-
-      adaptiveSpeedPID.x = motor.motorMowSenseLP;
-      adaptiveSpeedPID.w = 0.75;
-      adaptiveSpeedPID.y_min = -0.05;
-      adaptiveSpeedPID.y_max = 0.05;
-      adaptiveSpeedPID.max_output = 0.1;
-      adaptiveSpeedPID.compute();
-      adaptiveSpeed += adaptiveSpeedPID.y;
-
-      adaptiveSpeed = constrain(adaptiveSpeed, 0.1, setSpeed);
-
-      linear = adaptiveSpeed;*/
-
+    {
       float minCurrent = ADAPTIVES_SPEED_MINCURRENT;
       float maxCurrent = ADAPTIVES_SPEED_MAXCURRENT;
       float diffCurrent = maxCurrent - minCurrent;
@@ -218,19 +209,9 @@ void trackLine(bool runControl){
     activeOp->changeOp(errorOp); 
   }
 
-  if ((gps.solution == SOL_FIXED || gps.solution == SOL_FLOAT) && !maps.isUndocking()) // && lastFix time - now > 1000
-  {  
-   /* if (GPS_SPEED_DETECTION
-    && fabs(linear) > 0.05
-    && millis() > linearMotionStartTime + 5000
-    && stateGroundSpeed < 0.02) // if in linear motion and not enough ground speed => obstacle
-    {         
-      CONSOLE.println("gps no speed => obstacle!");
-      statMowGPSNoSpeedCounter++;
-      triggerObstacle();
-    }*/
-  }
-  else if (REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0 && !maps.isDocking())   // no gps solution
+  // no gps solution
+  if (gps.solution == SOL_INVALID && REQUIRE_VALID_GPS && millis() > lastFixTime + INVALID_GPS_TIMEOUT * 1000.0
+  && (!maps.isDocking() || !maps.isUndocking()))
   {
     CONSOLE.println("WARN: no gps solution!");
     activeOp->onGpsNoSignal();

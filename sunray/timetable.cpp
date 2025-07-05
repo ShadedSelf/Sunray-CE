@@ -146,7 +146,7 @@ bool TimeTable::mowingAllowed(){
 bool TimeTable::shouldAutostartNow(){
  return isEnabled()
   && mowingAllowed()
-  && battery.isDocked()
+  //&& battery.isDocked()
   && battery.chargingHasCompleted()
   && millis() > dockOp.dockReasonRainAutoStartTime;
 }
