@@ -796,7 +796,7 @@ void run(){
   // IMU
   if (millis() > nextImuTime)
   {
-    nextImuTime = millis() + 30;
+    nextImuTime = millis() + 30*0;
     readIMU();    
   }
 
