@@ -163,9 +163,9 @@ void trackLine(bool runControl)
     float inBound  = fabs(distancePI(heading, targetDelta));
 
     float x = inBound;
-    angular *= min(0.2 + x, radians(25.0)) / radians(25.0);
+    angular *= min(0.1 + x, radians(25.0)) / radians(25.0);
 
-    if (fabs(trackerDiffDelta) < 10.0)
+    if (fabs(trackerDiffDelta) < radians(5.0))
       stillRotation = false;
   } 
   else // otherwise line control (stanley)
