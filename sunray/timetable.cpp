@@ -148,7 +148,9 @@ bool TimeTable::shouldAutostartNow(){
   && mowingAllowed()
   //&& battery.isDocked()
   && battery.chargingHasCompleted()
-  && millis() > dockOp.dockReasonRainAutoStartTime;
+  && millis() > dockOp.dockReasonRainAutoStartTime
+  && stateTemp < DOCK_OVERHEAT_TEMP - 3
+  && millis() - gps.dgpsAge < 10 * 1000;
 }
 
 
