@@ -180,8 +180,8 @@ void Motor::setLinearAngularSpeed(float linear, float angular, bool useLinearRam
   float lspeed = linearSpeedSet - angularSpeedSet * (wheelBaseCm / 100.0 / 2.0);   
 
   // RPM = V / (2*PI*r) * 60
-  motorRightRpmSet =  rspeed / (PI*(((float)wheelDiameter)/1000.0)) * 60.0;   
-  motorLeftRpmSet = lspeed / (PI*(((float)wheelDiameter)/1000.0)) * 60.0;   
+  motorRightRpmSet = rspeed / (PI * ((float)wheelDiameter / 1000.0)) * 60.0;   
+  motorLeftRpmSet  = lspeed / (PI * ((float)wheelDiameter / 1000.0)) * 60.0;   
 }
 
 

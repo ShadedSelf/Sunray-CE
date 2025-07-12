@@ -31,7 +31,7 @@ float pointsAngle(float x1, float y1, float x2, float y2);
 double distanceLL(double lat1, double lon1, double lat2, double lon2);
 void relativeLL(double lat1, double lon1, double lat2, double lon2, double &n, double &e);
 
-int sign(double x);
+float sign(float x);
 
 int freeRam ();
 

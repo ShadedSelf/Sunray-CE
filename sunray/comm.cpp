@@ -202,7 +202,8 @@ void cmdMotor(){
   CONSOLE.print(linear);
   CONSOLE.print(" angular=");
   CONSOLE.println(angular);*/
-  motor.setLinearAngularSpeed(linear, angular, true);
+  if (stateOp != OP_CHARGE)
+    motor.setLinearAngularSpeed(linear, angular, true);
   String s = F("M");
   cmdAnswer(s);
 }
