@@ -17,8 +17,8 @@ float voltageDividerUges(float R1, float R2, float U2){
 
 // ADC-value to voltage
 float ADC2voltage(float ADCvalue){
-  //return (ADCvalue /1023.0 * IOREF);   // ADC must be configured @ 10 bit (default)
-  return (ADCvalue /4095.0 * IOREF);   // ADC must be configured @ 12 bit
+  //return (ADCvalue / 1023.0 * IOREF);   // ADC must be configured @ 10 bit (default)
+  return (ADCvalue / 4095.0 * IOREF);   // ADC must be configured @ 12 bit
 }  
 
 

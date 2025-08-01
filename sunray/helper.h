@@ -51,15 +51,56 @@ float gauss(float mean, float std_dev);
 // calculates the probability of x for 1-dim Gaussian with mean mu and var. sigma
 float gaussian(float mu, float sigma, float x);
 
-
 // Spannungsteiler Gesamtspannung ermitteln (Reihenschaltung R1-R2, U2 bekannt, U_GES zu ermitteln)
 float voltageDividerUges(float R1, float R2, float U2);
 
 // ADC-value to voltage
 float ADC2voltage(float ADCvalue);
 
-
 // quaternion to euler angles
 void toEulerianAngle(float w, float x, float y, float z, float& roll, float& pitch, float& yaw);
+
+
+#define MICROS_TIME 0
+#define MILLIS_TIME 1
+class Timer
+{
+  public:
+    Timer(int tt)
+    {
+        timeType = tt;
+        update();
+    }
+    void update()
+    {
+        lastTime = now;
+        now = getTime();
+    }
+    unsigned long deltaTime()
+    {
+        return now - lastTime;
+    }
+    double deltaTimeSeconds()
+    {
+        return deltaTime() / 1000000.0;
+    }
+    // Tau: Half-life in seconds
+    float lowPass(float a, float b, double tau)
+    {
+        if (tau == 0.0) return b;
+        double t = exp(-deltaTimeSeconds() * log(2.0) / tau);
+        return lerp(b, a, t);
+    }
+  private:
+    int timeType;
+    unsigned long lastTime;
+    unsigned long now;
+    unsigned long getTime()
+    {
+        if (timeType == MICROS_TIME) return micros();
+        if (timeType == MILLIS_TIME) return millis() * 1000;
+        return 0;
+    }
+};
 
 #endif
