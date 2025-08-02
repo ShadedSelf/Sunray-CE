@@ -199,13 +199,16 @@ bool UBLOX::configure(){
           setValueSuccess &= configGPS.addCfgValset8(0x201100ab, 0);  // CFG-NAVSPG-INFIL_CNOTHRS  (0 dbHz)   
         }
         // ----  gps rates ----------------------------------
-        setValueSuccess &= configGPS.addCfgValset16(0x30210001, 200); // CFG-RATE-MEAS       (measurement period 200 ms)  
+        setValueSuccess &= configGPS.addCfgValset16(0x30210001, 150); // CFG-RATE-MEAS       (measurement period 200 ms)  
         setValueSuccess &= configGPS.sendCfgValset16(0x30210002, 1,   timeout); //CFG-RATE-NAV  (navigation rate cycles 1)  
         // ----  extras ----------------------------------
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_SIGNAL_SBAS_ENA, 0);  // SBAS
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NMEA_FILT_SBAS, 0);  // SBAS
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_SIGNAL_BDS_ENA, 0);  // Beidou
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NMEA_FILT_BDS, 0);  // Beidou
+
+        setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_MSGOUT_NMEA_ID_GSV_UART1, 0);  // GSV
+        setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_MSGOUT_NMEA_ID_GSV_UART2, 0);  // GSV
 
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_DYNMODEL, 11);  // Robotic mower dynmodel
       } 
