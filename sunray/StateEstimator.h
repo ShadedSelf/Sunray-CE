@@ -21,7 +21,7 @@ extern float heading;  // direction (rad)
 
 //extern float stateRoll;
 //extern float statePitch;
-extern float stateGroundSpeed; // m/s
+//extern float stateGroundSpeed; // m/s
 extern float lateralError; // lateral error
 
 extern double headingOffset;

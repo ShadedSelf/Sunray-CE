@@ -122,7 +122,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define ENABLE_ODOMETRY_ERROR_DETECTION  true    // use this to detect odometry erros
 
-#define TICKS_PER_REVOLUTION  570     // odometry ticks per wheel revolution
+#define TICKS_PER_REVOLUTION_L  570     // odometry ticks per wheel revolution left
+#define TICKS_PER_REVOLUTION_R  570     // odometry ticks per wheel revolution right
 #define RESPONSIVE_RPM true // use tick time for odometry RPM calculations
 #define FILTER_ODOMETRY true //rolling average for odometry tick time
 #define ODOMETRY_DIVIDER true // set to true if using hardware odometry divider
@@ -390,6 +391,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 
 #define SET_PERIMETER_SPEED true    // set different speed for perimert
 #define PERIMETER_SPEED  0.15       // perimeter speed m/s
+
+#define LINEAR_ACCELERATION 0.15    // max acceleration
 
 
 // ----- other options --------------------------------------------
