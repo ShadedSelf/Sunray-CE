@@ -12,9 +12,14 @@ String IdleOp::name(){
     return "Idle";
 }
 
-void IdleOp::begin(){
-    CONSOLE.println("OP_IDLE");          
-    motor.setLinearAngularSpeed(0,0);
+void IdleOp::begin()
+{
+    CONSOLE.println("OP_IDLE");
+    
+    linear = angular = 0.0;
+    moveStartTime = millis();
+    
+    motor.setLinearAngularSpeed(linear, angular, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
     motor.setMowState(false);
     maps.setIsDocked(false);
 }
@@ -24,16 +29,27 @@ void IdleOp::end(){
     
 }
 
-void IdleOp::run(){    
+void IdleOp::run()
+{ 
+    battery.resetIdle();
+
+    if (millis() - moveStartTime > 1000)
+        angular = linear = 0.0;
+        
+    motor.setLinearAngularSpeed(linear, angular, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+
+    
     if (battery.chargerConnected()){
         // special case: when docking, robot might shortly enter IDLE state before CHARGE state and we should not flag operator mode then        
         // normal case: when going from IDLE to CHARGE state, flag operator mode
         if (millis() - startTime > 2000) {
             CONSOLE.println("IDLE->CHARGE: idle time more than 2secs => assuming robot is not in dock");
             dockOp.setInitiatedByOperator(true);
-            battery.setIsDocked(false);            
+            //if (previousOp != dockOp)
+                battery.setIsDocked(false);            
         }        
-        if (initiatedByOperator) dockOp.setInitiatedByOperator(true); // manual stop => manual dock
+        if (initiatedByOperator)
+            dockOp.setInitiatedByOperator(true); // manual stop => manual dock
         changeOp(chargeOp);
     }    
 }

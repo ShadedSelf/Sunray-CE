@@ -31,7 +31,6 @@ Op *activeOp = &idleOp;
 Op *newActiveOp = NULL;
 
 
-
 Op::Op(){
     initiatedByOperator = false;
     previousOp = NULL;
@@ -45,19 +44,21 @@ String Op::name(){
 
 
 void Op::changeOp(Op &anOp, bool returnBackOnExit){    
-    if (&anOp == NULL){
-        CONSOLE.println("==> ERROR Op::changeOp: invalid op=NULL!");        
-    }
-    if (&anOp == activeOp) return;
+    if (&anOp == NULL)
+      CONSOLE.println("==> ERROR Op::changeOp: invalid op=NULL!");        
+
+    if (&anOp == activeOp)
+      return;
+
     newActiveOp = &anOp;
 
-    if (returnBackOnExit) {
+    if (returnBackOnExit)
       anOp.nextOp = this;
-    }
-    anOp.previousOp = this;      
 
-    shouldStop = true;              
-}
+    anOp.previousOp = this;
+
+    shouldStop = true;
+  }
 
 void Op::setInitiatedByOperator(bool flag){
   initiatedByOperator = flag;
@@ -72,24 +73,24 @@ void Op::changeOperationTypeByOperator(OperationType op){
   }  
   switch (op){
     case OP_IDLE:      
-      activeOp->changeOp(idleOp, false);
       idleOp.setInitiatedByOperator(true);
+      activeOp->changeOp(idleOp, false);
       break;
     case OP_DOCK:
-      activeOp->changeOp(dockOp, false);
       dockOp.setInitiatedByOperator(true);
+      activeOp->changeOp(dockOp, false);
       break;
     case OP_MOW:      
-      activeOp->changeOp(mowOp, false);
       mowOp.setInitiatedByOperator(true);
+      activeOp->changeOp(mowOp, false);
       break;
     case OP_CHARGE:
-      activeOp->changeOp(chargeOp, false);
       chargeOp.setInitiatedByOperator(true);
+      activeOp->changeOp(chargeOp, false);
       break;
     case OP_ERROR:            
-      activeOp->changeOp(errorOp, false);
       errorOp.setInitiatedByOperator(true);
+      activeOp->changeOp(errorOp, false);
       break;
   }
 }
@@ -179,7 +180,7 @@ void Op::checkStop()
 void Op::run(){
 }
 
-void Op::onKidnapped(bool state){
+void Op::onKidnapped(){
 }
 
 void Op::onGpsNoSignal(){    
@@ -210,7 +211,6 @@ void Op::onLiftTriggered(){
 
 void Op::onOdometryError(){
 }
-
 
 void Op::onMotorOverload(){
 }

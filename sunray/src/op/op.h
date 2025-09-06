@@ -56,7 +56,7 @@ class Op {
     virtual void onObstacleRotation();
     virtual void onNoFurtherWaypoints();    
     virtual void onTargetReached();
-    virtual void onKidnapped(bool state);
+    virtual void onKidnapped();
     virtual void onBatteryUndervoltage();
     virtual void onBatteryLowShouldDock();  
     virtual void onTimetableStopMowing();
@@ -72,7 +72,10 @@ class Op {
 
 // idle op
 class IdleOp: public Op {
-  public:        
+  public:
+    unsigned int moveStartTime;
+    float linear;
+    float angular;    
     virtual String name() override;
     virtual void begin() override;
     virtual void end() override;
@@ -112,7 +115,7 @@ class MowOp: public Op {
     virtual void onObstacle() override;
     virtual void onObstacleRotation() override;
     virtual void onTargetReached() override;    
-    virtual void onKidnapped(bool state) override;   
+    virtual void onKidnapped() override;   
     virtual void onNoFurtherWaypoints() override;     
     virtual void onImuTilt() override;
     virtual void onImuError() override;
@@ -136,7 +139,7 @@ class DockOp: public Op {
     virtual void onGpsFixTimeout() override;
     virtual void onNoFurtherWaypoints() override;              
     virtual void onGpsNoSignal() override;
-    virtual void onKidnapped(bool state) override;
+    virtual void onKidnapped() override;
     virtual void onChargerConnected() override;   
 };
 
@@ -148,7 +151,6 @@ class ChargeOp: public Op {
     unsigned long betterTouchDockStopTime;
     bool retryTouchDock;
     bool betterTouchDock;
-    unsigned long nextConsoleDetailsTime;   
     virtual String name() override;
     virtual void begin() override;
     virtual void end() override;
@@ -171,7 +173,6 @@ class KidnapWaitOp: public Op {
     virtual void begin() override;
     virtual void end() override;
     virtual void run() override;
-    virtual void onKidnapped(bool state) override;
     virtual void onGpsNoSignal() override;    
 };
 
