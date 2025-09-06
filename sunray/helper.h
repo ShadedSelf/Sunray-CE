@@ -66,6 +66,7 @@ void toEulerianAngle(float w, float x, float y, float z, float& roll, float& pit
 class Timer
 {
   public:
+    Timer():Timer(MICROS_TIME) {}
     Timer(int tt)
     {
         timeType = tt;
@@ -85,11 +86,17 @@ class Timer
         return deltaTime() / 1000000.0;
     }
     // Tau: Half-life in seconds
-    float lowPass(float a, float b, double tau)
+    double lowPass(double a, double b, double tau)
     {
         if (tau == 0.0) return b;
         double t = exp(-deltaTimeSeconds() * log(2.0) / tau);
         return lerp(b, a, t);
+    }
+    // A towards B at T units per second
+    float accelerate(float a, float b, float t)
+    {
+        float acc = t * deltaTimeSeconds();
+        return constrain(b, a - acc, a + acc);
     }
   private:
     int timeType;
@@ -100,6 +107,51 @@ class Timer
         if (timeType == MICROS_TIME) return micros();
         if (timeType == MILLIS_TIME) return millis() * 1000;
         return 0;
+    }
+};
+class Scheduler
+{
+  public:
+    Timer timer;
+    Scheduler(int tt, unsigned long timeInMillis) : Scheduler(tt, timeInMillis, 0) { }
+    Scheduler(int tt, unsigned long timeInMillis, unsigned long rndFactor)
+    {
+        timeType = tt;
+        timeSchedule = timeInMillis * 1000;
+        rndTime = rndFactor;
+        timer = Timer(timeType);
+        lastTime = getTime();
+        updateTimeOffset();
+    }
+    bool shouldUpdate()
+    {
+        unsigned long now = getTime();
+        if (now - lastTime >= timeSchedule + timeScheduleOffset)
+        {
+            lastTime = now;
+            timer.update();
+            updateTimeOffset();
+            //timeScheduleOffset += time error
+            
+            return true;
+        }
+        return false;
+    }
+  private:
+    int timeType;
+    unsigned long lastTime;
+    unsigned long timeSchedule;
+    signed long timeScheduleOffset;
+    unsigned long rndTime;
+    unsigned long getTime()
+    {
+        if (timeType == MICROS_TIME) return micros();
+        if (timeType == MILLIS_TIME) return millis() * 1000;
+        return 0;
+    }
+    void updateTimeOffset()
+    {
+        timeScheduleOffset = random(rndTime + 1) - rndTime / 2;
     }
 };
 

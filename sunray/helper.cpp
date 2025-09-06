@@ -27,8 +27,8 @@ float scalePI(float v)
 {
   if (v >= -PI && v <= PI) return v;
   float d = fmod(v, 2.0*PI);
-  if(d < -PI) d += 2.0*PI; 
-  if(d >  PI) d -= 2.0*PI;
+  if (d < -PI) d += 2.0*PI; 
+  if (d >  PI) d -= 2.0*PI;
   return d;
 }
 
@@ -37,8 +37,8 @@ float scale180(float v)
 {
   if (v >= -180.0 && v <= 180.0) return v;
   float d = fmod(v, 2.0*180.0);
-  if(d < -180.0) d += 2.0*180.0;
-  if(d >  180.0) d -= 2.0*180.0;
+  if (d < -180.0) d += 2.0*180.0;
+  if (d >  180.0) d -= 2.0*180.0;
   return d;
 }
 
@@ -109,14 +109,8 @@ float fusionPI(float w, float a, float b)
 
 double angleInterpolation(double a, double b, double t)
 {
-  double res = a + (double)distancePI(a, b) * t;   
-  if (res < -PI || res > PI)
-  {
-    res = fmod(res, 2.0*PI);
-    if (res < -PI) res += 2.0*PI; 
-    if (res >  PI) res -= 2.0*PI;
-  }
-  return res;
+  double res = a + (double)distancePI(a, b) * t;
+  return scalePI(res);
 }
 
 
