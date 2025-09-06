@@ -108,24 +108,30 @@ void updateStateOpText(){
 
 
 bool loadState(){
-#if defined(ENABLE_SD_RESUME)
+  #ifndef ENABLE_SD_RESUME
+    return true;
+  #endif
+
   CONSOLE.println("resuming is activated");
   CONSOLE.print("state load... ");
 
-  if (!SD.exists("state.bin")) {
+  if (!SD.exists("state.bin"))
+  {
     CONSOLE.println("no state file!");
     return false;
   }
 
   stateFile = SD.open("state.bin", FILE_READ);
-  if (!stateFile){        
+  if (!stateFile)
+  {        
     CONSOLE.println("ERROR opening file for reading");
     return false;
   }
 
   uint32_t marker = 0;
   stateFile.read((uint8_t*)&marker, sizeof(marker));
-  if (marker != 0x10001007){
+  if (marker != 0x10001007)
+  {
     CONSOLE.print("ERROR: invalid marker: ");
     CONSOLE.println(marker, HEX);
     return false;
@@ -133,7 +139,8 @@ bool loadState(){
 
   long crc = 0;
   stateFile.read((uint8_t*)&crc, sizeof(crc));
-  if (crc != maps.mapCRC){
+  if (crc != maps.mapCRC)
+  {
     CONSOLE.print("ERROR: non-matching map CRC:");
     CONSOLE.print(crc);
     CONSOLE.print(" expected: ");
@@ -142,13 +149,14 @@ bool loadState(){
   }
 
   bool res = true;
-  OperationType savedOp;
+
   res &= (stateFile.read((uint8_t*)&position, sizeof(position)) != 0);
   res &= (stateFile.read((uint8_t*)&headingOffset, sizeof(headingOffset)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.mowPointsIdx, sizeof(maps.mowPointsIdx)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.dockPointsIdx, sizeof(maps.dockPointsIdx)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.freePointsIdx, sizeof(maps.freePointsIdx)) != 0);
   res &= (stateFile.read((uint8_t*)&maps.wayMode, sizeof(maps.wayMode)) != 0);
+  OperationType savedOp;
   res &= (stateFile.read((uint8_t*)&savedOp, sizeof(savedOp)) != 0);
   res &= (stateFile.read((uint8_t*)&stateSensor, sizeof(stateSensor)) != 0);
   res &= (stateFile.read((uint8_t*)&sonar.enabled, sizeof(sonar.enabled)) != 0);
@@ -161,40 +169,66 @@ bool loadState(){
   res &= (stateFile.read((uint8_t*)&finishAndRestart, sizeof(finishAndRestart)) != 0); 
   res &= (stateFile.read((uint8_t*)&motor.motorMowForwardSet, sizeof(motor.motorMowForwardSet)) != 0); 
   res &= (stateFile.read((uint8_t*)&timetable.timetable, sizeof(timetable.timetable)) != 0);
-  res &= (stateFile.read((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0); 
+  res &= (stateFile.read((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0);
 
-  stateFile.close();  
-  CONSOLE.println("ok");
+  int32_t gx, gy, gz, ax, ay, az, mx, my, mz;
+  
+  res &= (stateFile.read((uint8_t*)&gx, sizeof(gx)) != 0);
+  res &= (stateFile.read((uint8_t*)&gy, sizeof(gy)) != 0);
+  res &= (stateFile.read((uint8_t*)&gz, sizeof(gz)) != 0);
+  res &= (stateFile.read((uint8_t*)&ax, sizeof(ax)) != 0);
+  res &= (stateFile.read((uint8_t*)&ay, sizeof(ay)) != 0);
+  res &= (stateFile.read((uint8_t*)&az, sizeof(az)) != 0);
+  res &= (stateFile.read((uint8_t*)&mx, sizeof(mx)) != 0);
+  res &= (stateFile.read((uint8_t*)&my, sizeof(my)) != 0);
+  res &= (stateFile.read((uint8_t*)&mz, sizeof(mz)) != 0);
+
+  imuDriver.setBias(gx, gy, gz, ax, ay, az, mx, my, mz);
+
+
+  stateFile.close();
+
   stateCRC = calcStateCRC();
+  CONSOLE.println("ok");
   dumpState();
   timetable.dump();
 
-  if (getResetCause() == RST_WATCHDOG){
+  if (getResetCause() == RST_WATCHDOG)
+  {
     CONSOLE.println("resuming operation due to watchdog trigger");
+
     stateOp = savedOp;
     setOperation(stateOp, true);
   }
-#endif
+
   return true;
 }
 
 
-bool saveState(){   
-  bool res = true;
-#if defined(ENABLE_SD_RESUME)
+bool saveState()
+{   
+  #ifndef ENABLE_SD_RESUME
+    return true;
+  #endif
+
   double crc = calcStateCRC();
+
+  // dont save if crc is the same
   if (crc == stateCRC)
     return true;
   stateCRC = crc;
-
+  
   dumpState();
   CONSOLE.print("save state... ");
-
+  
   stateFile = SD.open("state.bin",  FILE_CREATE); // O_WRITE | O_CREAT);
-  if (!stateFile){        
+  if (!stateFile)
+  {        
     CONSOLE.println("ERROR opening file for writing");
     return false;
   }
+
+  bool res = true;
 
   uint32_t marker = 0x10001007;
   res &= (stateFile.write((uint8_t*)&marker, sizeof(marker)) != 0); 
@@ -219,7 +253,21 @@ bool saveState(){
   res &= (stateFile.write((uint8_t*)&finishAndRestart, sizeof(finishAndRestart)) != 0);  
   res &= (stateFile.write((uint8_t*)&motor.motorMowForwardSet, sizeof(motor.motorMowForwardSet)) != 0);
   res &= (stateFile.write((uint8_t*)&timetable.timetable, sizeof(timetable.timetable)) != 0);  
-  res &= (stateFile.write((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0); 
+  res &= (stateFile.write((uint8_t*)&battery.docked, sizeof(battery.docked)) != 0);
+
+  int32_t gx, gy, gz, ax, ay, az, mx, my, mz;
+  imuDriver.getBias(&gx, &gy, &gz, &ax, &ay, &az, &mx, &my, &mz);
+
+  res &= (stateFile.write((uint8_t*)&gx, sizeof(gx)) != 0);
+  res &= (stateFile.write((uint8_t*)&gy, sizeof(gy)) != 0);
+  res &= (stateFile.write((uint8_t*)&gz, sizeof(gz)) != 0);
+  res &= (stateFile.write((uint8_t*)&ax, sizeof(ax)) != 0);
+  res &= (stateFile.write((uint8_t*)&ay, sizeof(ay)) != 0);
+  res &= (stateFile.write((uint8_t*)&az, sizeof(az)) != 0);
+  res &= (stateFile.write((uint8_t*)&mx, sizeof(mx)) != 0);
+  res &= (stateFile.write((uint8_t*)&my, sizeof(my)) != 0);
+  res &= (stateFile.write((uint8_t*)&mz, sizeof(mz)) != 0);
+
 
   if (res)
     CONSOLE.println("ok");
@@ -228,7 +276,7 @@ bool saveState(){
 
   stateFile.flush();
   stateFile.close();
-#endif
+
   return res; 
 }
 
