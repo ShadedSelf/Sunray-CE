@@ -214,7 +214,7 @@ AmMotorDriver::AmMotorDriver(){
   BLDC8015A.minPwmSpeed = 0;          // minimum PWM speed your driver can operate
   BLDC8015A.maxPwmSpeed = 255;            
   BLDC8015A.pwmFreq = PWM_FREQ_29300;  // choose between PWM_FREQ_3900 and PWM_FREQ_29300 here   
-  BLDC8015A.adcVoltToAmpOfs = -1.6754;      // ADC voltage to amps (offset)    // brushless-adapter: 0A=1.65V, resolution 132mV/A  
+  BLDC8015A.adcVoltToAmpOfs = -1.6654;      // ADC voltage to amps (offset)    // brushless-adapter: 0A=1.65V, resolution 132mV/A  
   BLDC8015A.adcVoltToAmpScale = 7.57; // ADC voltage to amps (scale)
   BLDC8015A.adcVoltToAmpPow = 1.0;    // ADC voltage to amps (power of number)
 
@@ -359,9 +359,9 @@ void AmMotorDriver::begin(){
   pinMode(pinLift, INPUT_PULLUP);
 
   // enable interrupts
-  attachInterrupt(pinOdometryLeft, OdometryLeftISR, ODOMETRY_DIVIDER ? FALLING : CHANGE);  
+  attachInterrupt(pinOdometryLeft , OdometryLeftISR , ODOMETRY_DIVIDER ? FALLING : CHANGE);  
   attachInterrupt(pinOdometryRight, OdometryRightISR, ODOMETRY_DIVIDER ? FALLING : CHANGE);  
-  attachInterrupt(pinMotorMowRpm, OdometryMowISR, ODOMETRY_DIVIDER ? FALLING : CHANGE);  
+  attachInterrupt(pinMotorMowRpm  , OdometryMowISR  , ODOMETRY_DIVIDER ? FALLING : CHANGE);  
     
 	//pinMan.setDebounce(pinOdometryLeft, 100);  // reject spikes shorter than usecs on pin
 	//pinMan.setDebounce(pinOdometryRight, 100);  // reject spikes shorter than usecs on pin	
@@ -382,42 +382,32 @@ void AmMotorDriver::run(){
 //   PWM                L     Forward
 //   PWM                H     Reverse
 
-void AmMotorDriver::setMotorDriver(int pinDir, int pinPWM, int speed, DriverChip &chip, int speedSign) {
-  //DEBUGLN(speed);
-  bool reverse = (speedSign < 0);    
+void AmMotorDriver::setMotorDriver(int pinDir, int pinPWM, int speed, DriverChip &chip, int speedSign)
+{
+  bool reverse = speedSign < 0;    
   
-  if ((speed == 0) && (chip.keepPwmZeroSpeed)) {
+  if (speed == 0 && chip.keepPwmZeroSpeed) {}
     // driver does not require periodic signal at zero speed, we can output 'silence' for zero speed    
-  } else {
-    // verhindert dass das PWM Signal 0 wird. Der Driver braucht einen kurzen Impuls um das PWM zu erkennen.
-    // Wenn der z.B. vom max. PWM Wert auf 0 bzw. das Signal auf Low geht, behält er den vorherigen Wert bei und der Motor stoppt nicht
+  else
+  {
+    // Prevents the PWM signal from becoming 0. The driver needs a short pulse to recognize the PWM.
+    // If, for example, it goes from the maximum PWM value to 0 or the signal goes low, it retains the previous value and the motor does not stop.
     if (abs(speed) < chip.minPwmSpeed) speed = chip.minPwmSpeed * speedSign;
     if (abs(speed) > chip.maxPwmSpeed) speed = chip.maxPwmSpeed * speedSign;  
   }
 
-  if (reverse) {  
-    //CONSOLE.print("reverse ");
-    //CONSOLE.print(pinDir);
-    //CONSOLE.print(",");
-    //CONSOLE.print(pinPWM);
-    //CONSOLE.print(",");
-    //CONSOLE.println(speed);    
-    // reverse
-    digitalWrite(pinDir, chip.reverseDirLevel) ;
+  if (reverse)
+  {
+    digitalWrite(pinDir, chip.reverseDirLevel);
     if (chip.reversePwmInvert) 
       pinMan.analogWrite(pinPWM, 255 - ((byte)abs(speed)), chip.pwmFreq);  // nPWM (inverted pwm)
     else 
       pinMan.analogWrite(pinPWM, ((byte)abs(speed)), chip.pwmFreq);       // PWM
 
-  } else {
-    //CONSOLE.print("forward ");
-    //CONSOLE.print(pinDir);
-    //CONSOLE.print(",");
-    //CONSOLE.print(pinPWM);
-    //CONSOLE.print(",");
-    //CONSOLE.println(speed);    
-    // forward
-    digitalWrite(pinDir, chip.forwardDirLevel) ;
+  }
+  else
+  {
+    digitalWrite(pinDir, chip.forwardDirLevel);
     if (chip.forwardPwmInvert) 
       pinMan.analogWrite(pinPWM, 255 - ((byte)abs(speed)), chip.pwmFreq);  // nPWM (inverted pwm)
     else 
@@ -476,16 +466,14 @@ void AmMotorDriver::setMotorPwm(int leftPwm, int rightPwm, int mowPwm){
 }
 
 
-void AmMotorDriver::getMotorFaults(bool &leftFault, bool &rightFault, bool &mowFault){ 
-  if (digitalRead(pinMotorLeftFault) == gearsDriverChip.faultActive) {
+void AmMotorDriver::getMotorFaults(bool &leftFault, bool &rightFault, bool &mowFault)
+{ 
+  if (digitalRead(pinMotorLeftFault)  == gearsDriverChip.faultActive)
     leftFault = true;
-  }
-  if  (digitalRead(pinMotorRightFault) == gearsDriverChip.faultActive) {
+  if (digitalRead(pinMotorRightFault) == gearsDriverChip.faultActive)
     rightFault = true;
-  }
-  if (digitalRead(pinMotorMowFault) == mowDriverChip.faultActive) {
+  if (digitalRead(pinMotorMowFault)   == mowDriverChip.faultActive)
     mowFault = true;
-  }
 }
 
 void AmMotorDriver::resetMotorFaults(){  
@@ -511,53 +499,39 @@ void AmMotorDriver::resetMotorFaults(){
 
 void AmMotorDriver::getMotorCurrent(float &leftCurrent, float &rightCurrent, float &mowCurrent){
   // current (amps)= ((ADCvoltage + ofs)^pow) * scale
-  float ValuePosCheck	= 0;
-  ValuePosCheck = (((float)ADC2voltage(analogRead(pinMotorLeftSense))) + gearsDriverChip.adcVoltToAmpOfs);
-  //if (ValuePosCheck < 0) ValuePosCheck = 0;	// avoid negativ numbers
-  leftCurrent = pow(
-      ValuePosCheck, gearsDriverChip.adcVoltToAmpPow
-      )  * gearsDriverChip.adcVoltToAmpScale;
-
-  ValuePosCheck = (((float)ADC2voltage(analogRead(pinMotorRightSense))) + gearsDriverChip.adcVoltToAmpOfs);
-  //if (ValuePosCheck < 0) ValuePosCheck = 0;	// avoid negativ numbers
-  rightCurrent = pow(
-      ValuePosCheck, gearsDriverChip.adcVoltToAmpPow
-      )  * gearsDriverChip.adcVoltToAmpScale;
-
-  ValuePosCheck = (((float)ADC2voltage(analogRead(pinMotorMowSense))) + gearsDriverChip.adcVoltToAmpOfs);
-  //if (ValuePosCheck < 0) ValuePosCheck = 0;	// avoid negativ numbers
-  mowCurrent = pow(
-            ValuePosCheck, mowDriverChip.adcVoltToAmpPow
-      )  * mowDriverChip.adcVoltToAmpScale;
+  leftCurrent  = (ADC2voltage(analogRead(pinMotorLeftSense))  + gearsDriverChip.adcVoltToAmpOfs) * gearsDriverChip.adcVoltToAmpScale;
+  rightCurrent = (ADC2voltage(analogRead(pinMotorRightSense)) + gearsDriverChip.adcVoltToAmpOfs) * gearsDriverChip.adcVoltToAmpScale;
+  mowCurrent   = (ADC2voltage(analogRead(pinMotorMowSense))   + gearsDriverChip.adcVoltToAmpOfs) * mowDriverChip.adcVoltToAmpScale;
 }
 
 void AmMotorDriver::getMotorEncoderTicks(int &leftTicks, int &rightTicks, int &mowTicks){
-  leftTicks = odomTicksLeft;
+  leftTicks  = odomTicksLeft;
   rightTicks = odomTicksRight;  
-  mowTicks = odomTicksMow;
+  mowTicks   = odomTicksMow;
   // reset counters
   odomTicksLeft = odomTicksRight = odomTicksMow = 0;
 }    
 
-void AmMotorDriver::getMotorTickTime(unsigned long &leftTime, unsigned long &rightTime, unsigned long &mowTime){
+void AmMotorDriver::getMotorTickTime(unsigned long &leftTime, unsigned long &rightTime, unsigned long &mowTime)
+{
   // estimate deceleration
   unsigned long now = micros();
 
-#if FILTER_ODOMETRY // Uneven magnet distribution
-  float time;
+#if (FILTER_ODOMETRY && RESPONSIVE_RPM) // Uneven magnet distribution
+  double time;
 
   leftOdo.getAverage(time);
-  leftTime = max((unsigned long)time, now - motorLeftThen);
+  leftTime  = max((unsigned long)time, now - motorLeftThen);
 
   rightOdo.getAverage(time);
   rightTime = max((unsigned long)time, now - motorRightThen);
 
   mowOdo.getAverage(time);
-  mowTime = max((unsigned long)time, now - motorMowThen);
+  mowTime   = max((unsigned long)time, now - motorMowThen);
 #else
-  leftTime = max(motorLeftTickTime, now - motorLeftThen);
+  leftTime  = max(motorLeftTickTime , now - motorLeftThen);
   rightTime = max(motorRightTickTime, now - motorRightThen);
-  mowTime = max(motorMowTickTime, now - motorMowThen);
+  mowTime   = max(motorMowTickTime  , now - motorMowThen);
 #endif
 }    
 
@@ -610,25 +584,21 @@ void AmBatteryDriver::run(){
 
     
 float AmBatteryDriver::getBatteryVoltage(){
-  float voltage = ((float)ADC2voltage(analogRead(pinBatteryVoltage))) * batteryFactor;
-  return voltage;  
+  return ADC2voltage(analogRead(pinBatteryVoltage)) * batteryFactor;
 }
 
 float AmBatteryDriver::getChargeVoltage(){
-  float voltage = ((float)ADC2voltage(analogRead(pinChargeVoltage))) * batteryFactor;
-  return voltage;
+  return ADC2voltage(analogRead(pinChargeVoltage))  * batteryFactor;
 }
 
-
 float AmBatteryDriver::getChargeCurrent(){    
-  float amps = ((float)ADC2voltage(analogRead(pinChargeCurrent))) * currentFactor;    
-	return amps;
+  return ADC2voltage(analogRead(pinChargeCurrent))  * currentFactor;    
 }
 
 float AmBatteryDriver::getBatteryTemperature(){
   #ifdef USE_TEMP_SENSOR
     // https://learn.sparkfun.com/tutorials/htu21d-humidity-sensor-hookup-guide
-    return(myHumidity.readTemperature());
+    return myHumidity.readTemperature();
     //float humidity = myHumidity.readHumidity();                  
   #else
     return 0;
