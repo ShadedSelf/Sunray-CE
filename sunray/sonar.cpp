@@ -29,7 +29,7 @@ bool added = false;
 unsigned long timeoutTime = 0;
 
 
-#ifdef SONAR_INSTALLED
+#if SONAR_INSTALLED
 
 // HC-SR04 ultrasonic sensor driver (2cm - 400cm)
 void startHCSR04(int triggerPin, int aechoPin) {
@@ -76,7 +76,7 @@ void echoRight() {
 
 
 void Sonar::run() {
-#ifdef SONAR_INSTALLED  
+#if SONAR_INSTALLED  
   if (!enabled) {
     distanceRight = distanceLeft = distanceCenter = 0;
     return;
@@ -147,7 +147,7 @@ void Sonar::run() {
 
 void Sonar::begin()
 {
-#ifdef SONAR_INSTALLED
+#if SONAR_INSTALLED
   enabled = SONAR_ENABLE;
 
   pinMode(pinSonarLeftTrigger , OUTPUT);
@@ -173,7 +173,7 @@ void Sonar::begin()
 
 bool Sonar::obstacle()
 {
-#ifdef SONAR_INSTALLED
+#if SONAR_INSTALLED
   if (!enabled) return false;
 
   return
@@ -187,7 +187,7 @@ bool Sonar::obstacle()
 
 bool Sonar::nearObstacle()
 {
-#ifdef SONAR_INSTALLED
+#if SONAR_INSTALLED
   if (!enabled) return false;
   
   if ((nearObstacleTimeout != 0) && (millis() < nearObstacleTimeout))
