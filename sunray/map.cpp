@@ -998,16 +998,17 @@ void Map::clearObstacles(){
 // add dynamic octagon obstacle in front of robot on line going from robot to target point
 bool Map::addObstacle(float stateX, float stateY)
 { 
-  if (obstacles.numPolygons > 25) clearObstacles();
+  if (obstacles.numPolygons > 25)
+    clearObstacles();
 
   int idx = obstacles.numPolygons;
-  if (!obstacles.alloc(idx+1)) return false;
+  if (!obstacles.alloc(idx+1))           return false;
   if (!obstacles.polygons[idx].alloc(8)) return false;
 
   float d2 = OBSTACLE_DIAMETER / 2.0;
   float r = d2 + 0.05;
-  float x = stateX + cos(heading) * r;
-  float y = stateY + sin(heading) * r;
+  float x = stateX + cos(heading) * r * (maps.trackReverse ? -1.0 : 1.0);
+  float y = stateY + sin(heading) * r * (maps.trackReverse ? -1.0 : 1.0);
 
   for (int i = 0; i < 8; i++)
   {
@@ -1800,6 +1801,7 @@ bool Map::findPath(Point &src, Point &dst){
         CONSOLE.print(".");
         watchdogReset();     
       }
+      motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
 
       timeout--;            
       if (timeout == 0){
@@ -1838,6 +1840,7 @@ bool Map::findPath(Point &src, Point &dst){
           CONSOLE.print("+");
           watchdogReset();     
         }
+        motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
 
         // g score is the shortest distance from start to current node, we need to check if
         //   the path we have arrived at this neighbor is the shortest one we have seen yet
