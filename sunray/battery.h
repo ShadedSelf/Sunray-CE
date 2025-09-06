@@ -13,21 +13,12 @@
 class Battery {
   public:
     bool docked;    // robot in docking?
-    bool batMonitor;
-    float batGoHomeIfBelow;
-    float batFullVoltage;
-    float batSwitchOffIfBelow;  // switch off battery if below voltage (Volt)
-    int batSwitchOffIfIdle;      // switch off battery if idle (minutes)  
-    int enableChargingTimeout;
-    float batFullCurrent;
-	  float batteryVoltage;   // volts
-    float batteryVoltageLast;
-    float chargingVoltBatteryVoltDiff;      
+	  float batteryVoltage;   // volts 
+	  float systemVoltage;    // volts 
     float chargingVoltage;  // volts
+    float batteryLoad;      // apms
 	  float chargingCurrent;  // amps
-    bool chargingEnabled;
-    int chargingCompletedDelay; // ensure that loadingcurrent or loadingvoltage triggers 'chargingCompleted' condition for a longer period
-    bool chargingCompleted;
+    float temperature;
 	  void begin();            
     void run();	  
     void setIsDocked(bool state);
@@ -40,18 +31,18 @@ class Battery {
     bool underVoltage();
     void resetIdle();
     void switchOff();
-  protected:       
-    int startupPhase;    
-    unsigned long nextBatteryTime ;
+  protected:
+    int chargingCompletedDelay;
+    int batSwitchOffIfIdle;
+    bool chargingCompleted;
+    bool chargingEnabled;
     bool switchOffByOperator;    
 		bool chargerConnectedState;
     bool badChargerContactState;
-    bool switchOffAllowedUndervoltage;
-    bool switchOffAllowedIdle;
     unsigned long switchOffTime;
     unsigned long chargingStartTime;
 	  unsigned long nextCheckTime;	  
-    unsigned long nextEnableTime;  		
+    unsigned long nextEnableTime;		
 };
 
 

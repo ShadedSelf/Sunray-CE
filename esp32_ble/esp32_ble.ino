@@ -19,7 +19,7 @@
 #define VERSION "ESP32 firmware V0.4.5,Bluetooth V4.0 LE"
 
 // watch dog timeout (WDT) in seconds
-#define WDT_TIMEOUT 60
+#define WDT_TIMEOUT 3
 
 // configure below IPs if using static IP
 IPAddress av_local_IP(WIFI_STATIC_IP_LOCAL);
@@ -567,7 +567,11 @@ void setup() {
   CONSOLE.println(VERSION);
 
   CONSOLE.println("Configuring WDT...");
-  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_config_t wdc;
+  wdc.timeout_ms = 3000;
+  wdc.idle_core_mask = (1 << 2) - 1;
+  wdc.trigger_panic = true;
+  esp_task_wdt_init(&wdc); //enable panic so ESP32 restarts
   esp_task_wdt_add(NULL); //add current thread to WDT watch
 
 #ifdef USE_BLE
