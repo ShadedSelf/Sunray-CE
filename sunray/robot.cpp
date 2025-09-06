@@ -293,7 +293,7 @@ void outputConfig(){
   CONSOLE.print("ENABLE_ODOMETRY_ERROR_DETECTION: ");
   CONSOLE.println(ENABLE_ODOMETRY_ERROR_DETECTION);
   CONSOLE.print("TICKS_PER_REVOLUTION: ");
-  CONSOLE.println(TICKS_PER_REVOLUTION);
+  CONSOLE.println(TICKS_PER_REVOLUTION_R);
   #ifdef MOTOR_DRIVER_BRUSHLESS
     CONSOLE.println("MOTOR_DRIVER_BRUSHLESS");
   #endif
@@ -364,7 +364,7 @@ void outputConfig(){
   CONSOLE.println(ENABLE_FAULT_OBSTACLE_AVOIDANCE);
   CONSOLE.print("ENABLE_RPM_FAULT_DETECTION: ");
   CONSOLE.println(ENABLE_RPM_FAULT_DETECTION);
-  #ifdef SONAR_INSTALLED
+  #if SONAR_INSTALLED
     CONSOLE.println("SONAR_INSTALLED");
     CONSOLE.print("SONAR_ENABLE: ");  
     CONSOLE.println(SONAR_ENABLE);
@@ -498,6 +498,7 @@ void start(){
   motorDriver.begin();
   rainDriver.begin();
   liftDriver.begin();  
+  motor.begin();
   battery.begin();      
   stopButton.begin();
 
@@ -505,7 +506,6 @@ void start(){
   //BLE.println(VER); is this needed? can confuse BLE modules if not connected?  
     
   rcmodel.begin();  
-  motor.begin();
   sonar.begin();
   bumper.begin();
 
@@ -543,12 +543,14 @@ void start(){
   watchdogEnable(WATCHDOG_TIMER);
   
   buzzer.sound(SND_READY);  
-  battery.resetIdle();        
+  battery.resetIdle();     
+     
+  startIMU(false);
+
   loadState();
 
   activeOp->checkStop();
 
-  startIMU(false);        
   
   #ifdef DRV_SIM_ROBOT
     robotDriver.setSimRobotPosState(position.x, position.y, heading);
@@ -777,7 +779,7 @@ void run(){
   // temp
   if (millis() > nextTempTime){
     nextTempTime = millis() + 60000;    
-    float batTemp = batteryDriver.getBatteryTemperature();
+    float batTemp = battery.temperature;
     float cpuTemp = robotDriver.getCpuTemperature();    
     CONSOLE.print("batTemp=");
     CONSOLE.print(batTemp,0);
@@ -794,11 +796,11 @@ void run(){
   }
   
   // IMU
-  if (millis() > nextImuTime)
-  {
-    nextImuTime = millis() + 30*0;
+  //if (millis() > nextImuTime)
+ // {
+    //nextImuTime = millis() + 30*0;
     readIMU();    
-  }
+  //}
 
   // LED states
   /*if (millis() > nextLedTime){
@@ -821,7 +823,7 @@ void run(){
   
   
   if (millis() >= nextControlTime){        
-    nextControlTime = millis() + 20; 
+    nextControlTime = millis() + 20*0.0; 
     controlLoops++;    
     
     computeRobotState();
@@ -841,14 +843,10 @@ void run(){
     if (battery.chargerConnected() != stateChargerConnected)
     {    
       stateChargerConnected = battery.chargerConnected(); 
-      if (stateChargerConnected){      
-        // charger connected event        
-        activeOp->onChargerConnected();
-        //buzzer.sound(SND_PLUG);             
-      } else {
-        activeOp->onChargerDisconnected();
-        //buzzer.sound(SND_UNPLUG);
-      }            
+      if (stateChargerConnected)           
+        activeOp->onChargerConnected();           
+      else
+        activeOp->onChargerDisconnected();          
     }
 
     if (millis() > nextBadChargingContactCheck && battery.badChargerContact()) {
