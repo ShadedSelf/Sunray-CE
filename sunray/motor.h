@@ -8,6 +8,7 @@
 
 #include "pid.h"
 #include "config.h"
+#include "helper.h"
 
 
 // selected motor
@@ -18,9 +19,7 @@ typedef enum MotorSelect MotorSelect;
 class Motor {
   public:
     float wheelBaseCm;  // wheel-to-wheel diameter
-    int wheelDiameter;   // wheel diameter (mm)
-    int ticksPerRevolution; // ticks per revolution
-    float ticksPerCm;  // ticks per cm
+    float wheelDiameter;   // wheel diameter (mm)
     bool toggleMowDir; // toggle mowing motor direction each mow motor start?    
     bool motorLeftSwapDir;
     bool motorRightSwapDir;
@@ -33,7 +32,6 @@ class Motor {
     bool motorMowForwardSet; 
     bool odometryError;    
     unsigned long motorOverloadDuration; // accumulated duration (ms)
-    int pwmMax;
     int pwmMaxMow;  
     float mowMotorCurrentAverage;
     float currentFactor;
@@ -55,19 +53,19 @@ class Motor {
     float motorRightSenseLPNorm;
     unsigned long motorMowSpinUpTime;
     bool motorRecoveryState; 
-    PID motorLeftPID;
-    PID motorRightPID;   
+    //PID motorLeftPID;
+    //PID motorRightPID;   
     PIDv1 motorLeftPIDv1;
-    PIDv1 motorRightPIDv1;   
-  #if MOW_RPM_CONTROL
+    PIDv1 motorRightPIDv1;
+    #if MOW_RPM_CONTROL
     PID motorMowPID; 
-  #endif
+    #endif
     void begin();
     void run();      
     void test();
     void plot();
     void enableTractionMotors(bool enable);
-    void setLinearAngularSpeed(float linear, float angular, bool useLinearRamp = true, bool useAngularRamp = false);
+    void setLinearAngularSpeed(float linear, float angular, float linearAcceleration, float angularAccceleration = 0.0);
     void setMowState(bool switchOn);   
     void setMowMaxPwm( int val );
     void stopImmediately(bool includeMowerMotor);
@@ -75,6 +73,7 @@ class Motor {
     float motorRightRpmCurr;
     float motorMowRpmCurr;    
   protected: 
+    Timer accelerationTimer = Timer(MICROS_TIME);
     float motorLeftRpmSet; // set speed
     float motorRightRpmSet;  
     float motorMowRpmCurrLP;    
@@ -82,11 +81,7 @@ class Motor {
     float motorMowPWMCurr; 
     float motorLeftPWMCurr;
     float motorRightPWMCurr;    
-    /*float motorMowPWMCurrLP; 
-    float motorLeftPWMCurrLP;
-    float motorRightPWMCurrLP; */   
-    unsigned long lastControlTime;    
-    //unsigned long nextSenseTime;          
+    unsigned long lastControlTime;            
     bool recoverMotorFault;
     int recoverMotorFaultCounter;
     unsigned long nextRecoverMotorFaultTime;

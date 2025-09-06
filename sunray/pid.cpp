@@ -27,24 +27,13 @@ void PID::reset(void) {
   lastControlTime = micros();
 }
 
-float PID::compute() {
+float PID::compute()
+{
   unsigned long now = micros();
-  Ta = ((float)(now - lastControlTime)) / 1000000.0;
+  Ta = (double)(now - lastControlTime) / 1000000.0;
   lastControlTime = now;
   
   Ta = max(Ta, 0.000001);
-
-  //Ta = 50.0 / 1000.0;
-  /*if (Ta > TaMax) {
-    if (millis() > consoleWarnTimeout){
-      consoleWarnTimeout = millis() + 1000;
-      CONSOLE.print("WARN: PID unmet cycle time Ta=");
-      CONSOLE.print(Ta);
-      CONSOLE.print(" TaMax=");
-      CONSOLE.println(TaMax);
-    }
-    Ta = TaMax;   // should only happen for the very first call
-  }*/
 
   // compute error
   float e = (w - x);
@@ -55,8 +44,8 @@ float PID::compute() {
   if (esum > max_output)  esum = max_output;
 
   y = Kp * e
-      + Ki * Ta * esum
-      + Kd/Ta * (e - eold);
+    + Ki * Ta * esum
+    + Kd/Ta * (e - eold);
 
   eold = e;
 
@@ -161,20 +150,21 @@ void PIDv1::Init(float* Input, float* Output, float* Setpoint,
  *   pid Output needs to be computed.  returns true when the output is computed,
  *   false when nothing has been done.
  **********************************************************************************/
-bool PIDv1::Compute()
+float PIDv1::Compute()
 {
-    if(!inAuto) return false;
+    if(!inAuto)
+      return 0.0;
+
     unsigned long now = micros();
-    if (now - lastTime < 1000) return false;
+    if (now - lastTime < 1000)
+      return 0.0;
+
     double timeChange = (now - lastTime) / 1000000.0;
 
     /*Compute all the working error variables*/
     float input = *myInput;
     float error = (*mySetpoint - input);
-    //error = constrain(error, -3.0, 3.0); // cap error, or cap output?
     float dInput = (input - lastInput);
-
-    // if error positive error*P, else myOutpu - error*k
 
     outputSum *= max(1.0 - timeChange * 0.01, 0.0);
     //outputSum *= exp(-timeChange);
@@ -194,12 +184,13 @@ bool PIDv1::Compute()
     output += outputSum - kd / timeChange * dInput;
 
     output = constrain(outputSum, outMin, outMax);
-    *myOutput = output;
+    //*myOutput = output;
 
     /*Remember some variables for next time*/
     lastInput = input;
     lastTime = now;
-    return true;
+
+    return output;
 }
 
 /* SetTunings(...)*************************************************************
