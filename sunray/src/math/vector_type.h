@@ -26,16 +26,18 @@ struct vec3_t {
     void operator -= ( const vec3_t & );
 
 		// Element-wise multiplication
-	vec3_t operator ^ ( const vec3_t & );
-	void operator ^= ( const vec3_t & );
+	  vec3_t operator * ( const vec3_t & );
+	  void operator *= ( const vec3_t & );
+    vec3_t operator / ( const vec3_t & );
+	  void operator /= ( const vec3_t & );
     
-    	// Scalar multiplication and division:
+    // Scalar multiplication and division:
     vec3_t operator * ( const float );
     vec3_t operator / ( const float );
     void operator *= ( const float );
     void operator /= ( const float );
 
-    	// Important operations: 
+    // Important operations: 
     float dot( const vec3_t );
     vec3_t cross( const vec3_t );
     float mag();
@@ -44,10 +46,14 @@ struct vec3_t {
     // 2. setters and getters
     void copyArray( float [] );
     void set(const int, float);
-	float get(const int);
+	  float get(const int);
 };
 
 // 1B. Reverse order - Scalar product
 vec3_t operator * ( const float, const vec3_t & );
+
+// extras
+float distance(const vec3_t, const vec3_t);
+float dot(const vec3_t, const vec3_t);
 
 #endif
