@@ -32,7 +32,6 @@ unsigned long stateRightTicks = 0;
 // last values used for gps heading
 vec3_t lastHeadingPos = {0};
 float lastYaw = 0.0;
-float headingErrorLP = 1.0;
 
 // previous gps position
 vec3_t lastGpsPos = {0};
@@ -98,19 +97,20 @@ bool shouldResetHeadingPos(vec3_t gpsPos)
 {
   return gps.solution == SOL_FLOAT
   || fabs(motor.linearSpeedSet) < 0.02
-  //|| degrees(fabs(distancePI(imuDriver.yaw, lastYaw))) > 10.0
-  || maps.distanceToLastTargetPoint(gpsPos.x, gpsPos.y) < 0.25
-  || maps.distanceToTargetPoint(gpsPos.x, gpsPos.y) < 0.25
-  || maps.isDocking();
+  || degrees(fabs(distancePI(imuDriver.yaw, lastYaw))) > 10.0
+  || maps.distanceToLastTargetPoint(gpsPos.x, gpsPos.y) < 0.2
+  || maps.distanceToTargetPoint(gpsPos.x, gpsPos.y) < 0.2
+  //|| maps.isDocking();
   ;
 }
 
 // https://learn.sparkfun.com/tutorials/9dof-razor-imu-m0-hookup-guide#using-the-mpu-9250-dmp-arduino-library
 // start IMU sensor and calibrate
-bool startIMU(bool forceIMU){    
+bool startIMU(bool forceIMU)
+{    
   // detect IMU
   int counter = 0;  
-  while (forceIMU || counter < 1)
+  while (true)
   {
     imuDriver.detect();
     if (imuDriver.imuFound)
@@ -124,30 +124,33 @@ bool startIMU(bool forceIMU){
     #endif
     
     counter++;
-    if (counter > 5){    
+    if (counter > 5)
+    {    
       // no I2C recovery possible - this should not happen (I2C module error)
       CONSOLE.println("ERROR IMU not found");
       activeOp->onImuError();            
       return false;
     }       
-  }  
+  }
+
+  watchdogReset();
 
   // initialize IMU
   counter = 0;  
   while (true)
-  {    
+  {
     if (imuDriver.begin())
       break;
 
     CONSOLE.print("Unable to communicate with IMU.");
-    CONSOLE.print("Check connections, and try again.");
-    CONSOLE.println();
+    CONSOLE.println("Check connections, and try again.");
 
     watchdogReset();
     delay(500);   
 
     counter++;
-    if (counter > 5){
+    if (counter > 5)
+    {
       activeOp->onImuError();        
       return false;
     }  
@@ -192,10 +195,14 @@ void readIMU(){
     motor.stopImmediately(true);    
 
     // restart I2C bus
-    statImuRecoveries++;
-    I2Creset();  
+    statImuRecoveries++;  
     Wire.begin(); 
     startIMU(true);
+
+    // if require IMU for mowing
+    //{
+      //activeOp->changeOp(waitImuOP)
+    //}
 
     return;
   } 
@@ -216,32 +223,81 @@ void resetImuTimeout(){
 // with IMU: heading (stateDelta) is computed by gyro (stateDeltaIMU)
 // without IMU: heading (stateDelta) is computed by odometry (deltaOdometry)
 unsigned long lastTime = 0;
+float magOffset = 0.0;
+Timer odometryTimer(MICROS_TIME);
+double wheelDiameter = WHEEL_DIAMETER;
+float prevYaw = 0.0;
+#define ODOMETRY_RPM_TO_STATE true
 void computeRobotState()
-{  
-  long leftDelta = motor.motorLeftTicks-stateLeftTicks;
-  long rightDelta = motor.motorRightTicks-stateRightTicks;  
-  stateLeftTicks = motor.motorLeftTicks;
-  stateRightTicks = motor.motorRightTicks;    
+{
+  odometryTimer.update();
+
+  // odometry linear and angular change
+  float speedLeft, speedRight;
+#if ODOMETRY_RPM_TO_STATE
+  speedLeft  = motor.motorLeftRpmCurr  * PI * (motor.wheelDiameter / 1000.0) / 60.0;
+  speedRight = motor.motorRightRpmCurr * PI * (motor.wheelDiameter / 1000.0) / 60.0;
+
+  float distLeft  = speedLeft  * odometryTimer.deltaTimeSeconds(); // meters
+  float distRight = speedRight * odometryTimer.deltaTimeSeconds(); // meters
+#else
+  long leftDelta  = motor.motorLeftTicks  - stateLeftTicks;
+  long rightDelta = motor.motorRightTicks - stateRightTicks; 
+
+  stateLeftTicks  = motor.motorLeftTicks;
+  stateRightTicks = motor.motorRightTicks; 
     
-  float distLeft  = (float)leftDelta  / (TICKS_PER_REVOLUTION_L / ((float)motor.wheelDiameter / 10.0) / PI) / 100.0;
-  float distRight = (float)rightDelta / (TICKS_PER_REVOLUTION_R / ((float)motor.wheelDiameter / 10.0) / PI) / 100.0;
+  float distLeft  = (float)leftDelta  / (TICKS_PER_REVOLUTION_L / (motor.wheelDiameter / 10.0) / PI) / 100.0;
+  float distRight = (float)rightDelta / (TICKS_PER_REVOLUTION_R / (motor.wheelDiameter / 10.0) / PI) / 100.0;
 
-  /*unsigned long time = micros();
-  double dt = (time-lastTime) / 1000.0 / 1000.0; // seconds
+  speedLeft  = distLeft  / odometryTimer.deltaTimeSeconds();
+  speedRight = distRight / odometryTimer.deltaTimeSeconds();
+#endif
 
-  float distLeft  = motor.motorLeftRpmCurr  * PI * ((float)motor.wheelDiameter / 10.0 / 100.0) / 60.0 * dt; // meters
-  float distRight = motor.motorRightRpmCurr * PI * ((float)motor.wheelDiameter / 10.0 / 100.0) / 60.0 * dt; // meters
-
-  lastTime = time;*/
-
+  float speedOdometry = (speedLeft + speedRight) / 2.0;
   float distOdometry  =  (distLeft + distRight) / 2.0;
-  float deltaOdometry = -(distLeft - distRight) / (motor.wheelBaseCm / 100.0);  
+  float deltaOdometry = -(distLeft - distRight) / (motor.wheelBaseCm / 100.0);
 
+
+  // estimate wheel diameter from gps speed
+  if (gps.solutionAvail
+  && gps.solution == SOL_FIXED
+  && gps.groundSpeed > 0.15
+  && fabs(motor.motorLeftRpmCurr) > 0.1
+  && fabs(motor.motorRightRpmCurr) > 0.1)
+  {
+    float l = gps.groundSpeed / fabs(motor.motorLeftRpmCurr  * PI) * 1000.0 * 60.0;
+    float r = gps.groundSpeed / fabs(motor.motorRightRpmCurr * PI) * 1000.0 * 60.0;
+    float x = (l + r) / 2.0;
+
+    // ~100 mins to 50%
+    wheelDiameter = odometryTimer.lowPass(wheelDiameter, x, 100.0 * 60.0);
+
+    // correct wheel diameter, 5mm max
+    motor.wheelDiameter = constrain(wheelDiameter, WHEEL_DIAMETER - 5, WHEEL_DIAMETER + 5);
+  }
+
+  // estimate wheelbase from imu rotation
+  //if (imuDriver.yaw != prevYaw)
+  //x = (100*-(distLeft - distRight) - imuyawdiff*motor.wheelBaseCm) / (1000*imuyawdiff)
+  // wheelBaseCm += x
+
+ // if (deltaOdometry != 0.0)
+   // DEBUGLN(imuDriver.yawSpeed / deltaOdometry);
+ //  DEBUGLN(imuDriver.yawSpeed);
+  
   // orientation and heading
   vec3_t rpy;
   if (imuDriver.imuFound) // IMU available
   {
-    heading = scalePI(imuDriver.yaw + headingOffset);
+    bool magZone = !shouldUseGps();// || maps.distanceToLastTargetPoint(position.x, position.y) > 4.0 || gps.solution != SOL_FIXED;
+    if (!magZone)
+      magOffset = distancePI(imuDriver.magYaw, heading);
+
+    heading = (USE_MAGNOMETER && maps.isDocking() && magZone)
+      ? scalePI(imuDriver.magYaw + magOffset)
+      : scalePI(imuDriver.yaw    + headingOffset);
+
     rpy = vec3_t(imuDriver.roll, imuDriver.pitch, heading);
   }
   else // odometry
@@ -279,7 +335,8 @@ void computeRobotState()
       + right * (GPS_POSITION_OFFSET_RIGHT / 100.0)
       + up    * (GPS_POSITION_OFFSET_UP  / 100.0);
 
-    gpsPos += gpsOffset ^ vec3_t(1,1,0);
+    // add offset to only x and y
+    gpsPos += gpsOffset * vec3_t(1,1,0);
   }
 
 
@@ -292,14 +349,12 @@ void computeRobotState()
   }
   // store last position if ignoring gps
   if (millis() - lastFixJumpTime <= IGNORE_GPS_AFTER_JUMP * 1000.0)
+  {
     lastGpsPos = gpsPos;
+    lastHeadingPos = gpsPos;
+    lastYaw = imuDriver.yaw;
+  }
 
-
-  float gpsFusionDist;
-  if (imuDriver.imuFound)
-    gpsFusionDist = lerp(0.3, 0.1, constrain(headingErrorLP * 4.0, 0.0, 1.0));
-  else
-    gpsFusionDist = 0.1;
 
   // gps heading and position
   if (gps.solutionAvail && shouldUseGps())
@@ -315,7 +370,7 @@ void computeRobotState()
       lastHeadingPos = gpsPos;
       lastYaw = imuDriver.yaw;
     }
-    else if (headingPosDiff.mag() > gpsFusionDist) // gps-imu heading fusion
+    else if (headingPosDiff.mag() > 0.1) // gps-imu heading fusion
     {                
       float headingGPS = atan2(headingPosDiff.y, headingPosDiff.x);
       
@@ -325,26 +380,18 @@ void computeRobotState()
 
       if (imuDriver.imuFound) // imu
       {
-        // add imu rotation change to gps heading
-        float imuHeadingError = distancePI(imuDriver.yaw, lastYaw) * 0.95;
-        headingGPS = scalePI(headingGPS + imuHeadingError);
-        
-        float headingError = fabs(distancePI(heading, headingGPS)) / PI; /// normalize error
-        headingErrorLP = lerp(headingErrorLP, headingError, headingError);
-        
+        float headingError  = fabs(distancePI(heading, headingGPS)) / PI; // normalize error
+
         // error modifiers
-        float errorT = powf(headingErrorLP, 1.0);
-              errorT = min(headingErrorLP, 0.1); // 10% max change
+        headingError = powf(headingError, 1.0);
+        headingError = min(headingError, 0.1); // 10% max change
 
         // error too high, might happen after reset
-        if (headingError > 0.15)
-        {
-          headingErrorLP = headingError;
-          errorT = 1.0;
-        }
+        if (headingError > radians(20.0))
+          headingError = 1.0;
         
-        float headingDiff  = distancePI(imuDriver.yaw, headingGPS);
-        headingOffset = angleInterpolation(headingOffset, headingDiff, errorT);
+        float headingDiff = distancePI(imuDriver.yaw, headingGPS);
+        headingOffset = angleInterpolation(headingOffset, headingDiff, headingError);
       }
       else // odometry
         heading = angleInterpolation(headingGPS, heading, 0.9);
