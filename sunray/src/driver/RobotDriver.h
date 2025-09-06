@@ -103,8 +103,11 @@ class ImuDriver {
     float roll; // euler radiant
     float pitch; // euler radiant
     float yaw;   // euler radiant
-    //quat_t orientation;
-    bool imuFound;   
+    float yawSpeed;   // euler radiant
+    float magYaw;   // euler radiant
+
+    bool imuFound;
+     
     // detect module (should update member 'imuFound')
     virtual void detect() = 0;             
     // try starting module with update rate 5 Hz (should return true on success)

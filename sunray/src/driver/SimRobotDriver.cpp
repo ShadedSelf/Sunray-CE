@@ -114,8 +114,8 @@ void SimMotorDriver::setMotorPwm(int leftPwm, int rightPwm, int mowPwm){
   simRobot.mowSpeed = ((float)mowPwm) / 255.0;
 
   
-  int leftDeltaTicks = simRobot.leftSpeed / (PI * ((float)WHEEL_DIAMETER) / 1000.0) * ((float)TICKS_PER_REVOLUTION) * deltaT;
-  int rightDeltaTicks = simRobot.rightSpeed / (PI * ((float)WHEEL_DIAMETER) / 1000.0) * ((float)TICKS_PER_REVOLUTION) * deltaT;
+  int leftDeltaTicks = simRobot.leftSpeed / (PI * ((float)WHEEL_DIAMETER) / 1000.0) * ((float)TICKS_PER_REVOLUTION_L) * deltaT;
+  int rightDeltaTicks = simRobot.rightSpeed / (PI * ((float)WHEEL_DIAMETER) / 1000.0) * ((float)TICKS_PER_REVOLUTION_R) * deltaT;
   
   if (leftPwm >= 0)
     simRobot.simTicksLeft += leftDeltaTicks;
