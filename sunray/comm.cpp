@@ -86,20 +86,20 @@ void cmdTuneParam(){
               stanleyTrackingSlowK = floatValue;
               break;
             case 4:
-              motor.motorLeftPID.Kp = floatValue;
-              motor.motorRightPID.Kp = floatValue;
+              //motor.motorLeftPID.Kp = floatValue;
+              //motor.motorRightPID.Kp = floatValue;
               motor.motorLeftPIDv1.SetP(floatValue);       
               motor.motorRightPIDv1.SetP(floatValue);       
               break;
             case 5:
-              motor.motorLeftPID.Ki = floatValue;
-              motor.motorRightPID.Ki = floatValue;
+              //motor.motorLeftPID.Ki = floatValue;
+              //motor.motorRightPID.Ki = floatValue;
               motor.motorLeftPIDv1.SetI(floatValue);   
               motor.motorRightPIDv1.SetI(floatValue);   
               break;
             case 6:
-              motor.motorLeftPID.Kd = floatValue;
-              motor.motorRightPID.Kd = floatValue;
+              //motor.motorLeftPID.Kd = floatValue;
+              //motor.motorRightPID.Kd = floatValue;
               motor.motorLeftPIDv1.SetD(floatValue);   
               motor.motorRightPIDv1.SetD(floatValue);              
               break;
@@ -168,7 +168,12 @@ void cmdControl(){
     setOperation(OP_IDLE);    
   }
   if (op >= 0)
-    setOperation((OperationType)op, false); // new operation by operator
+  {
+    if ((OperationType)op == OP_MOW && (!timetable.mowingAllowed() || timetable.shouldAutostopNow()) || rainDriver.triggered())
+      {}
+    else
+      setOperation((OperationType)op, false); // new operation by operator
+  }
   else if (restartRobot)     // no operation given by operator, continue current operation from IDLE state
     setOperation(oldStateOp);    
 
@@ -177,33 +182,38 @@ void cmdControl(){
 }
 
 // request motor 
-void cmdMotor(){
-  if (cmd.length()<6) return;  
+void cmdMotor()
+{
+  if (cmd.length() < 6)
+    return;  
+
   int counter = 0;
   int lastCommaIdx = 0;
-  float linear=0;
-  float angular=0;
-  for (int idx=0; idx < cmd.length(); idx++){
+  float linear = 0;
+  float angular = 0;
+
+  for (int idx = 0; idx < cmd.length(); idx++)
+  {
     char ch = cmd[idx];
-    //Serial.print("ch=");
-    //Serial.println(ch);
-    if ((ch == ',') || (idx == cmd.length()-1)){
-      float value = cmd.substring(lastCommaIdx+1, ch==',' ? idx : idx+1).toFloat();
-      if (counter == 1){                            
-          linear = value;
-      } else if (counter == 2){
-          angular = value;
-      } 
+    if (ch == ',' || idx == cmd.length() - 1)
+    {
+      float value = cmd.substring(lastCommaIdx + 1, (ch == ',') ? idx : idx + 1).toFloat();
+
+      if (counter == 1) linear = value;
+      if (counter == 2) angular = value;
+
       counter++;
       lastCommaIdx = idx;
     }    
   }      
-  /*CONSOLE.print("linear=");
-  CONSOLE.print(linear);
-  CONSOLE.print(" angular=");
-  CONSOLE.println(angular);*/
-  if (stateOp != OP_CHARGE)
-    motor.setLinearAngularSpeed(linear, angular, true);
+
+  if (stateOp == OP_IDLE)
+  {
+    idleOp.linear = linear;
+    idleOp.angular = angular;
+    idleOp.moveStartTime = millis();
+  }
+
   String s = F("M");
   cmdAnswer(s);
 }
@@ -527,8 +537,9 @@ void cmdGNSSReboot(){
 // switch-off robot
 void cmdSwitchOffRobot(){
   String s = F("Y3");
-  cmdAnswer(s);  
-  setOperation(OP_IDLE);
+  cmdAnswer(s);
+  if (stateOp == OP_MOW)
+    setOperation(OP_IDLE);
   saveState();
   battery.switchOff();
 }
@@ -554,12 +565,12 @@ void cmdToggleGPSSolution(){
       gps.relPosN = position.y - 2.0;  // simulate pos. solution jump
       gps.relPosE = position.x - 2.0;
       lastFixTime = millis();
-      stateGroundSpeed = 0.1;
+      //stateGroundSpeed = 0.1;
       break;
     case SOL_FLOAT:  
       gps.solutionAvail = true;
       gps.solution = SOL_FIXED;
-      stateGroundSpeed = 0.1;
+      //stateGroundSpeed = 0.1;
       gps.relPosN = position.y + 2.0;  // simulate undo pos. solution jump
       gps.relPosE = position.x + 2.0;
       break;
@@ -957,21 +968,24 @@ void processCmd(bool checkCrc, bool decrypt){
 }
 
 // process console input
-void processConsole(){
-  char ch;      
-  if (CONSOLE.available()){
+void processConsole()
+{   
+  if (CONSOLE.available())
+  {
     battery.resetIdle();  
-    while ( CONSOLE.available() ){               
-      ch = CONSOLE.read();          
-      if ((ch == '\r') || (ch == '\n')) {        
+    while ( CONSOLE.available() )
+    {               
+      char ch = CONSOLE.read();          
+      if (ch == '\r' || ch == '\n')
+      {        
         CONSOLE.print("CON:");
         CONSOLE.println(cmd);
         processCmd(false, false);              
         CONSOLE.print(cmdResponse);    
         cmd = "";
-      } else if (cmd.length() < 500){
-        cmd += ch;
       }
+      else if (cmd.length() < 500)
+        cmd += ch;
     }
   }     
 }
@@ -1048,7 +1062,7 @@ void outputConsole(){
     CONSOLE.print("(");
     CONSOLE.print(battery.chargingCurrent);    
     CONSOLE.print(") diff=");
-    CONSOLE.print(battery.chargingVoltBatteryVoltDiff, 3);
+    CONSOLE.print(battery.chargingVoltage - battery.batteryVoltage, 3);
     CONSOLE.print(" tg=");
     CONSOLE.print(maps.targetPoint.x());
     CONSOLE.print(",");
