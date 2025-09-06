@@ -174,6 +174,16 @@ public:
         return NOK;
     };
 
+    STATUS getAverage(double &value) {
+        if (_cnt > 0) {
+            double sum = 0;
+            for (uint8_t i=0; i< _cnt; i++) sum += _ar[i];
+            value = sum / _cnt;
+            return OK;
+        }
+        return NOK;
+    };
+
     STATUS getAverage(uint8_t nMedians, float &value) {
         if ((_cnt > 0) && (nMedians > 0))
         {
