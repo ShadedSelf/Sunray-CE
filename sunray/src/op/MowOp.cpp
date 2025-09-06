@@ -29,7 +29,7 @@ void MowOp::begin()
     bool routingFailed = false;      
    
     motor.enableTractionMotors(true); // allow traction motors to operate         
-    motor.setLinearAngularSpeed(0,0);      
+    motor.setLinearAngularSpeed(0,0,LINEAR_ACCELERATION);      
     if ((previousOp != &escapeReverseOp && previousOp != &escapeForwardOp) || DISABLE_MOW_MOTOR_AT_OBSTACLE)
         motor.setMowState(false);              
     battery.setIsDocked(false);                             
@@ -258,13 +258,11 @@ void MowOp::onGpsNoSignal(){
     }
 }
 
-void MowOp::onKidnapped(bool state){
-    if (state){
-        stateSensor = SENS_KIDNAPPED;      
-        motor.setLinearAngularSpeed(0,0, false); 
-        motor.setMowState(false);    
-        changeOp(kidnapWaitOp, true); 
-    }
+void MowOp::onKidnapped(){
+    stateSensor = SENS_KIDNAPPED;      
+    motor.setLinearAngularSpeed(0,0, 10.0); 
+    motor.setMowState(false);    
+    changeOp(kidnapWaitOp, true);
 }
 
 void MowOp::onNoFurtherWaypoints(){

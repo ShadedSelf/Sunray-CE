@@ -14,7 +14,10 @@ String ImuCalibrationOp::name(){
     return "ImuCalibration";
 }
 
-void ImuCalibrationOp::begin(){
+void ImuCalibrationOp::begin()
+{
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+
     nextImuCalibrationSecond = 0;
     imuCalibrationSeconds = 0;
 }
@@ -27,7 +30,9 @@ void ImuCalibrationOp::end(){
 void ImuCalibrationOp::run()
 {
     battery.resetIdle();
-    motor.stopImmediately(true);   
+
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+    //motor.stopImmediately(true);   
 
     if (millis() > nextImuCalibrationSecond)
     {
@@ -39,7 +44,11 @@ void ImuCalibrationOp::run()
         buzzer.sound(SND_PROGRESS, true);
                
         if (imuCalibrationSeconds >= 5)
-        {                 
+        {
+            // use magnometer heading if regular heading too far at startup
+            //if (USE_MAGNOMETER && fabs(distancePI(heading, imuDriver.magYaw)) > radians(30.0))
+              //  headingOffset = distancePI(imuDriver.yaw, imuDriver.magYaw);
+
             imuDriver.resetData();
             resetImuTimeout();
             Op::changeOp(*nextOp);

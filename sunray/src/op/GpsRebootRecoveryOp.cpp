@@ -12,7 +12,10 @@ String GpsRebootRecoveryOp::name(){
     return "GpsRebootRecovery";
 }
 
-void GpsRebootRecoveryOp::begin(){
+void GpsRebootRecoveryOp::begin()
+{
+      motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+
     // try GPS reboot after 5 minutes
     if (GPS_REBOOT_RECOVERY){
         gps.reboot();  // try to recover from false GPS fix
@@ -25,7 +28,10 @@ void GpsRebootRecoveryOp::end(){
 }
 
 
-void GpsRebootRecoveryOp::run(){
+void GpsRebootRecoveryOp::run()
+{
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+
     battery.resetIdle();
     if (millis() > retryOperationTime){
         // restart current operation from new position (restart path planning)

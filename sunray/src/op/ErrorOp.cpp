@@ -18,7 +18,8 @@ void ErrorOp::begin()
 {
     CONSOLE.println("OP_ERROR"); 
      
-    motor.stopImmediately(true);
+    //motor.stopImmediately(true);
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
     motor.setMowState(false);      
   
     buzzer.sound(SND_ERROR, true);
@@ -29,6 +30,8 @@ void ErrorOp::end(){
 
 void ErrorOp::run()
 {
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+
     if (battery.chargerConnected())  
         changeOp(chargeOp);
 

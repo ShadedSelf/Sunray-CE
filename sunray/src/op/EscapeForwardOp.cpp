@@ -25,7 +25,7 @@ void EscapeForwardOp::end(){
 
 void EscapeForwardOp::run(){
     battery.resetIdle();
-    motor.setLinearAngularSpeed(0.1,0);
+    motor.setLinearAngularSpeed(0.1, 0, LINEAR_ACCELERATION);
     if (DISABLE_MOW_MOTOR_AT_OBSTACLE)  motor.setMowState(false);
 
     if (millis() > driveForwardStopTime){

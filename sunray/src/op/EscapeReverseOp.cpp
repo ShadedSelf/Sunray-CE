@@ -20,7 +20,7 @@ void EscapeReverseOp::begin()
     // obstacle avoidance
     driveReverseStopTime = millis() + 3000;
 
-    vec3_t pos = position - forward * 0.2;
+    vec3_t pos = position - forward * 0.2 * (maps.trackReverse ? -1.0 : 1.0);
     drive = maps.isInsidePerimeter(pos.x, pos.y);
 
     if (DISABLE_MOW_MOTOR_AT_OBSTACLE) 
@@ -32,7 +32,7 @@ void EscapeReverseOp::run()
     battery.resetIdle();
 
     if (drive)
-        motor.setLinearAngularSpeed(-0.1, 0);                                   
+        motor.setLinearAngularSpeed(-0.1 * (maps.trackReverse ? -1.0 : 1.0), 0, LINEAR_ACCELERATION);                                   
 
     if (millis() > driveReverseStopTime)
     {

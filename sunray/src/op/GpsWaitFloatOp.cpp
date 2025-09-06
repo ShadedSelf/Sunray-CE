@@ -17,7 +17,7 @@ void GpsWaitFloatOp::begin()
     CONSOLE.println("WARN: no gps solution!");
     stateSensor = SENS_GPS_INVALID;
 
-    motor.setLinearAngularSpeed(0,0, true); 
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
     motor.setMowState(false);     
 }
 
@@ -27,6 +27,8 @@ void GpsWaitFloatOp::end(){
 
 void GpsWaitFloatOp::run()
 {
+    motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
+    
       // reboot gps every 5 min
     if (millis() - startTime > 5 * 60 * 1000)
     {

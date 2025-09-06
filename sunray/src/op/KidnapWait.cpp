@@ -8,6 +8,7 @@
 #include "../../robot.h"
 #include "../../LineTracker.h"
 #include "../../map.h"
+#include "../../StateEstimator.h"
 
 String KidnapWaitOp::name(){
   return "KidnapWait";
@@ -17,43 +18,46 @@ void KidnapWaitOp::begin(){
   stateSensor = SENS_KIDNAPPED;
   recoverGpsTime = millis() + 30000;
   recoverGpsCounter = 0;
+  motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
 }
 
 
 void KidnapWaitOp::end(){
 }
 
-void KidnapWaitOp::onKidnapped(bool state){
-  if (!state) {
-    changeOp(*nextOp);
+void KidnapWaitOp::onGpsNoSignal(){
+  if (!maps.isUndocking()){
+    stateSensor = SENS_GPS_INVALID;
+    changeOp(gpsWaitFloatOp, true);
   }
 }
 
-void KidnapWaitOp::onGpsNoSignal(){
-    if (!maps.isUndocking()){
-        stateSensor = SENS_GPS_INVALID;
-        changeOp(gpsWaitFloatOp, true);
-    }
-}
 
+void KidnapWaitOp::run()
+{      
+  //trackLine(false);
+  motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);    
+  motor.setMowState(false);
 
-void KidnapWaitOp::run(){  
-  trackLine(false);       
   battery.resetIdle();
 
-  if (millis() > recoverGpsTime){
+  if (maps.isInsidePerimeter(position.x, position.y))
+    changeOp(*nextOp);
+
+  if (millis() > recoverGpsTime)
+  {
     CONSOLE.println("KIDNAP_DETECT");
     recoverGpsTime = millis() + 30000;
     recoverGpsCounter++;
-    if (recoverGpsCounter == 3){          
+    if (recoverGpsCounter == 3)
+    {          
       CONSOLE.println("error: kidnapped!");
       stateSensor = SENS_KIDNAPPED;
       changeOp(errorOp);
       return;
     }   
-    if (GPS_REBOOT_RECOVERY){           
+    if (GPS_REBOOT_RECOVERY)        
       gps.reboot();   // try to recover from false GPS fix     
-    }
   }
 }
 
