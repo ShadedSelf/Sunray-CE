@@ -45,20 +45,9 @@ void Motor::begin() {
 #endif
   //------------------
 
-  #ifdef MOTOR_DRIVER_BRUSHLESS
-    motorLeftSwapDir = true;
-  #else
-    motorLeftSwapDir = false;  
-  #endif
-  motorRightSwapDir = false;
-  
-  // apply optional custom motor direction swapping 
-  #ifdef MOTOR_LEFT_SWAP_DIRECTION
-    motorLeftSwapDir = !motorLeftSwapDir;
-  #endif
-  #ifdef MOTOR_RIGHT_SWAP_DIRECTION
-    motorRightSwapDir = !motorRightSwapDir;
-  #endif
+
+  motorLeftSwapDir = MOTOR_LEFT_SWAP_DIRECTION; 
+  motorRightSwapDir = MOTOR_RIGHT_SWAP_DIRECTION;
 
   motorError = false;
   recoverMotorFault = false;
@@ -91,7 +80,6 @@ void Motor::begin() {
   motorMowForwardSet = true;
   toggleMowDir = MOW_TOGGLE_DIR;
 
-  lastControlTime = 0;
   //nextSenseTime = 0;
   motorLeftTicks =0;  
   motorRightTicks =0;
@@ -108,7 +96,7 @@ void Motor::begin() {
   motorLeftRpmCurr=0;
   motorRightRpmCurr=0;
   motorMowRpmCurr=0;
-  motorMowRpmCurrLP = 0;
+  //motorMowRpmCurrLP = 0;
   
   setLinearAngularSpeedTimeoutActive = false;  
   setLinearAngularSpeedTimeout = 0;
@@ -237,6 +225,7 @@ void Motor::stopImmediately(bool includeMowerMotor){
 }
 
 unsigned long prevTimeLeft, prevTimeRight;
+Timer motorLoopTimer = Timer(MICROS_TIME);
 void Motor::run()
 {   
     // angular timeout
@@ -301,6 +290,8 @@ void Motor::run()
   
 
   // -- Calculate motor RPM --
+
+  motorLoopTimer.update();
   
   int ticksLeft, ticksRight, ticksMow;
   motorDriver.getMotorEncoderTicks(ticksLeft, ticksRight, ticksMow);
@@ -308,10 +299,17 @@ void Motor::run()
   // does pid need to update
   bool shouldUpdateLeft  = ticksLeft  != 0;
   bool shouldUpdateRight = ticksRight != 0;
+
+  calculateCoeffs(shouldUpdateLeft, shouldUpdateRight);
   
   motorLeftTicks  += ticksLeft  * (int)sign(motorLeftPWMCurr);
   motorRightTicks += ticksRight * (int)sign(motorRightPWMCurr);
   motorMowTicks   += ticksMow   * (int)sign(motorMowPWMCurr);
+
+  // store prev rpm to calculate acceleration
+  float motorLeftRpmPrev = motorLeftRpmCurr;
+  float motorRightRpmPrev = motorRightRpmCurr;
+  float motorMowRpmPrev =  motorMowRpmCurr;
 
 #if RESPONSIVE_RPM
   unsigned long timeLeft, timeRight, timeMow;
@@ -328,14 +326,10 @@ void Motor::run()
   motorRightRpmCurr = (60000000.0 / (timeRight * TICKS_PER_REVOLUTION_R)) * sign(motorRightPWMCurr);
   motorMowRpmCurr =   (60000000.0 / (timeMow   * 6))                      * sign(motorMowPWMCurr);
 # else
-  // timeframes
-  unsigned long currTime = micros();
-  float deltaControlTimeSec =  (double)(currTime - lastControlTime) / 1000.0 / 1000.0;
-  lastControlTime = currTime;
   // calculate speed via tick count
-  motorLeftRpmCurr =  60.0 * ( ((float)ticksLeft)  / ((float)TICKS_PER_REVOLUTION_L) ) / deltaControlTimeSec;
-  motorRightRpmCurr = 60.0 * ( ((float)ticksRight) / ((float)TICKS_PER_REVOLUTION_R) ) / deltaControlTimeSec;
-  motorMowRpmCurr =   60.0 * ( ((float)ticksMow)   / ((float)6.0) ) / deltaControlTimeSec; // assuming 6 ticks per revolution
+  motorLeftRpmCurr =  60.0 * ( ((float)ticksLeft)  / ((float)TICKS_PER_REVOLUTION_L) ) / motorLoopTimer.deltaTimeSeconds();
+  motorRightRpmCurr = 60.0 * ( ((float)ticksRight) / ((float)TICKS_PER_REVOLUTION_R) ) / motorLoopTimer.deltaTimeSeconds();
+  motorMowRpmCurr =   60.0 * ( ((float)ticksMow)   / ((float)6.0) ) / motorLoopTimer.deltaTimeSeconds(); // assuming 6 ticks per revolution
 #endif
 
   // set rpm to 0 if we dont get ticks in 10 cycles
@@ -346,6 +340,11 @@ void Motor::run()
   if (ticksRight == 0) motorRightTicksZero++;
   if (ticksRight != 0) motorRightTicksZero = 0;
   if (motorRightTicksZero > 10) { motorRightRpmCurr = 0; shouldUpdateRight = true; }
+
+  // calculate acceleration
+  motorLeftRpmAcc  = (motorLeftRpmCurr  - motorLeftRpmPrev)  / motorLoopTimer.deltaTimeSeconds();
+  motorRightRpmAcc = (motorRightRpmCurr - motorRightRpmPrev) / motorLoopTimer.deltaTimeSeconds();
+  motorMowRpmAcc   = (motorMowRpmCurr   - motorMowRpmPrev)   / motorLoopTimer.deltaTimeSeconds();
 
   // speed controller
   control(shouldUpdateLeft, shouldUpdateRight, true);
@@ -368,6 +367,86 @@ void Motor::sense()
   motorMowSenseFLP  = currentTimer.lowPass(motorMowSenseFLP, motorMowSense, 0.1);
 }
 
+double leftFrictionCoeff = 0.89;
+double leftVelocityCoeffNeg = 0.29;
+double leftVelocityCoeffPos = 0.29;
+double leftGravityCoeff = 1.14;
+
+double rightFrictionCoeff = 0.76;
+double rightVelocityCoeff = 0.20;
+double rightGravityCoeff = 1.02;
+void Motor::calculateCoeffs(bool updateLeft, bool updateRight)
+{
+  if (updateLeft && fabs(angularSpeedSet) < 0.1)
+  {
+    float u = (motorLeftPWMCurr / 255.0) * battery.systemVoltage;
+
+    float f = sign(motorLeftRpmCurr);
+    float v = motorLeftRpmCurr;
+    float g = sign(motorLeftRpmCurr) * sin(imuDriver.pitch);
+
+    float ffPWM = f * leftFrictionCoeff
+                + v * (f < 0.0 ? leftVelocityCoeffNeg : f > 0.0 ? leftVelocityCoeffPos : 0.0);
+                + g * leftGravityCoeff;
+
+    float error = u - ffPWM;
+
+    float rpmMax = setSpeed / ( PI * (motor.wheelDiameter / 1000.0) / 60.0);
+    
+    double a = 0.000001;
+
+    if (fabs(linearSpeedSet) < 0.15)       leftFrictionCoeff    += a * error * f;
+    else if (fabs(imuDriver.pitch) > 0.1)  leftGravityCoeff     += a * error * g;
+    else if (f < 0.0)                      leftVelocityCoeffNeg += a * error * v / rpmMax;
+    else if (f > 0.0)                      leftVelocityCoeffPos += a * error * v / rpmMax;
+
+    leftFrictionCoeff    = max(leftFrictionCoeff,    0.0);
+    leftVelocityCoeffPos = max(leftVelocityCoeffPos, 0.0);
+    leftVelocityCoeffNeg = max(leftVelocityCoeffNeg, 0.0);
+    leftGravityCoeff     = max(leftGravityCoeff,     0.0);
+
+    /*DEBUG(leftFrictionCoeff);
+    DEBUG(" ");
+    DEBUG(leftVelocityCoeffPos);
+    DEBUG(" ");
+    DEBUG(leftVelocityCoeffNeg);
+    DEBUG(" ");
+    DEBUG(leftGravityCoeff);
+    DEBUGLN(" ");*/
+  }
+
+  if (updateRight && fabs(angularSpeedSet) < 0.1)
+  {
+    float u = (motorRightPWMCurr / 255.0) * battery.systemVoltage;
+
+    float ffPWM = rightFrictionCoeff * sign(motorRightRpmCurr)
+                + rightVelocityCoeff * motorRightRpmCurr;
+                + rightGravityCoeff  * sign(motorRightRpmCurr) * sin(imuDriver.pitch);
+
+    float error = u - ffPWM;
+
+    double a = 0.000001;
+
+    if (fabs(linearSpeedSet) < 0.2)
+      rightFrictionCoeff += a * error * sign(motorRightRpmCurr);
+    else if (fabs(imuDriver.pitch) > 0.1)
+      rightGravityCoeff  += a * error * sign(motorRightRpmCurr) * sin(imuDriver.pitch);
+    else
+      rightVelocityCoeff += a * error * motorRightRpmCurr / 25.0;
+
+    rightFrictionCoeff = max(rightFrictionCoeff, 0.0);
+    rightVelocityCoeff = max(rightVelocityCoeff, 0.0);
+    rightGravityCoeff  = max(rightGravityCoeff , 0.0);
+
+    /*DEBUG(rightFrictionCoeff);
+    DEBUG(" ");
+    DEBUG(rightVelocityCoeff);
+    DEBUG(" ");
+    DEBUG(rightGravityCoeff);
+    DEBUGLN(" ");*/
+  }
+}
+
 Timer motorMowTimer(MICROS_TIME);
 Timer debugTimer(MICROS_TIME);
 float aa = VELOCITY_COEF_FF_L;
@@ -376,32 +455,6 @@ float cc = GRAVITY_COEF_FF_L;
 float dd = GRAVITY_COEF_FF_R;
 void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
   //########################  Calculate PWM for left driving motor ############################
-
-
-  //dont let pwm rise if overloaded?
-  /*debugTimer.update();
-  if (stateOp == OP_MOW)
-  { 
-    aa = debugTimer.lowPass(aa, min(max(fabs(motorLeftPWMCurr) - FRICTION_FF_L, 0.0) / max(fabs(motorLeftRpmCurr), 0.00001), 10.0), 60.0 * 10.0);
-    bb = debugTimer.lowPass(bb, min(max(fabs(motorRightPWMCurr) - FRICTION_FF_R, 0.0) / max(fabs(motorRightRpmCurr), 0.00001), 10.0), 60.0 * 10.0);
-
-    //cc = debugTimer.lowPass(cc, constrain((motorLeftRpmCurr - motorLeftRpmSet) / sin(imuDriver.pitch), -10.0, 10.0), 60.0 * 10.0);
-    //dd = debugTimer.lowPass(dd, constrain((motorRightRpmCurr - motorRightRpmSet) / sin(imuDriver.pitch), -10.0, 10.0), 60.0 * 10.0);
-    
-    float ffPWM = FRICTION_FF_L * sign(motorLeftRpmSet) + VELOCITY_COEF_FF_L * motorLeftRpmSet;
-    cc = debugTimer.lowPass(cc, constrain(fabs(fabs(motorLeftPWMCurr) - fabs(ffPWM)) / max(fabs(sin(imuDriver.pitch)), 0.00001), -10.0, 10.0), 60.0 * 10.0);
-    ffPWM = FRICTION_FF_R * sign(motorRightRpmSet) + VELOCITY_COEF_FF_R * motorRightRpmSet;
-    dd = debugTimer.lowPass(dd, constrain(fabs(fabs(motorRightPWMCurr) - fabs(ffPWM)) / max(fabs(sin(imuDriver.pitch)), 0.00001), -10.0, 10.0), 60.0 * 10.0);
-  }
-
-
-  DEBUG(aa);
-  DEBUG(" ");
-  DEBUG(bb);
-  DEBUG(" ");
-  DEBUG(cc);
-  DEBUG(" ");
-  DEBUGLN(dd);*/
 
   {
     float kv = 3850.0 / 24.0 * 0.95;
@@ -462,12 +515,12 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
     float pid = motorLeftPIDv1.Compute();
     
     // Feed-fordward -> Friction + Velocity + Gravity
-    float ffPWM = FRICTION_FF_L      * sign(motorLeftRpmSet)
-                + VELOCITY_COEF_FF_L * motorLeftRpmSet;
-                + GRAVITY_COEF_FF_L  * sign(motorRightRpmSet) * -sin(imuDriver.pitch);
+    float ffPWM = leftFrictionCoeff * sign(motorLeftRpmSet)
+                + leftVelocityCoeffNeg * motorLeftRpmSet
+                + leftGravityCoeff  * sign(motorRightRpmSet) * sin(imuDriver.pitch);
     
     // PID + FF
-    float finalPWM = ffPWM + pid;
+    float finalPWM = (ffPWM / battery.systemVoltage * 255.0) + pid;
 
     // PWM change limiter
     float pwmStep = 1.9; // make acceleration relative to ff_vel_coef?
@@ -482,12 +535,12 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
     float pid = motorRightPIDv1.Compute();
 
     // Feed-fordward -> Friction + Velocity + Gravity
-    float ffPWM = FRICTION_FF_R      * sign(motorRightRpmSet)
-                + VELOCITY_COEF_FF_R * motorRightRpmSet;
-                + GRAVITY_COEF_FF_R  * sign(motorRightRpmSet) * -sin(imuDriver.pitch);
+    float ffPWM = rightFrictionCoeff * sign(motorRightRpmSet)
+                + rightVelocityCoeff * motorRightRpmSet;
+                + rightGravityCoeff  * sign(motorRightRpmSet) * sin(imuDriver.pitch);
     
     // PID + FF
-    float finalPWM = ffPWM + pid;
+    float finalPWM = (ffPWM / battery.systemVoltage * 255.0) + pid;
 
     // PWM change limiter
     float pwmStep = 1.9;
@@ -530,7 +583,7 @@ bool Motor::checkCurrentTooHighError()
   bool motorLeftFault  = motorLeftSense  > MOTOR_FAULT_CURRENT;
   bool motorRightFault = motorRightSense > MOTOR_FAULT_CURRENT;
   bool motorMowFault   = motorMowSense   > MOW_FAULT_CURRENT;
-  
+
   if (motorLeftFault || motorRightFault || motorMowFault)
   {
     CONSOLE.print("ERROR motor current too high: ");

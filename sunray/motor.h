@@ -71,17 +71,20 @@ class Motor {
     void stopImmediately(bool includeMowerMotor);
     float motorLeftRpmCurr;
     float motorRightRpmCurr;
-    float motorMowRpmCurr;    
-  protected: 
+    float motorMowRpmCurr;
+
+    float motorLeftRpmAcc;
+    float motorRightRpmAcc;
+    float motorMowRpmAcc;
+  protected:
     Timer accelerationTimer = Timer(MICROS_TIME);
     float motorLeftRpmSet; // set speed
     float motorRightRpmSet;  
-    float motorMowRpmCurrLP;    
-    float motorMowPWMSet;  
+    //float motorMowRpmCurrLP;    
+    float motorMowPWMSet;
     float motorMowPWMCurr; 
     float motorLeftPWMCurr;
-    float motorRightPWMCurr;    
-    unsigned long lastControlTime;            
+    float motorRightPWMCurr;           
     bool recoverMotorFault;
     int recoverMotorFaultCounter;
     unsigned long nextRecoverMotorFaultTime;
@@ -98,7 +101,8 @@ class Motor {
     bool checkCurrentTooHighError();    
     bool checkCurrentTooLowError();
     void sense();
-    void dumpOdoTicks(int seconds);    
+    void dumpOdoTicks(int seconds);
+    void calculateCoeffs(bool updateLeft, bool updateRight);
 };
 
 
