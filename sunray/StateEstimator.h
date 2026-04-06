@@ -31,6 +31,8 @@ extern unsigned long lastFixJumpTime;
 
 extern unsigned long imuDataTimeout;
 
+extern double wheelBase;
+
 bool startIMU(bool forceIMU);
 void readIMU();
 void computeRobotState();

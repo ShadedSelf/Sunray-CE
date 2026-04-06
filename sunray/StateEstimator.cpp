@@ -12,6 +12,7 @@
 #include "Stats.h"
 #include "helper.h"
 #include "i2c.h"
+#include "gps.h"
 
 #include "src/math/quaternion_type.h"
 #include "src/math/vector_type.h"
@@ -146,7 +147,7 @@ bool startIMU(bool forceIMU)
     CONSOLE.println("Check connections, and try again.");
 
     watchdogReset();
-    delay(500);   
+    delay(100);   
 
     counter++;
     if (counter > 5)
@@ -217,36 +218,113 @@ void resetImuTimeout(){
   imuDataTimeout = millis() + 500;  
 }
 
+
+vec3_t lastGpsPosIntegral = vec3_t(0, 0, 0);
+unsigned long totalTicks = 600 * 20000;
+double totalDistance = (600 * 10000 * PI) / (1000.0 * TICKS_PER_REVOLUTION_L) * WHEEL_DIAMETER;
+void estimateWheelDiameter(long leftDelta, long rightDelta, vec3_t gpsPos)
+{
+  vec3_t target     = vec3_t(maps.targetPoint.x(),     maps.targetPoint.y()    );
+  vec3_t lastTarget = vec3_t(maps.lastTargetPoint.x(), maps.lastTargetPoint.y());
+       
+  float targetDist     = distance(position, target);
+  float lastTargetDist = distance(position, lastTarget);
+
+  if (gps.solution == SOL_FIXED
+  && millis() - lastFixTime < 500
+  && shouldUseGps()
+  && fabs(motor.linearSpeedSet) > setSpeed * 0.9
+  && targetDist > 1.0
+  && lastTargetDist > 1.0)
+  {
+    totalTicks += abs(leftDelta + rightDelta);
+    if (gps.solutionAvail)
+      totalDistance += dot(gpsPos - lastGpsPosIntegral, forward) * sign(motor.linearSpeedSet);
+
+    if (totalTicks > 600 * 20000)
+    {
+      totalDistance *= 0.9;
+      totalTicks *= 0.9;
+    }
+
+    motor.wheelDiameter = (1000.0 * totalDistance * TICKS_PER_REVOLUTION_L) / (totalTicks * 0.5 * PI);
+  }
+  if (gps.solutionAvail)
+    lastGpsPosIntegral = gpsPos;
+}
+
+float lastHeading = 0.0;
+unsigned long totalAngularTicks = 0;
+double totalAngularDistance = 0.0;
+double wheelBase = 40.0;
+int tempTicks = 0;
+void estimateWheelBase(long leftDelta, long rightDelta)
+{
+  if (fabs(motor.angularSpeedSet) > 0.2
+  && fabs(distancePI(imuDriver.yaw, lastHeading)) / 0.018 > 0.1)
+  {
+    tempTicks += leftDelta - rightDelta;
+    if (imuDriver.newData)
+    {
+      totalAngularDistance += fabs(distancePI(imuDriver.yaw, lastHeading));
+      totalTicks += abs(tempTicks);
+
+      tempTicks = 0;
+    }
+
+    if (totalAngularTicks > ULONG_MAX * 0.9)
+    {
+      totalAngularDistance *= 0.75;
+      totalAngularTicks *= 0.75;
+    }
+
+    wheelBase = (PI * motor.wheelDiameter * (totalAngularTicks / TICKS_PER_REVOLUTION_L)) / totalAngularDistance;
+  }
+  else
+    tempTicks = 0;
+  if (imuDriver.newData)
+  {
+    imuDriver.newData = false;
+    lastHeading = imuDriver.yaw;
+  }
+}
+
+
+
 // compute robot state (x,y,delta)
 // uses complementary filter ( https://gunjanpatel.wordpress.com/2016/07/07/complementary-filter-design/ )
 // to fusion GPS heading (long-term) and IMU heading (short-term)
 // with IMU: heading (stateDelta) is computed by gyro (stateDeltaIMU)
 // without IMU: heading (stateDelta) is computed by odometry (deltaOdometry)
-unsigned long lastTime = 0;
-float magOffset = 0.0;
+
 Timer odometryTimer(MICROS_TIME);
-double wheelDiameter = WHEEL_DIAMETER;
-float prevYaw = 0.0;
+
+float magOffset = 0.0;
+
 #define ODOMETRY_RPM_TO_STATE true
 void computeRobotState()
 {
   odometryTimer.update();
 
-  // odometry linear and angular change
-  float speedLeft, speedRight;
+  // Ticks
+  long leftDelta  = motor.motorLeftTicks  - stateLeftTicks;
+  long rightDelta = motor.motorRightTicks - stateRightTicks; 
+  
+  stateLeftTicks  = motor.motorLeftTicks;
+  stateRightTicks = motor.motorRightTicks; 
+
+  // Odometry linear and angular change
 #if ODOMETRY_RPM_TO_STATE
-  speedLeft  = motor.motorLeftRpmCurr  * PI * (motor.wheelDiameter / 1000.0) / 60.0;
-  speedRight = motor.motorRightRpmCurr * PI * (motor.wheelDiameter / 1000.0) / 60.0;
+  float speedLeft  = motor.motorLeftRpmCurr  * PI * (motor.wheelDiameter / 1000.0) / 60.0;
+  float speedRight = motor.motorRightRpmCurr * PI * (motor.wheelDiameter / 1000.0) / 60.0;
 
   float distLeft  = speedLeft  * odometryTimer.deltaTimeSeconds(); // meters
   float distRight = speedRight * odometryTimer.deltaTimeSeconds(); // meters
-#else
-  long leftDelta  = motor.motorLeftTicks  - stateLeftTicks;
-  long rightDelta = motor.motorRightTicks - stateRightTicks; 
 
-  stateLeftTicks  = motor.motorLeftTicks;
-  stateRightTicks = motor.motorRightTicks; 
-    
+  float accelerationLeft  = motor.motorLeftRpmAcc  * PI * (motor.wheelDiameter / 1000.0) / 60.0;
+  float accelerationRight = motor.motorRightRpmAcc * PI * (motor.wheelDiameter / 1000.0) / 60.0;
+  
+#else
   float distLeft  = (float)leftDelta  / (TICKS_PER_REVOLUTION_L / (motor.wheelDiameter / 10.0) / PI) / 100.0;
   float distRight = (float)rightDelta / (TICKS_PER_REVOLUTION_R / (motor.wheelDiameter / 10.0) / PI) / 100.0;
 
@@ -256,35 +334,12 @@ void computeRobotState()
 
   float speedOdometry = (speedLeft + speedRight) / 2.0;
   float distOdometry  =  (distLeft + distRight) / 2.0;
-  float deltaOdometry = -(distLeft - distRight) / (motor.wheelBaseCm / 100.0);
+  float angularOdometry = -(distLeft - distRight) / (motor.wheelBaseCm / 100.0);
 
+  float linearAcc = (accelerationLeft + accelerationRight) / 2.0;
 
-  // estimate wheel diameter from gps speed
-  if (gps.solutionAvail
-  && gps.solution == SOL_FIXED
-  && gps.groundSpeed > 0.15
-  && fabs(motor.motorLeftRpmCurr) > 0.1
-  && fabs(motor.motorRightRpmCurr) > 0.1)
-  {
-    float l = gps.groundSpeed / fabs(motor.motorLeftRpmCurr  * PI) * 1000.0 * 60.0;
-    float r = gps.groundSpeed / fabs(motor.motorRightRpmCurr * PI) * 1000.0 * 60.0;
-    float x = (l + r) / 2.0;
+  //if (imuDriver.accX - linearAcc) triggerObstacle()
 
-    // ~100 mins to 50%
-    wheelDiameter = odometryTimer.lowPass(wheelDiameter, x, 100.0 * 60.0);
-
-    // correct wheel diameter, 5mm max
-    motor.wheelDiameter = constrain(wheelDiameter, WHEEL_DIAMETER - 5, WHEEL_DIAMETER + 5);
-  }
-
-  // estimate wheelbase from imu rotation
-  //if (imuDriver.yaw != prevYaw)
-  //x = (100*-(distLeft - distRight) - imuyawdiff*motor.wheelBaseCm) / (1000*imuyawdiff)
-  // wheelBaseCm += x
-
- // if (deltaOdometry != 0.0)
-   // DEBUGLN(imuDriver.yawSpeed / deltaOdometry);
- //  DEBUGLN(imuDriver.yawSpeed);
   
   // orientation and heading
   vec3_t rpy;
@@ -294,7 +349,7 @@ void computeRobotState()
     if (!magZone)
       magOffset = distancePI(imuDriver.magYaw, heading);
 
-    heading = (USE_MAGNOMETER && maps.isDocking() && magZone)
+    heading = (USE_MAGNOMETER && maps.isDocking() && magZone && !battery.isDocked())
       ? scalePI(imuDriver.magYaw + magOffset)
       : scalePI(imuDriver.yaw    + headingOffset);
 
@@ -302,7 +357,7 @@ void computeRobotState()
   }
   else // odometry
   {
-    heading = scalePI(heading + deltaOdometry);  
+    heading = scalePI(heading + angularOdometry);  
     rpy = vec3_t(0.0, 0.0, heading);
   }
   
@@ -322,7 +377,7 @@ void computeRobotState()
   {
     double e, n;
     relativeLL(absolutePosSourceLat, absolutePosSourceLon, gps.lat, gps.lon, n, e);  
-    gpsPos = vec3_t(e, n, 0);
+    gpsPos = vec3_t(e, n, gps.height);
   }  
   else
     gpsPos = vec3_t(gps.relPosE + RELPOS_OFFSET_E, gps.relPosN + RELPOS_OFFSET_N, 0);  
@@ -335,8 +390,7 @@ void computeRobotState()
       + right * (GPS_POSITION_OFFSET_RIGHT / 100.0)
       + up    * (GPS_POSITION_OFFSET_UP  / 100.0);
 
-    // add offset to only x and y
-    gpsPos += gpsOffset * vec3_t(1,1,0);
+    gpsPos += gpsOffset;
   }
 
 
@@ -355,6 +409,14 @@ void computeRobotState()
     lastYaw = imuDriver.yaw;
   }
 
+  // estimate wheel diameter and wheel base
+  estimateWheelDiameter(leftDelta, rightDelta, gpsPos);
+  estimateWheelBase(leftDelta, rightDelta);
+
+
+  float fusionDist = 0.1;
+  if (maps.isUndocking())
+    fusionDist = 0.05;
 
   // gps heading and position
   if (gps.solutionAvail && shouldUseGps())
@@ -370,7 +432,7 @@ void computeRobotState()
       lastHeadingPos = gpsPos;
       lastYaw = imuDriver.yaw;
     }
-    else if (headingPosDiff.mag() > 0.1) // gps-imu heading fusion
+    else if (headingPosDiff.mag() > fusionDist) // gps-imu heading fusion
     {                
       float headingGPS = atan2(headingPosDiff.y, headingPosDiff.x);
       
@@ -383,15 +445,18 @@ void computeRobotState()
         float headingError  = fabs(distancePI(heading, headingGPS)) / PI; // normalize error
 
         // error modifiers
-        headingError = powf(headingError, 1.0);
-        headingError = min(headingError, 0.1); // 10% max change
+        //headingError = powf(headingError, 1.0);
+        //headingError = min(headingError, 0.1); // 10% max change
 
         // error too high, might happen after reset
-        if (headingError > radians(20.0))
+        if (headingError > radians(10.0))
           headingError = 1.0;
         
         float headingDiff = distancePI(imuDriver.yaw, headingGPS);
         headingOffset = angleInterpolation(headingOffset, headingDiff, headingError);
+
+        //if (USE_MAGNOMETER && fabs(distancePI(imuDriver.magYaw, heading)) / PI > 0.25)
+          //headingOffset = distancePI(imuDriver.yaw, imuDriver.magYaw);
       }
       else // odometry
         heading = angleInterpolation(headingGPS, heading, 0.9);
@@ -415,6 +480,9 @@ void computeRobotState()
   }
   else // no GPS data available, use odometry
     position += forward * distOdometry;
+
+  // remove height component
+  position *= vec3_t(1.0, 1.0, 0.0);
 
 
   // set last invalid time
