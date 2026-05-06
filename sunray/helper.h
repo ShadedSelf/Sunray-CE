@@ -16,6 +16,7 @@
 
 
 float scalePI(float v);
+double scalePId(double v);
 float scale180(float v);
 float distancePI(float x, float w);
 float distance180(float x, float w);
@@ -28,8 +29,7 @@ float distance(float x1, float y1, float x2, float y2);
 double deg2rad(double deg);
 double rad2deg(double rad);
 float pointsAngle(float x1, float y1, float x2, float y2);
-double distanceLL(double lat1, double lon1, double lat2, double lon2);
-void relativeLL(double lat1, double lon1, double lat2, double lon2, double &n, double &e);
+void linearRelativeLL(double latOrigin, double lonOrigin, double lat, double lon, double &n, double &e);
 
 float sign(float x);
 
@@ -60,6 +60,8 @@ float ADC2voltage(float ADCvalue);
 // quaternion to euler angles
 void toEulerianAngle(float w, float x, float y, float z, float& roll, float& pitch, float& yaw);
 
+uint32_t nanos();
+
 
 #define MICROS_TIME 0
 #define MILLIS_TIME 1
@@ -76,20 +78,28 @@ class Timer
     {
         lastTime = now;
         now = getTime();
+        dt = now - lastTime;
+        dts = dt / 1000000.0;
     }
     unsigned long deltaTime()
     {
-        return now - lastTime;
+        return dt;
     }
     double deltaTimeSeconds()
     {
-        return deltaTime() / 1000000.0;
+        return dts;
     }
     // Tau: Half-life in seconds
     double lowPass(double a, double b, double tau)
     {
         if (tau == 0.0) return b;
         double t = exp(-deltaTimeSeconds() * log(2.0) / tau);
+        return lerp(b, a, t);
+    }
+    float lowPassF(float a, float b, float tau)
+    {
+        if (tau == 0.0) return b;
+        float t = freexpf(-deltaTimeSeconds() * logf(2.0) / tau);
         return lerp(b, a, t);
     }
     // A towards B at T units per second
@@ -102,11 +112,17 @@ class Timer
     int timeType;
     unsigned long lastTime;
     unsigned long now;
+    unsigned long dt;
+    double dts;
     unsigned long getTime()
     {
         if (timeType == MICROS_TIME) return micros();
         if (timeType == MILLIS_TIME) return millis() * 1000;
         return 0;
+    }
+    float freexpf(float x)
+    {
+        return (1.0f + x/2.0f + x*x/12.0f) / (1.0f - x/2.0f + x*x/12.0f);
     }
 };
 class Scheduler

@@ -8,6 +8,11 @@
 #include "helper.h"
 #include "config.h"
 
+uint32_t nanos()
+{
+    return (uint32_t)((uint64_t)DWT->CYCCNT * 1000ULL / 120);
+}
+
 
 // Spannungsteiler Gesamtspannung ermitteln (Reihenschaltung R1-R2, U2 bekannt, U_GES zu ermitteln)
 float voltageDividerUges(float R1, float R2, float U2){
@@ -27,6 +32,14 @@ float scalePI(float v)
 {
   if (v >= -PI && v <= PI) return v;
   float d = fmod(v, 2.0*PI);
+  if (d < -PI) d += 2.0*PI; 
+  if (d >  PI) d -= 2.0*PI;
+  return d;
+}
+double scalePId(double v)
+{
+  if (v >= -PI && v <= PI) return v;
+  double d = fmod(v, 2.0*PI);
   if (d < -PI) d += 2.0*PI; 
   if (d >  PI) d -= 2.0*PI;
   return d;
@@ -109,8 +122,7 @@ float fusionPI(float w, float a, float b)
 
 double angleInterpolation(double a, double b, double t)
 {
-  double res = a + (double)distancePI(a, b) * t;
-  return scalePI(res);
+  return scalePId(a + (b - a) * t);
 }
 
 
@@ -126,7 +138,7 @@ float distance(float x1, float y1, float x2, float y2){
 }
 
 float sign(float x) { 
-  return x < 0.0 ? -1.0 : 1.0; 
+  return (x < 0.0) ? -1.0 : (x > 0.0) ? 1.0 : 0.0; 
 }
 
 double deg2rad(double deg) {
@@ -148,40 +160,18 @@ float pointsAngle(float x1, float y1, float x2, float y2){
 }
 
 
-double distanceLL(double lat1, double lon1, double lat2, double lon2) 
-{ 
-  // http://www.movable-type.co.uk/scripts/latlong.html
-  // https://forum.sparkfun.com/viewtopic.php?f=17&t=22520
-  // http://boulter.com/gps/distance/?from=51.71577+8.74353&to=51.71578+8.74355&units=k#more  
-  // returns distance in meters between two positions, both specified 
-  // as signed decimal-degrees latitude and longitude. Uses great-circle 
-  // distance computation for hypothetical sphere of radius 6372795 meters.
-  // Because Earth is no exact sphere, rounding errors may be up to 0.5%.
-  // Courtesy of Maarten Lamers
-  double delta = radians(lon1-lon2);
-  double sdlong = sin(delta);
-  double cdlong = cos(delta);
-  lat1 = radians(lat1);
-  lat2 = radians(lat2);
-  double slat1 = sin(lat1);
-  double clat1 = cos(lat1);
-  double slat2 = sin(lat2);
-  double clat2 = cos(lat2);
-  delta = (clat1 * slat2) - (slat1 * clat2 * cdlong); 
-  delta = sq(delta); 
-  delta += sq(clat2 * sdlong); 
-  delta = sqrt(delta); 
-  double denom = (slat1 * slat2) + (clat1 * clat2 * cdlong); 
-  delta = atan2(delta, denom); 
-  return delta * 6372795.0; 
-}
+void linearRelativeLL(double latOrigin, double lonOrigin, double lat, double lon, double &n, double &e)
+{  
+  double dLat = (lat - latOrigin);
+  double dLon = (lon - lonOrigin);
 
-void relativeLL(double latOrigin, double lonOrigin, double lat, double lon, double &n, double &e){  
-  // compute relative north/east coordinates (n,e) in meters between (latOrigin,lonOrigin) and (lat,lon)  
-  int slat = sign(lat-latOrigin);
-  int slon = sign(lon-lonOrigin);
-  n = slat * distanceLL(latOrigin, lonOrigin, lat, lonOrigin);
-  e = slon * distanceLL(latOrigin, lonOrigin, latOrigin, lon);
+  double latRad = latOrigin * DEG_TO_RAD;
+
+  double mpLat = (TAU * 6372795.0) / 360.0;
+  double mpLon = (TAU * 6372795.0) / 360.0 * cos(latRad);
+
+  n = dLat * mpLat;
+  e = dLon * mpLon;
 }
 
 int freeRam () {
