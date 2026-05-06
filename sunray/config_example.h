@@ -392,7 +392,8 @@ Also, you may choose the serial port below for serial monitor output (CONSOLE).
 #define SET_PERIMETER_SPEED true    // set different speed for perimert
 #define PERIMETER_SPEED  0.15       // perimeter speed m/s
 
-#define LINEAR_ACCELERATION 0.15    // max acceleration
+#define LINEAR_ACCELERATION 0.15    // max linear acceleration
+#define ANGULAR_ACCELERATION 0.6    // max angular acceleration
 
 
 // ----- other options --------------------------------------------
