@@ -183,8 +183,9 @@ void DockOp::onChargerConnected(){
 
 void DockOp::onNoFurtherWaypoints(){
   CONSOLE.println("docking finished!");
-  battery.setIsDocked(true);    
-  changeOp(idleOp); 
+  //battery.setIsDocked(true);
+  stateSensor = SENS_OBSTACLE;
+  changeOp(errorOp); 
 }
 
 

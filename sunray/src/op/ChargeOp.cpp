@@ -83,6 +83,7 @@ void ChargeOp::run()
     float dockHeading;
     maps.getDockingPos(position.x, position.y, dockHeading);
     headingOffset = distancePI(imuDriver.yaw, dockHeading);
+    yawDriftOffset = 0.0;
 
     if (timetable.shouldAutostartNow())
       onTimetableStartMowing();
