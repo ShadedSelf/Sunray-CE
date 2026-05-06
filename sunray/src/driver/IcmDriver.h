@@ -8,10 +8,13 @@
 #include "RobotDriver.h"
 #include "../icm/ICM_20948.h"
 
+#include "../math/quaternion_type.h"
+#include "../math/vector_type.h"
+
 //#define ICM_20948_USE_DMP
 
 class IcmDriver: public ImuDriver {    
-  public:    
+  public:
     IcmDriver();
     void detect() override;
     bool begin() override;    
@@ -26,6 +29,9 @@ class IcmDriver: public ImuDriver {
       int32_t gyroX, int32_t gyroY, int32_t gyroZ,
       int32_t accX, int32_t accY, int32_t accZ,
       int32_t magX, int32_t magY, int32_t magZ);
+      bool newData;
+      vec3_t mag;
+      quat_t geomag;
   protected:
     ICM_20948_I2C icm;
 };

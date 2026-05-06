@@ -2,6 +2,7 @@
 #include "IcmDriver.h"
 #include "../../config.h"
 #include "../../i2c.h"
+#include "../../helper.h"
 
 
 IcmDriver::IcmDriver(){    
@@ -11,6 +12,7 @@ void IcmDriver::detect()
 {
   Wire.begin();
   Wire.setClock(400000);
+  //Wire.setClock(1000000);
 
   int tries = 10;
   while (tries > 0)
@@ -21,6 +23,7 @@ void IcmDriver::detect()
       tries--;
       watchdogReset();
       delay(500);
+      watchdogReset();
     }
     else
     {
@@ -36,6 +39,8 @@ void IcmDriver::detect()
 
 bool IcmDriver::begin()
 { 
+  newData = false;
+
   bool success = true;
 
   watchdogEnable(2000);
@@ -51,26 +56,18 @@ bool IcmDriver::begin()
   success &= (icm.setDMPODRrate(DMP_ODR_Reg_Quat6, 0) == ICM_20948_Stat_Ok); // 55Hz - 18 ms
 
   success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_RAW_GYROSCOPE) == ICM_20948_Stat_Ok);
-  success &= (icm.setDMPODRrate(DMP_ODR_Reg_Gyro, 0) == ICM_20948_Stat_Ok); // 55Hz - 18 ms
+  success &= (icm.setDMPODRrate(DMP_ODR_Reg_Gyro_Calibr, 0) == ICM_20948_Stat_Ok); // 55Hz - 18 ms
 
-  //success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_GYROSCOPE) == ICM_20948_Stat_Ok);
-  //success &= (icm.setDMPODRrate(DMP_ODR_Reg_Gyro_Calibr, 0) == ICM_20948_Stat_Ok); // 55Hz - 18 ms
+  //success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ACTIVITY_CLASSIFICATON) == ICM_20948_Stat_Ok);
+  //success &= (icm.setDMPODRrate(DMP_ODR_Reg_ALS, 0) == ICM_20948_Stat_Ok); // 55Hz - 18 ms
+
+  //success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ACCELEROMETER) == ICM_20948_Stat_Ok);
+  //success &= (icm.setDMPODRrate(DMP_ODR_Reg_Accel, 0) == ICM_20948_Stat_Ok); // 55Hz - 18 ms
   
   success &= (icm.enableFIFO() == ICM_20948_Stat_Ok);
   success &= (icm.enableDMP() == ICM_20948_Stat_Ok);
   success &= (icm.resetDMP() == ICM_20948_Stat_Ok);
   success &= (icm.resetFIFO() == ICM_20948_Stat_Ok);
-
-  // sensor biases
-  success &= (icm.setBiasGyroX(24192) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasGyroY(113088) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasGyroZ(-171744) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasAccelX(0) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasAccelY(0) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasAccelZ(0) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasCPassX(-274656) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasCPassY(640480) == ICM_20948_Stat_Ok);
-  success &= (icm.setBiasCPassZ(-4016672) == ICM_20948_Stat_Ok);
 
   CONSOLE.println("using imu driver: IcmDriver");
   return success;
@@ -114,42 +111,49 @@ void IcmDriver::setBias(
 
 bool IcmDriver::isDataAvail()
 {
+  newData = false;
+
   icm_20948_DMP_data_t data;
   icm.readDMPdataFromFIFO(&data);
-
-  icm.agmt.gyr.axes.y;
 
   if ((icm.status == ICM_20948_Stat_Ok) || (icm.status == ICM_20948_Stat_FIFOMoreDataAvail))
   {
     if ((data.header & DMP_header_bitmap_Gyro) > 0)
     {
-      yawSpeed = data.Raw_Gyro.Data.Z;// / 16.4 / 2000.0;// / 32768.0 / 2000.0;
-      //DEBUGLN(data.Raw_Gyro.Data.BiasZ / 350.0);
-      //DEBUGLN(yawSpeed);
+      yawSpeed = (data.Raw_Gyro.Data.Z - (data.Raw_Gyro.Data.BiasZ >> 5)) * 0.001;
     }
 
-    //if ((data.header & DMP_header_bitmap_Gyro_Calibr) > 0)
-    //{
-     // yawSpeed = data.Gyro_Calibr.Data.Z / 32768.0;// / 2000.0;
-      //DEBUGLN(yawSpeed);
-    //}
+    /*if ((data.header & DMP_header2_bitmap_Activity_Recog) > 0)
+    {
+      DEBUGLN(data.Activity_Recognition.Data.State_End.Still);
+    }*/
 
+    /*if ((data.header & DMP_header_bitmap_Accel) > 0)
+    {
+      acceleration = vec3_t(
+        (double)data.Raw_Accel.Data.X / 8192.0,
+        (double)data.Raw_Accel.Data.Y / 8192.0,
+        (double)data.Raw_Accel.Data.Z / 8192.0);
+    }*/
+    
     if (USE_MAGNOMETER && (data.header & DMP_header_bitmap_Quat9) > 0)
     {
       double q1 = ((double)data.Quat9.Data.Q1) / 1073741824.0;
       double q2 = ((double)data.Quat9.Data.Q2) / 1073741824.0;
       double q3 = ((double)data.Quat9.Data.Q3) / 1073741824.0;
-
+      
       double q0 = sqrt(1.0 - min((q1 * q1) + (q2 * q2) + (q3 * q3), 1.0));
       double q2sqr = q2 * q2;
-
+      
       double t3 = +2.0 * (q0 * q3 + q1 * q2);
       double t4 = +1.0 - 2.0 * (q2sqr + q3 * q3);
       magYaw = atan2(t3, t4);
     }
-
+    
     if ((data.header & DMP_header_bitmap_Quat6) > 0)
     {
+      newData = true;
+
       double q1 = ((double)data.Quat6.Data.Q1) / 1073741824.0;
       double q2 = ((double)data.Quat6.Data.Q2) / 1073741824.0;
       double q3 = ((double)data.Quat6.Data.Q3) / 1073741824.0;
@@ -174,6 +178,20 @@ bool IcmDriver::isDataAvail()
       yaw = atan2(t3, t4);
 
       //orientation = quat_t(q0, q1, q2, q3).norm();
+
+      /*int32_t gyroX, gyroY, gyroZ;
+      icm.getBiasGyroX(&gyroX);
+      icm.getBiasGyroY(&gyroY);
+      icm.getBiasGyroZ(&gyroZ);
+      icm.getAGMT();
+
+      DEBUG(icm.temp());
+      DEBUG(" ");
+      DEBUG(gyroX);
+      DEBUG(" ");
+      DEBUG(gyroY);
+      DEBUG(" ");
+      DEBUGLN(gyroZ);*/
 
       return true;
     }

@@ -10,6 +10,8 @@
 
 #include "../../gps.h"
 #include <Client.h>
+#include "../math/quaternion_type.h"
+#include "../math/vector_type.h"
 
 class RobotDriver {
   public:    
@@ -100,11 +102,17 @@ class RainSensorDriver {
 
 class ImuDriver {
   public:
-    float roll; // euler radiant
-    float pitch; // euler radiant
-    float yaw;   // euler radiant
-    float yawSpeed;   // euler radiant
-    float magYaw;   // euler radiant
+    double roll; // euler radiant
+    double pitch; // euler radiant
+    double yaw;   // euler radiant
+    double magYaw;   // euler radiant
+    float yawSpeed;   // euler radiant / s
+
+    vec3_t acceleration = vec3_t(0);
+
+    float magX;
+    float magY;
+    float magZ;
 
     bool imuFound;
      
@@ -139,10 +147,22 @@ class GpsDriver {
     double relPosE;    // m
     double relPosD;    // m
     float heading;     // rad
-    float groundSpeed; // m/s
+    float headingAcc;     // rad
+    //float groundSpeed; // m/s
+    //float speed;       // m/s
+    double velocityX;       // m/s
+    double velocityY;       // m/s
+    double velocityZ;       // m/s
     float accuracy;    // m
     float hAccuracy;   // m
     float vAccuracy;   // m
+    float variance;
+    float varianceN;
+    float varianceE;
+    float varianceEN;
+    float varianceVN;
+    float varianceVE;
+    float varianceVEN;
     SolType solution;    
     bool solutionAvail; // should bet set true if received new solution 
     unsigned long dgpsAge;
