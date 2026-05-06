@@ -76,7 +76,9 @@ void MowOp::begin()
 }
 
 
-void MowOp::end(){
+void MowOp::end()
+{
+    motor.setMowState(false);
 }
 
 void MowOp::run()
@@ -101,7 +103,7 @@ void MowOp::onTempOutOfRangeTriggered(){
 
     stateSensor = SENS_TEMP_OUT_OF_RANGE;
     dockOp.dockReasonRainTriggered = true;
-    dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * TEMP_DOCK_TIME; // try again after one hour      
+    dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * TEMP_DOCK_TIME; // try again after x hour(s)      
     dockOp.setInitiatedByOperator(false);
     changeOp(dockOp);
 }
@@ -270,6 +272,7 @@ void MowOp::onNoFurtherWaypoints(){
 
     if (!finishAndRestart)
     {             
+        dockOp.dockReasonRainAutoStartTime = millis() + 60000 * 60 * 6.0;
         if (DOCKING_STATION){
             dockOp.setInitiatedByOperator(false);
             changeOp(dockOp);               

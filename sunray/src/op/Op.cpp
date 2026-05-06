@@ -191,7 +191,8 @@ void Op::onGpsFixTimeout(){
 
 void Op::onRainTriggered()
 {
-  if (!DOCKING_STATION || activeOp == &dockOp)
+  bool rechargeFailed = (activeOp == &dockOp || activeOp == &idleOp) && previousOp == &dockOp;
+  if (!DOCKING_STATION || activeOp == &dockOp || rechargeFailed)
     return;
 
   CONSOLE.println("RAIN TRIGGERED");
