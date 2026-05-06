@@ -34,8 +34,8 @@ class UBLOX : public GpsDriver {
         GOT_LENGTH1,
         GOT_LENGTH2, 
         GOT_PAYLOAD,
-        GOT_CHKA 
-
+        GOT_CHKA,
+        GOT_CHKB
     } state_t;        
     UBLOX();
     void begin(Client &client, char *host, uint16_t port) override;

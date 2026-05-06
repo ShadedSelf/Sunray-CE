@@ -41,6 +41,16 @@ void UBLOX::begin(){
   this->numSV    = 0;
   this->numSVdgps    = 0;
   this->accuracy  =0;
+  this->variance  =0;
+  this->varianceN  =0;
+  this->varianceE  =0;
+  this->varianceEN  =0;
+  this->varianceVN  =0;
+  this->varianceVE  =0;
+  this->varianceVEN  =0;
+  this->velocityY = 0;
+  this->velocityX = 0;
+  this->velocityZ = 0;
   this->chksumErrorCounter = 0;
   this->dgpsChecksumErrorCounter = 0;
   this->dgpsPacketCounter = 0;
@@ -82,14 +92,19 @@ bool UBLOX::configure(){
   CONSOLE.println("NOTE: if GPS is not responding either set 'GPS_CONFIG=false' in config.h or perform GPS wire fix (see Wiki)");
   //configGPS.enableDebugging(CONSOLE, false);
   
-  while(true){
+  while(true)
+  {
     CONSOLE.print("trying baud ");
-    CONSOLE.println(_baud);        
-    if (configGPS.begin(*_bus)) break;    
+    CONSOLE.println(_baud); 
+
+    if (configGPS.begin(*_bus)) break;   
+
     CONSOLE.println(F("ERROR: GPS receiver is not responding"));            
-    CONSOLE.println("trying baud 38400");    
+    CONSOLE.println("trying baud 38400");
+
     _bus->begin(38400);
-    if (configGPS.begin(*_bus)) {
+    if (configGPS.begin(*_bus))
+    {
       configGPS.setVal32(0x40520001, _baud, VAL_LAYER_RAM);  // CFG-UART1-BAUDRATE   (Ardumower)
       _bus->begin(_baud);
       break;                
@@ -99,7 +114,6 @@ bool UBLOX::configure(){
   }
         
   CONSOLE.println("GPS receiver found!");
-    
   CONSOLE.println("ublox f9p: sending GPS rover configuration...");
 
   int timeout = 2000;
@@ -157,17 +171,17 @@ bool UBLOX::configure(){
       
         // ----- uart1 protocols (Ardumower) --------------- 
         setValueSuccess &= configGPS.addCfgValset8(0x10730001, 1); // CFG-UART1INPROT-UBX     (on)
-        setValueSuccess &= configGPS.addCfgValset8(0x10730002, 1); // CFG-UART1INPROT-NMEA    (on)
-        setValueSuccess &= configGPS.addCfgValset8(0x10730004, 1); // CFG-UART1INPROT-RTCM3X  (on)
+        setValueSuccess &= configGPS.addCfgValset8(0x10730002, 0); // CFG-UART1INPROT-NMEA    (on)
+        setValueSuccess &= configGPS.addCfgValset8(0x10730004, 0); // CFG-UART1INPROT-RTCM3X  (on)
         setValueSuccess &= configGPS.addCfgValset8(0x10740001, 1); // CFG-UART1OUTPROT-UBX    (on)
         setValueSuccess &= configGPS.addCfgValset8(0x10740002, 0); // CFG-UART1OUTPROT-NMEA   (off)
         setValueSuccess &= configGPS.addCfgValset8(0x10740004, 0); // CFG-UART1OUTPROT-RTCM3X (off) 
       
         // ----- USB protocols (Ardumower) ----------------- 
-        setValueSuccess &= configGPS.addCfgValset8(0x10770001, 1); // CFG-USBINPROT-UBX     (on)
-        setValueSuccess &= configGPS.addCfgValset8(0x10770002, 1); // CFG-USBINPROT-NMEA    (on)
-        setValueSuccess &= configGPS.addCfgValset8(0x10770004, 1); // CFG-USBINPROT-RTCM3X  (on)
-        setValueSuccess &= configGPS.addCfgValset8(0x10780001, 1); // CFG-USBOUTPROT-UBX    (on)
+        setValueSuccess &= configGPS.addCfgValset8(0x10770001, 0); // CFG-USBINPROT-UBX     (on)
+        setValueSuccess &= configGPS.addCfgValset8(0x10770002, 0); // CFG-USBINPROT-NMEA    (on)
+        setValueSuccess &= configGPS.addCfgValset8(0x10770004, 0); // CFG-USBINPROT-RTCM3X  (on)
+        setValueSuccess &= configGPS.addCfgValset8(0x10780001, 0); // CFG-USBOUTPROT-UBX    (on)
         setValueSuccess &= configGPS.addCfgValset8(0x10780002, 0); // CFG-USBOUTPROT-NMEA   (off)
         setValueSuccess &= configGPS.addCfgValset8(0x10780004, 0); // CFG-USBOUTPROT-RTCM3X (off) 
       
@@ -189,9 +203,9 @@ bool UBLOX::configure(){
         // minimum condition when the receiver should try a navigation solution
         // https://wiki.ardumower.de/index.php?title=Ardumower_Sunray#RTK_float-to-fix_recovery_and_false-fix_issues
         if (GPS_CONFIG_FILTER){ // custom filter settings
-          setValueSuccess &= configGPS.addCfgValset8(0x201100a4, CPG_CONFIG_FILTER_MINELEV); // CFG-NAVSPG-INFIL_MINELEV  (10 Min SV elevation degree)
-          setValueSuccess &= configGPS.addCfgValset8(0x201100aa, CPG_CONFIG_FILTER_NCNOTHRS); // CFG-NAVSPG-INFIL_NCNOTHRS (10 C/N0 Threshold #SVs)
-          setValueSuccess &= configGPS.addCfgValset8(0x201100ab, CPG_CONFIG_FILTER_CNOTHRS); // CFG-NAVSPG-INFIL_CNOTHRS  (30 dbHz)
+          setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_INFIL_MINELEV, CPG_CONFIG_FILTER_MINELEV); // CFG-NAVSPG-INFIL_MINELEV  (10 Min SV elevation degree)
+          setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_INFIL_NCNOTHRS, CPG_CONFIG_FILTER_NCNOTHRS); // CFG-NAVSPG-INFIL_NCNOTHRS (10 C/N0 Threshold #SVs)
+          setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_INFIL_CNOTHRS, CPG_CONFIG_FILTER_CNOTHRS); // CFG-NAVSPG-INFIL_CNOTHRS  (30 dbHz)
           setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NAVSPG_INFIL_MINCNO, CPG_CONFIG_FILTER_MINCNO); // CFG-NAVSPG-INFIL_MINCNO  (30 dbHz)
         } else { // ublox default filter settings
           setValueSuccess &= configGPS.addCfgValset8(0x201100a4, 10); // CFG-NAVSPG-INFIL_MINELEV  (10 Min SV elevation degree)
@@ -199,8 +213,8 @@ bool UBLOX::configure(){
           setValueSuccess &= configGPS.addCfgValset8(0x201100ab, 0);  // CFG-NAVSPG-INFIL_CNOTHRS  (0 dbHz)   
         }
         // ----  gps rates ----------------------------------
-        setValueSuccess &= configGPS.addCfgValset16(0x30210001, 150); // CFG-RATE-MEAS       (measurement period 200 ms)  
-        setValueSuccess &= configGPS.sendCfgValset16(0x30210002, 1,   timeout); //CFG-RATE-NAV  (navigation rate cycles 1)  
+        setValueSuccess &= configGPS.addCfgValset16(UBLOX_CFG_RATE_MEAS, 250); // CFG-RATE-MEAS       (measurement period 200 ms)  
+        setValueSuccess &= configGPS.sendCfgValset16(UBLOX_CFG_RATE_NAV, 1,   timeout); //CFG-RATE-NAV  (navigation rate cycles 1)  
         // ----  extras ----------------------------------
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_SIGNAL_SBAS_ENA, 0);  // SBAS
         setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_NMEA_FILT_SBAS, 0);  // SBAS
@@ -215,20 +229,21 @@ bool UBLOX::configure(){
       else if (idx == 2){
         // ----- USB messages (Ardumower) -----------------  
         setValueSuccess &= configGPS.newCfgValset8(0x20910009, 0, VAL_LAYER_RAM); // CFG-MSGOUT-UBX_NAV_PVT_USB    (off)        
-        setValueSuccess &= configGPS.addCfgValset8(0x20910090, 1); // CFG-MSGOUT-UBX_NAV_RELPOSNED_USB  (every solution)
-        setValueSuccess &= configGPS.addCfgValset8(0x20910036, 1); // CFG-MSGOUT-UBX_NAV_HPPOSLLH_USB   (every solution)
-        setValueSuccess &= configGPS.addCfgValset8(0x20910045, 1); // CFG-MSGOUT-UBX_NAV_VELNED_USB     (every solution)
-        setValueSuccess &= configGPS.addCfgValset8(0x2091026b, 5); // CFG-MSGOUT-UBX_RXM_RTCM_USB   (every 5 solutions)
-        setValueSuccess &= configGPS.addCfgValset8(0x20910348, 20); // CFG-MSGOUT-UBX_NAV_SIG_USB   (every 20 solutions)
+        setValueSuccess &= configGPS.addCfgValset8(0x20910090, 0); // CFG-MSGOUT-UBX_NAV_RELPOSNED_USB  (every solution)
+        setValueSuccess &= configGPS.addCfgValset8(0x20910036, 0); // CFG-MSGOUT-UBX_NAV_HPPOSLLH_USB   (every solution)
+        setValueSuccess &= configGPS.addCfgValset8(0x20910045, 0); // CFG-MSGOUT-UBX_NAV_VELNED_USB     (every solution)
+        setValueSuccess &= configGPS.addCfgValset8(0x2091026b, 0); // CFG-MSGOUT-UBX_RXM_RTCM_USB   (every 5 solutions)
+        setValueSuccess &= configGPS.addCfgValset8(0x20910348, 0); // CFG-MSGOUT-UBX_NAV_SIG_USB   (every 20 solutions)
         setValueSuccess &= configGPS.addCfgValset8(0x2091005e, 0); // CFG-MSGOUT-UBX_NAV_TIMEUTC_USB   (off)   
 
         // ----- uart1 messages (Ardumower) -----------------  
-        setValueSuccess &= configGPS.addCfgValset8(0x20910007, 0); // CFG-MSGOUT-UBX_NAV_PVT_UART1   (off)
+        setValueSuccess &= configGPS.addCfgValset8(UBLOX_CFG_MSGOUT_UBX_NAV_COV_UART1, 1);
+        setValueSuccess &= configGPS.addCfgValset8(0x20910007, 1); // CFG-MSGOUT-UBX_NAV_PVT_UART1   (off)
         setValueSuccess &= configGPS.addCfgValset8(0x2091008e, 1); // CFG-MSGOUT-UBX_NAV_RELPOSNED_UART1  (every solution)
         setValueSuccess &= configGPS.addCfgValset8(0x20910034, 1); // CFG-MSGOUT-UBX_NAV_HPPOSLLH_UART1   (every solution)
         setValueSuccess &= configGPS.addCfgValset8(0x20910043, 1); // CFG-MSGOUT-UBX_NAV_VELNED_UART1     (every solution)
-        setValueSuccess &= configGPS.addCfgValset8(0x20910269, 5); // CFG-MSGOUT-UBX_RXM_RTCM_UART1   (every 5 solutions)
-        setValueSuccess &= configGPS.addCfgValset8(0x20910346, 20); // CFG-MSGOUT-UBX_NAV_SIG_UART1   (every 20 solutions)  
+        setValueSuccess &= configGPS.addCfgValset8(0x20910269, 1); // CFG-MSGOUT-UBX_RXM_RTCM_UART1   (every 5 solutions)
+        setValueSuccess &= configGPS.addCfgValset8(0x20910346, 0); // CFG-MSGOUT-UBX_NAV_SIG_UART1   (every 20 solutions)  
         setValueSuccess &= configGPS.sendCfgValset8(0x2091005c, 0, timeout); // CFG-MSGOUT-UBX_NAV_TIMEUTC_UART1   (off)  
       }
       if (setValueSuccess){
@@ -259,6 +274,7 @@ void UBLOX::parse(int b)
 {
   if (debug) CONSOLE.print(b, HEX);
   if (debug) CONSOLE.print(",");
+  
   if ((b == 0xB5) && (this->state == GOT_NONE)) {
 
       if (debug) CONSOLE.println("\n");
@@ -364,6 +380,7 @@ void UBLOX::parse(int b)
   }
 }
 
+
 void UBLOX::addchk(int b) {
 
     this->chka = (this->chka + b) & 0xFF;
@@ -375,93 +392,47 @@ void UBLOX::dispatchMessage() {
     switch (this->msgclass){
       case 0x01:
         switch (this->msgid) {
-          case 0x021:
-            { // UBX-NAV-TIMEUTC
-              iTOW = (unsigned long)this->unpack_int32(0);
-              year = (unsigned short)this->unpack_int16(12);
-              month = (unsigned char)this->unpack_int8(14);
-              day = (unsigned char)this->unpack_int8(15);
-              hour = (unsigned char)this->unpack_int8(16);
-              mins = (unsigned char)this->unpack_int8(17);
-              sec = (unsigned char)this->unpack_int8(18);              
-            }
-            break;
           case 0x07:
             { // UBX-NAV-PVT
               iTOW = (unsigned long)this->unpack_int32(0);
-              //numSV = this->unpack_int8(23);
-              //magDec =  (unsigned long)this->unpack_int32(88) * 1e-2;           
+              numSV = numSVdgps = this->unpack_int8(23);
+
+              velocityY = (double)this->unpack_int32(52) * 0.001;
+              velocityX = (double)this->unpack_int32(56) * 0.001;
+              velocityZ = (double)this->unpack_int32(60) * 0.001;
+
+              heading = scalePI(radians( (double)this->unpack_int32(64) * 1e-5));     
+              headingAcc = radians( (double)(signed long)this->unpack_int32(72) * 1e-5 );   
             }
             break;
           case 0x12:
             { // UBX-NAV-VELNED
-              iTOW = (unsigned long)this->unpack_int32(0);
-              groundSpeed = (double)(unsigned long)this->unpack_int32(20) / 100.0;
-              heading = radians( (double)(signed long)this->unpack_int32(24) * 1e-5 );
+              //iTOW = (unsigned long)this->unpack_int32(0);
+              //groundSpeed = (double)(unsigned long)this->unpack_int32(20) / 100.0;
+              //speed = (double)(unsigned long)this->unpack_int32(16) / 100.0;
+              //heading = heading * 0.9 + 0.1 * radians( (double)(signed long)this->unpack_int32(24) * 1e-5 );
             }
             break;
           case 0x14: 
             { // UBX-NAV-HPPOSLLH
-              iTOW = (unsigned long)this->unpack_int32(4);
-              lon = (double)(signed long)this->unpack_int32(8 ) * 1e-7 + (double)(signed char)this->unpack_int8(24) * 1e-9;
-              lat = (double)(signed long)this->unpack_int32(12) * 1e-7 + (double)(signed char)this->unpack_int8(25) * 1e-9;
-              height = 1e-3 * ((double)(signed long)this->unpack_int32(16) + (double)(signed char)this->unpack_int8(26) * 0.1); // HAE (WGS84 height)
+              lon    = (double)(signed long)this->unpack_int32(8 ) * 1e-7 + (double)(signed char)this->unpack_int8(24) * 1e-9;
+              lat    = (double)(signed long)this->unpack_int32(12) * 1e-7 + (double)(signed char)this->unpack_int8(25) * 1e-9;
+              height = (double)(signed long)this->unpack_int32(16) * 1e-3 + (double)(signed char)this->unpack_int8(26) * 1e-4; // HAE (WGS84 height)
               hAccuracy = (double)(unsigned long)this->unpack_int32(28) * 0.1 / 1000.0;
-              vAccuracy = (double)(unsigned long)this->unpack_int32(32) * 0.1 / 1000.0;
+              vAccuracy = (double)(unsigned long)this->unpack_int32(32) / 100.0;
               
               if (absolutePosSource)
               {
-                accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));
+                //accuracy = sqrt(sq(hAccuracy) + sq(vAccuracy));
+                accuracy = abs(hAccuracy);
                 
                 solutionAvail = true;
                 solutionTimeout = millis() + 1000; 
               }                 
             }
-            break;            
-          case 0x43:
-            { // UBX-NAV-SIG
-              iTOW = (unsigned long)this->unpack_int32(0);
-              int numSigs = this->unpack_int8(5);              
-              float ravg = 0;
-              float rmax = 0;
-              float rmin = 9999;
-              float rsum = 0;                  
-              int crcnt = 0;              
-              int healthycnt = 0;              
-              for (int i=0; i < numSigs; i++){                
-                float prRes = ((float)((short)this->unpack_int16(12+16*i))) * 0.1;
-                float cno = ((float)this->unpack_int8(14+16*i));
-                int qualityInd = this->unpack_int8(15+16*i);                                                
-                int corrSource = this->unpack_int8(16+16*i);                                                
-                int sigFlags = (unsigned short)this->unpack_int16(18+16*i);                                                
-                bool prUsed = ((sigFlags & 8) != 0);                                    
-                bool crUsed = ((sigFlags & 16) != 0);                                    
-                bool doUsed = ((sigFlags & 32) != 0);                                    
-                bool prCorrUsed = ((sigFlags & 64) != 0);                    
-                bool crCorrUsed = ((sigFlags & 128) != 0);                    
-                bool doCorrUsed = ((sigFlags & 256) != 0);                    
-                bool health = ((sigFlags & 3) == 1);                                                    
-                if (health){       // signal is healthy               
-                  if (prUsed){     // pseudorange has been used (indicates satellites will be also used for carrier correction)
-                  //if (cno > 0){  // signal has some strength (carriar-to-noise)
-                    healthycnt++;                   
-                    if (crCorrUsed){  // Carrier range corrections have been used
-                      rsum += fabs(prRes);    // pseudorange residual
-                      rmax = max(rmax, fabs(prRes));
-                      rmin = min(rmin, fabs(prRes));
-                      crcnt++;
-                    }                    
-                  }
-                }                
-              }
-              ravg = rsum/((float)crcnt);
-              numSVdgps = crcnt;
-              numSV = healthycnt;                            
-            }
             break;
           case 0x3C: 
             { // UBX-NAV-RELPOSNED              
-              iTOW = (unsigned long)this->unpack_int32(4); 
               relPosN = ((double)(signed long)this->unpack_int32(8 ) + (double)(signed char)this->unpack_int8(32) * 1e-2) / 100.0;
               relPosE = ((double)(signed long)this->unpack_int32(12) + (double)(signed char)this->unpack_int8(33) * 1e-2) / 100.0;
               relPosD = ((double)(signed long)this->unpack_int32(16) + (double)(signed char)this->unpack_int8(34) * 1e-2) / 100.0;
@@ -477,9 +448,30 @@ void UBLOX::dispatchMessage() {
                 solutionTimeout = millis() + 1000; 
               }                     
             }
-            break;            
+            break;
+          case UBX_NAV_COV:
+            int32_t north = this->unpack_int32(16);
+            memcpy(&varianceN, &north, sizeof(float));
+
+            int32_t east = this->unpack_int32(28);
+            memcpy(&varianceE, &east, sizeof(float));
+
+            int32_t en = this->unpack_int32(20);
+            memcpy(&varianceEN, &en, sizeof(float));
+
+            variance = vec3_t(varianceN, varianceE).mag();
+
+            int32_t northV = this->unpack_int32(40);
+            memcpy(&varianceVN, &northV, sizeof(float));
+
+            int32_t eastV = this->unpack_int32(52);
+            memcpy(&varianceVE, &eastV, sizeof(float));
+
+            int32_t enV = this->unpack_int32(44);
+            memcpy(&varianceVEN, &enV, sizeof(float));
+          break;
         }
-        break;      
+        break;
       case 0x02:
         switch (this->msgid) {
           case 0x32: 
@@ -530,7 +522,7 @@ void UBLOX::run()
 	if (millis() > solutionTimeout){
     solution = SOL_INVALID;
     solutionTimeout = millis() + 1000;
-    solutionAvail = true;
+    //solutionAvail = true;
   }
 
 	// read a byte from the serial port	  
