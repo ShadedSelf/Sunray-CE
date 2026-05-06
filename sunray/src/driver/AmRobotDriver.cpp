@@ -97,9 +97,9 @@ float AmRobotDriver::getCpuTemperature(){
 
 #if (FILTER_ODOMETRY && RESPONSIVE_RPM)
   #include "../../RunningMedian.h"
-  RunningMedianISR<volatile unsigned long, 6> leftOdo;
-  RunningMedianISR<volatile unsigned long, 6> rightOdo;
-  RunningMedianISR<volatile unsigned long, 6> mowOdo;
+  RunningMedianISR<volatile unsigned long, 3> leftOdo;
+  RunningMedianISR<volatile unsigned long, 3> rightOdo;
+  RunningMedianISR<volatile unsigned long, 3> mowOdo;
 #endif
 
 void OdometryMowISR(){			  
@@ -422,19 +422,7 @@ void AmMotorDriver::setMotorPwm(int leftPwm, int rightPwm, int mowPwm){
   if (rightPwm < 0) rightSpeedSign = -1;
   if (rightPwm > 0) rightSpeedSign = 1;
   if (mowPwm < 0) mowSpeedSign = -1;
-  if (mowPwm > 0) mowSpeedSign = 1;   
-  
-  // limit pwm to ramp if required
-  if (gearsDriverChip.usePwmRamp){
-    int deltaLeftPwm = leftPwm-lastLeftPwm;
-    leftPwm = leftPwm + min(1, max(-1, deltaLeftPwm));    
-    int deltaRightPwm = rightPwm-lastRightPwm;
-    rightPwm = rightPwm + min(1, max(-1, deltaRightPwm));    
-  }
-  if (mowDriverChip.usePwmRamp){
-    int deltaMowPwm = mowPwm-lastMowPwm;
-    mowPwm = mowPwm + min(1, max(-1, deltaMowPwm));      
-  }  
+  if (mowPwm > 0) mowSpeedSign = 1;    
 
   // remember last PWM values
   lastLeftPwm = leftPwm;  
