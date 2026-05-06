@@ -553,7 +553,7 @@ void SimGpsDriver::run(){
       lat =relPosN;
       height = relPosD;
       dgpsAge = millis();              
-      groundSpeed = simRobot.linearSpeed;
+      //groundSpeed = simRobot.linearSpeed;
       solutionAvail = true;
     }
   }
