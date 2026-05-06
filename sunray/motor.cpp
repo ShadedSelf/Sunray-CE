@@ -358,13 +358,13 @@ void Motor::sense()
 
   currentTimer.update();
 
-  motorRightSenseLP = currentTimer.lowPass(motorRightSenseLP, motorRightSense, 1.0);
-  motorLeftSenseLP  = currentTimer.lowPass(motorLeftSenseLP , motorLeftSense , 1.0);
-  motorMowSenseLP   = currentTimer.lowPass(motorMowSenseLP  , motorMowSense  , 1.0);
+  motorRightSenseLP = currentTimer.lowPassF(motorRightSenseLP, motorRightSense, 1.0);
+  motorLeftSenseLP  = currentTimer.lowPassF(motorLeftSenseLP , motorLeftSense , 1.0);
+  motorMowSenseLP   = currentTimer.lowPassF(motorMowSenseLP  , motorMowSense  , 1.0);
 
-  motorsSenseLP     = currentTimer.lowPass(motorsSenseLP, motorRightSense + motorLeftSense + motorMowSense, 30.0);
+  motorsSenseLP     = currentTimer.lowPassF(motorsSenseLP, motorRightSense + motorLeftSense + motorMowSense, 30.0);
 
-  motorMowSenseFLP  = currentTimer.lowPass(motorMowSenseFLP, motorMowSense, 0.1);
+  motorMowSenseFLP  = currentTimer.lowPassF(motorMowSenseFLP, motorMowSense, 0.1);
 }
 
 double leftFrictionCoeff = 0.89;
@@ -473,26 +473,6 @@ void Motor::control(bool updateLeft, bool updateRight, bool updateMow){
     DEBUG("\tLAmp:\t");
     DEBUG(motorLeftSenseLP);
     DEBUG("\tLeff:\t");
-    DEBUGLN(eff);*/
-  }
-
-  {
-    float kv = 5000.0 / 30.0 * 0.95;
-    float kt = 60.0 / (TAU * kv);
-    float torque = kt * motorRightSenseLP * 99.5;
-    float power = motorRightSenseLP * battery.systemVoltage;
-    float mechanicalPower = (torque * fabs(motorRightRpmCurr) * TAU) / 60.0;
-    float eff = mechanicalPower / power;
-
-    /*DEBUG("pwm:\t");
-    DEBUG(motorRightPWMCurr);
-    DEBUG("\tRtqe:\t");
-    DEBUG(torque);
-    DEBUG("\tRrpm:\t");
-    DEBUG(motorRightRpmCurr);
-    DEBUG("\tRAmp:\t");
-    DEBUG(motorRightSenseLP);
-    DEBUG("\tReff:\t");
     DEBUGLN(eff);*/
   }
 

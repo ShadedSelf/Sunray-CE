@@ -72,16 +72,16 @@ class Motor {
     float motorLeftRpmCurr;
     float motorRightRpmCurr;
     float motorMowRpmCurr;
-
+    
     float motorLeftRpmAcc;
     float motorRightRpmAcc;
     float motorMowRpmAcc;
+    float motorMowPWMSet;
   protected:
     Timer accelerationTimer = Timer(MICROS_TIME);
     float motorLeftRpmSet; // set speed
     float motorRightRpmSet;  
     //float motorMowRpmCurrLP;    
-    float motorMowPWMSet;
     float motorMowPWMCurr; 
     float motorLeftPWMCurr;
     float motorRightPWMCurr;           
