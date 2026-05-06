@@ -59,6 +59,7 @@ void Point::setXY(float ax, float ay){
 }
 
 long Point::crc(){
+  // round to match cassandra?
   return (px + py);  
 }
 
@@ -804,8 +805,20 @@ void Map::repeatLastMowingPoint(){
 void Map::run(){
   switch (wayMode){
     case WAY_DOCK:      
-      if (dockPointsIdx < dockPoints.numPoints){
-        targetPoint.assign( dockPoints.points[dockPointsIdx] );
+      if (dockPointsIdx < dockPoints.numPoints)
+      {
+        if (dockPointsIdx == dockPoints.numPoints - 1)
+        {
+          vec3_t dockPoint0 = vec3_t(dockPoints.points[0].x(), dockPoints.points[0].y(), 0.0);
+          vec3_t dockPoint1 = vec3_t(dockPoints.points[1].x(), dockPoints.points[1].y(), 0.0);
+          vec3_t dockDir = (dockPoint0 - dockPoint1).norm();
+
+          vec3_t dockDst = dockPoint1 - dockDir * 0.15;
+
+          targetPoint.setXY(dockDst.x, dockDst.y);
+        }
+        else
+          targetPoint.assign( dockPoints.points[dockPointsIdx] );
       }
       break;
     case WAY_MOW:
@@ -932,10 +945,19 @@ bool Map::startDocking(float stateX, float stateY){
     }
     // find valid path from robot to first docking point      
     //freePoints.alloc(0);
+
+    vec3_t dockPoint0 = vec3_t(dockPoints.points[0].x(), dockPoints.points[0].y(), 0.0);
+    vec3_t dockPoint1 = vec3_t(dockPoints.points[1].x(), dockPoints.points[1].y(), 0.0);
+    vec3_t dockDir = (dockPoint0 - dockPoint1).norm();
+    randomSeed(millis());
+    vec3_t dockDst = dockPoint0 - dockDir * ((double)random(0, 10000) / 9999.0) * 2.0;
+
     Point src;
     Point dst;
-    src.setXY(stateX, stateY);    
-    dst.assign(dockPoints.points[0]);        
+    src.setXY(stateX, stateY);
+    dst.setXY(dockDst.x, dockDst.y);   
+    //dst.assign(dockPoints.points[0]);
+
     //findPathFinderSafeStartPoint(src, dst);      
     wayMode = WAY_FREE;              
     if (findPath(src, dst)){      
@@ -1097,6 +1119,39 @@ bool Map::isInsidePerimeter(float x, float y, bool checkObstacles)
         return false;
 
   return true;
+}
+
+
+float Map::distanceToPolygon(Polygon polygon, vec3_t p)
+{
+    vec3_t pp = vec3_t(polygon.points[0].x(), polygon.points[0].y(), 0.0);
+    float d = dot(p-pp,p-pp);
+    float s = 1.0;
+    int N = polygon.numPoints;
+    for(int i = 0, j = N-1; i < N; j=i, i++)
+    {
+        vec3_t pj = vec3_t(polygon.points[j].x(), polygon.points[j].y(), 0.0);
+        vec3_t pi = vec3_t(polygon.points[i].x(), polygon.points[i].y(), 0.0);
+
+        vec3_t e = pj - pi;
+        vec3_t w = p - pi;
+        vec3_t b = w - e*constrain( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        d = min( d, dot(b,b) );
+        bool c = p.y >= pi.y && p.y < pj.y && e.x*w.y > e.y*w.x;
+        bool cc = !(p.y >= pi.y) && !(p.y < pj.y) && !(e.x*w.y > e.y*w.x);
+        if(c || cc) s*=-1.0;  
+    }
+    return s*sqrt(d);
+}
+
+float Map::distanceToPerimeter(vec3_t p)
+{
+  float perimeter = -distanceToPolygon(maps.perimeterPoints, p);
+  for (int i = 0; i < maps.exclusions.numPolygons; i++)
+  {
+    perimeter = min(perimeter, distanceToPolygon(maps.exclusions.polygons[i], p));
+  }
+  return perimeter;
 }
 
 // find start point for path finder on line from src to dst
@@ -1288,7 +1343,7 @@ bool Map::nextFreePoint(bool sim){
     } else if ((shouldDock) && (dockPoints.numPoints > 0)){      
       // start docking
       if (!sim) lastTargetPoint.assign(targetPoint);
-      if (!sim) dockPointsIdx = 0;      
+      if (!sim) dockPointsIdx = 1;      
       if (!sim) wayMode = WAY_DOCK;      
       return true;
     } else return false;

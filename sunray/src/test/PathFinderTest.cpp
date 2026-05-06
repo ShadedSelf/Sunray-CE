@@ -16,7 +16,7 @@ bool PathFinderTest::findValidPoint(Point &pt){
   float d = 30.0;
   while (timeout > 0){
     pt.setXY( ((float)random(d*10))/10.0-d/2, ((float)random(d*10))/10.0-d/2 );
-    if (maps.isInsidePerimeterOutsideExclusions(pt)) return true;
+    if (maps.isInsidePerimeter(pt.x(), pt.y())) return true;
     timeout--;
   }
   CONSOLE.println("findValidPoint failed!");

@@ -9,6 +9,8 @@
 
 #include <Arduino.h>
 #include <SD.h>
+#include "src/math/quaternion_type.h"
+#include "src/math/vector_type.h"
 
 
 // waypoint type
@@ -220,8 +222,9 @@ class Map
     bool findPath(Point &src, Point &dst);    
     void generateRandomMap();    
     // check if given point is inside perimeter (and outside exclusions) of current map 
-    bool isInsidePerimeterOutsideExclusions(Point &pt);
     float getDockDistance();
+    float distanceToPolygon(Polygon polygon, vec3_t p);
+    float distanceToPerimeter(vec3_t p);
   private:
     void finishedUploadingMap();
     void checkMemoryErrors();
