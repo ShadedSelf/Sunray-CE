@@ -17,7 +17,7 @@ extern vec3_t right;
 extern vec3_t up;
 
 extern vec3_t position;
-extern float heading;  // direction (rad)
+extern double heading;  // direction (rad)
 
 //extern float stateRoll;
 //extern float statePitch;
@@ -25,6 +25,7 @@ extern float heading;  // direction (rad)
 extern float lateralError; // lateral error
 
 extern double headingOffset;
+extern double yawDriftOffset;
 
 extern unsigned long lastInvalidTime;
 extern unsigned long lastFixJumpTime;
