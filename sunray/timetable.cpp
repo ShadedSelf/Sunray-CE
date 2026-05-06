@@ -39,8 +39,8 @@ void TimeTable::setCurrentTime(int hour, int min, int dayOfWeek){
     currentTime.hour = hour;
     currentTime.min = min;
     currentTime.dayOfWeek = dayOfWeek;
-    CONSOLE.print("GPS time (UTC): ");
-    dumpWeekTime(currentTime);
+    //CONSOLE.print("GPS time (UTC): ");
+    //dumpWeekTime(currentTime);
 }    
 
 void TimeTable::dumpWeekTime(weektime_t time){
@@ -146,11 +146,11 @@ bool TimeTable::mowingAllowed(){
 bool TimeTable::shouldAutostartNow(){
  return isEnabled()
   && mowingAllowed()
-  //&& battery.isDocked()
-  && battery.chargingHasCompleted()
-  && millis() > dockOp.dockReasonRainAutoStartTime
+  && (battery.chargingHasCompleted() || battery.batteryVoltage >= BAT_SCHEDULE_VOLTAGE || (battery.batteryVoltage > 25.0 && battery.chargingCurrent < 1.0))
   && stateTemp < DOCK_OVERHEAT_TEMP - 3
-  && millis() - gps.dgpsAge < 10 * 1000;
+  && millis() > dockOp.dockReasonRainAutoStartTime;
+  //&& millis() - gps.dgpsAge < 10 * 1000;
+  //&& battery.isDocked()
 }
 
 
@@ -166,5 +166,6 @@ bool TimeTable::isEnabled(){
 // called every 30s in robot
 void TimeTable::run()
 {    
-
+if (shouldAutostopNow() && maps.mowPointsIdx != 0)
+    maps.mowPointsIdx = 0;
 }
