@@ -132,7 +132,8 @@ void cmdControl(){
       if (counter == 1){                            
           if (intValue >= 0) {
             //motor.enableMowMotor = (intValue == 1);
-            motor.setMowState( (intValue == 1) );
+            if (timetable.mowingAllowed() && !timetable.shouldAutostopNow() && !rainDriver.triggered())
+              motor.setMowState( (intValue == 1) );
           }
       } else if (counter == 2){                                      
           if (intValue >= 0) op = intValue; 
@@ -678,7 +679,7 @@ void cmdStats(){
   s += statImuRecoveries;
   s += ",";
   //s += statTempMin;
-  s += stateTemp;
+  s += stateTemp * 100.0;
   s += ",";
   s += statTempMax;
   s += ",";
@@ -711,11 +712,12 @@ void cmdStats(){
   s += statMowDurationMotorRecovery;
   s += ",";
   //s += statMowLiftCounter;
-  s += (int)imuDriver.imuFound;
+  s += (int)(motor.wheelBaseCm * 100.0);
   s += ",";
   s += statMowGPSNoSpeedCounter;  
   s += ",";
-  s += statMowToFCounter;
+  //s += statMowToFCounter;
+  s += (int)(motor.wheelDiameter * 100.0);
   s += ",";
   s += statMowDiffIMUWheelYawSpeedCounter;
   s += ",";
@@ -856,9 +858,11 @@ void cmdFirmwareUpdate(){
 }
 
 // process request
-void processCmd(bool checkCrc, bool decrypt){
-  cmdResponse = "";      
+void processCmd(bool checkCrc, bool decrypt)
+{
+  cmdResponse = "";   
   if (cmd.length() < 4) return;
+
 #ifdef ENABLE_PASS
   if (decrypt){
     String s = cmd.substring(0,4);
@@ -881,6 +885,11 @@ void processCmd(bool checkCrc, bool decrypt){
     } 
   }
 #endif
+
+  if (cmd[0] != 'A') return;
+  if (cmd[1] != 'T') return;
+  if (cmd[2] != '+') return;
+
   byte expectedCrc = 0;
   int idx = cmd.lastIndexOf(',');
   if (idx < 1){
