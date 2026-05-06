@@ -32,7 +32,6 @@ void ImuCalibrationOp::run()
     battery.resetIdle();
 
     motor.setLinearAngularSpeed(0, 0, LINEAR_ACCELERATION, ANGULAR_ACCELERATION);
-    //motor.stopImmediately(true);   
 
     if (millis() > nextImuCalibrationSecond)
     {
@@ -40,16 +39,22 @@ void ImuCalibrationOp::run()
         imuCalibrationSeconds++;
 
         CONSOLE.print("IMU gyro calibration (robot must be static)... ");        
-        CONSOLE.println(imuCalibrationSeconds);        
-        buzzer.sound(SND_PROGRESS, true);
+        CONSOLE.println(imuCalibrationSeconds); 
+        
+        if (previousOp != &mowOp)
+            buzzer.sound(SND_PROGRESS, true);
+
+        int calibrationTime = 5;
+        if (previousOp == &mowOp)
+            calibrationTime = 20;
                
-        if (imuCalibrationSeconds >= 5)
+        if (imuCalibrationSeconds >= calibrationTime)
         {
             // use magnometer heading if regular heading too far at startup
             //if (USE_MAGNOMETER && fabs(distancePI(heading, imuDriver.magYaw)) > radians(30.0))
               //  headingOffset = distancePI(imuDriver.yaw, imuDriver.magYaw);
 
-            imuDriver.resetData();
+            //imuDriver.resetData();
             resetImuTimeout();
             Op::changeOp(*nextOp);
         }
