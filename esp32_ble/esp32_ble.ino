@@ -320,12 +320,12 @@ void startWIFI() {
   if (millis() < nextWifiConnectTime) return;
   nextWifiConnectTime = millis() + 20000;
 
-  for (int i = 0; i < 5; i++) {
+  /*for (int i = 0; i < 5; i++) {
     digitalWrite(pinLED, HIGH);
     delay(50);
     digitalWrite(pinLED, LOW);
     delay(50);
-  }
+  }*/
 
   CONSOLE.print("Attempting to connect to WPA SSID: ");
   CONSOLE.println(ssid);
@@ -340,10 +340,16 @@ void startWIFI() {
   }
 
   WiFi.disconnect(); // disconnect any previous (aborted) connection
+  delay(1000);
   WiFi.begin(ssid.c_str(), pass.c_str());
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+  esp_task_wdt_reset();
+  delay(4000);
+  esp_task_wdt_reset();
+  //if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.disconnect();
     CONSOLE.println("Connection Failed!");
-    delay(2000);
+    delay(1000);
     return;
   };
 
@@ -568,7 +574,7 @@ void setup() {
 
   CONSOLE.println("Configuring WDT...");
   esp_task_wdt_config_t wdc;
-  wdc.timeout_ms = 3000;
+  wdc.timeout_ms = 30000;
   wdc.idle_core_mask = (1 << 2) - 1;
   wdc.trigger_panic = true;
   esp_task_wdt_init(&wdc); //enable panic so ESP32 restarts
@@ -700,20 +706,20 @@ void loop() {
     CONSOLE.println(" ping");
   }
   
-  if (!bleConnected) {
+  //if (!bleConnected) {
     if (server != NULL) server->loop();
-  }
+  //}
 
-  if (!bleConnected) {
+  //if (!bleConnected) {
     startWIFI();
-  }
+  //}
   ArduinoOTA.handle();
 #ifdef USE_MQTT
   mqtt_loop();
 #endif
   relay_loop();
-  if (millis() > nextWatchDogResetTime) {
-    nextWatchDogResetTime = millis() + 1000;
+  //if (millis() > nextWatchDogResetTime) {
+   // nextWatchDogResetTime = millis() + 1000;
     esp_task_wdt_reset(); // watch dog reset
-  }
+  //}
 }
