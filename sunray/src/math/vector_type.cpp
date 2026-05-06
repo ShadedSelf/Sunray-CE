@@ -209,3 +209,8 @@ float dot(vec3_t a, vec3_t b)
 {
     return a.dot(b);
 }
+
+vec3_t vec3_t::xy() {
+    vec3_t v = { x, y, 0.0 };
+    return v;
+}

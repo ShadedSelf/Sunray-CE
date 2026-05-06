@@ -42,6 +42,7 @@ struct vec3_t {
     vec3_t cross( const vec3_t );
     float mag();
     vec3_t norm();
+    vec3_t xy();
     
     // 2. setters and getters
     void copyArray( float [] );
