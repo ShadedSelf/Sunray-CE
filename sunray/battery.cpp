@@ -11,6 +11,8 @@
 #include "buzzer.h"
 #include <Arduino.h>
 
+#include "LineTracker.h"
+
 // lithium akkus sollten bis zu einem bestimmten wert CC also constant current geladen werden 
 // und danach mit CV constant voltage
 // um die lebensdauer zu erhöhen kann man die max spannung herabsetzen
@@ -99,30 +101,23 @@ void Battery::switchOff(){
 Timer batteryTimer(MICROS_TIME);
 Scheduler temperatureSchedule(MICROS_TIME, 1 * 60 * 1000);
 
-float prevVoltage = 0.0;
-float prevCurrent = 0.0;
-double voltageDropFactor = 0.5;
-Timer dropTimer(MICROS_TIME);
-
-double voltageAH = 1.09;
-//Scheduler dropSchedule(MICROS_TIME, 1 * 1000);
-
 float getVoltageDropFactor()
 {
-  float tempChange = 25.63 - battery.temperature;
-  return 0.714 + tempChange * 0.033;
+  float tempChange = 25.0 - battery.temperature;
+  return stanleyTrackingSlowP * (1.0 + tempChange * stanleyTrackingSlowK); //0.4 - 0.0
 }
 
 void Battery::run()
 {
   // give some time to establish communication to external hardware etc.
-  if (millis() <= 3000) 
+  if (millis() <= 5000) 
     return;
 
   // first values after starting
   if (batteryVoltage < 0.1)
   {
     temperature = batteryDriver.getBatteryTemperature();
+    if (fabs(temperature) > 900.0) temperature = 25.0;
 
     systemVoltage = batteryDriver.getBatteryVoltage();
     batteryVoltage = systemVoltage + getVoltageDropFactor() * (motor.motorsSenseLP + 15.0);
@@ -132,22 +127,20 @@ void Battery::run()
   }
 
 
-  // battery temperature, every minute to avoid i2c issues
+  // battery temperature, every minute
   if (temperatureSchedule.shouldUpdate())
-    temperature = batteryDriver.getBatteryTemperature();
+    batteryDriver.myHumidity.requestTemperatureNonBlocking();
+  batteryDriver.myHumidity.readTemperatureNonBlocking(temperature);
 
-
+  
   batteryTimer.update();
 
 
   // battery readings
-  float lc, rc, mc;
-  motorDriver.getMotorCurrent(lc, rc, mc);
-
-  float cVoltage  = batteryDriver.getChargeVoltage();
+  float cVoltage  = batteryDriver.getChargeVoltage();   
   float cCurrent  = batteryDriver.getChargeCurrent();
   float voltage   = batteryDriver.getBatteryVoltage();
-  float current = lc + rc + mc + 0.15;
+  float current = motor.motorLeftSense + motor.motorRightSense + motor.motorMowSense + 0.15;
   
   if (fabs(chargingVoltage - cVoltage) > 10.0)
     chargingVoltage = cVoltage;
@@ -159,57 +152,14 @@ void Battery::run()
     ? cCurrent * -0.5
     : current * getVoltageDropFactor();
 
-  // low pass filters
-  chargingCurrent = batteryTimer.lowPass(chargingCurrent, cCurrent, 30.0);
-  chargingVoltage = batteryTimer.lowPass(chargingVoltage, cVoltage, 30.0);
-  systemVoltage   = batteryTimer.lowPass(systemVoltage,   voltage,  30.0);
-  batteryVoltage  = batteryTimer.lowPass(batteryVoltage,  voltage + voltageDrop, 30.0);
+  // low pass filters /expensice 150us??
+  chargingCurrent = batteryTimer.lowPassF(chargingCurrent, cCurrent, 30.0);
+  chargingVoltage = batteryTimer.lowPassF(chargingVoltage, cVoltage, 30.0);
+  systemVoltage   = batteryTimer.lowPassF(systemVoltage,   voltage,  30.0);
+  batteryVoltage  = batteryTimer.lowPassF(batteryVoltage,  voltage + voltageDrop, 30.0);
   batteryLoad     = motor.motorsSenseLP + 0.15;
 
   
-  // estimate voltage drop factor
-  /*if (stateOp == OP_MOW)
-  {
-    // try using unfiltered uncorrected values? -> dropfactor lerp then!
-    float voltageChange = batteryVoltage - prevVoltage;
-    float currentChange = batteryLoad    - prevCurrent;
-    
-    if (fabs(currentChange) > 0.01)
-    {
-      dropTimer.update();
-
-      double vah = -voltageChange / ((batteryLoad + prevCurrent)  * 0.5) / dropTimer.deltaTimeSeconds() * 60.0 * 60.0;
-      voltageAH = dropTimer.lowPass(voltageAH, vah, 60.0 * 60.0);
-      
-      // correct voltage change
-      //voltageChange += (batteryLoad + prevCurrent) * 0.5 * 1.09 * dropTimer.deltaTimeSeconds() / 60.0 / 60.0;
-      //voltageChange += (batteryLoad + prevCurrent) * 0.5 * 0.92 * dropTimer.deltaTimeSeconds() / 60.0 / 60.0;
-      voltageChange += (batteryLoad + prevCurrent) * 0.5 * 1.00 * dropTimer.deltaTimeSeconds() / 60.0 / 60.0;
-
-      double iFactor = -voltageChange / currentChange;
-
-      //voltageDropFactor = lerp(voltageDropFactor, iFactor, 0.001);
-      voltageDropFactor += iFactor * 0.001;
-      voltageDropFactor = constrain(voltageDropFactor, 0.5, 1.5);
-      
-      prevVoltage = batteryVoltage;
-      prevCurrent = batteryLoad;
-    }
-  }
-  else
-  {
-    dropTimer.update();
-    
-    prevVoltage = batteryVoltage;
-    prevCurrent = batteryLoad;
-    
-    float tempChange = 25.63 - temperature;
-    voltageDropFactor = 0.714 + tempChange * 0.033;
-  }
-  DEBUGLN(voltageAH);
-  DEBUGLN(voltageDropFactor);*/
-
-
   // charger connected
   if (!chargerConnectedState && chargingVoltage > 7.0)
     chargerConnectedState = true;

@@ -40,6 +40,8 @@ void HTU21D::begin(TwoWire &wirePort)
   _i2cPort = &wirePort; //Grab which port the user wants us to use
   
   _i2cPort->begin();
+
+  shouldPoll = false;
 }
 
 #define MAX_WAIT 100
@@ -77,6 +79,46 @@ uint16_t HTU21D::readValue(byte cmd)
   if (checkCRC(rawValue, checksum) != 0) return (ERROR_BAD_CRC); //Error out
 
   return rawValue & 0xFFFC; // Zero out the status bits
+}
+
+void HTU21D::requestTemperatureNonBlocking()
+{
+  _i2cPort->beginTransmission(HTU21D_ADDRESS);
+  _i2cPort->write(TRIGGER_TEMP_MEASURE_NOHOLD);
+  _i2cPort->endTransmission();
+
+  requestTime = millis();
+  shouldPoll = true;
+}
+
+bool HTU21D::readTemperatureNonBlocking(float &tOut)
+{
+  if (!shouldPoll || millis() - requestTime < 50) return false;
+  shouldPoll = false;
+
+  bool validResult = (3 == _i2cPort->requestFrom(HTU21D_ADDRESS, 3));
+
+  if (!validResult) return false; //Error out
+
+  byte msb, lsb, checksum;
+  msb = _i2cPort->read();
+  lsb = _i2cPort->read();
+  checksum = _i2cPort->read();
+
+  uint16_t rawValue = ((uint16_t) msb << 8) | (uint16_t) lsb;
+
+  if (checkCRC(rawValue, checksum) != 0) return false; //Error out
+
+  uint16_t rawTemperature = rawValue & 0xFFFC; // Zero out the status bits
+
+  if(rawTemperature == ERROR_I2C_TIMEOUT || rawTemperature == ERROR_BAD_CRC) return false;
+
+  //Given the raw temperature data, calculate the actual temperature
+  float tempTemperature = rawTemperature * (175.72 / 65536.0); //2^16 = 65536
+  float realTemperature = tempTemperature - 46.85; //From page 14
+
+  tOut = realTemperature;
+  return true;
 }
 
 //Read the humidity

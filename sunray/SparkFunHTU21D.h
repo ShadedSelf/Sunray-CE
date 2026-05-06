@@ -58,6 +58,9 @@ public:
   byte readUserRegister(void);
   void writeUserRegister(byte val);
 
+  void requestTemperatureNonBlocking();
+  bool readTemperatureNonBlocking(float &tOut);
+
   //Public Variables
 
 private:
@@ -66,6 +69,9 @@ private:
 
   byte checkCRC(uint16_t message_from_sensor, uint8_t check_value_from_sensor);
   uint16_t readValue(byte cmd);
+
+  bool shouldPoll;
+  unsigned long requestTime;
 
   //Private Variables
 
