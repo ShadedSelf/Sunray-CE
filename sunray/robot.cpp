@@ -781,11 +781,11 @@ void run(){
     nextTempTime = millis() + 60000;    
     float batTemp = battery.temperature;
     float cpuTemp = robotDriver.getCpuTemperature();    
-    CONSOLE.print("batTemp=");
+    /*CONSOLE.print("batTemp=");
     CONSOLE.print(batTemp,0);
     CONSOLE.print("  cpuTemp=");
     CONSOLE.print(cpuTemp,0);    
-    CONSOLE.println();    
+    CONSOLE.println();    */
     if (batTemp < -999)
       stateTemp = cpuTemp;
     else
@@ -796,19 +796,14 @@ void run(){
   }
   
   // IMU
-  //if (millis() > nextImuTime)
+  readIMU();
+  //unsigned long imuNow = millis();
+  //if (imuNow - nextImuTime > 30)
  // {
-    //nextImuTime = millis() + 30*0;
-    readIMU();    
+    //bool hasData = readIMU();    
+    //if (hasData)
+    //  nextImuTime = imuNow;
   //}
-
-  // LED states
-  /*if (millis() > nextLedTime){
-    nextLedTime = millis() + 1000;
-    robotDriver.ledStateGpsFloat = (gps.solution == SOL_FLOAT);
-    robotDriver.ledStateGpsFix = (gps.solution == SOL_FIXED);
-    robotDriver.ledStateError = (stateOp == OP_ERROR);     
-  }*/
 
   gps.run();
 
@@ -884,12 +879,15 @@ void run(){
     
   // ----- read serial input (BT/console) -------------
   processComm();
-  outputConsole();    
+  //outputConsole();    
 
   //##############################################################################
 
-  if (millis() > wdResetTimer + WATCHDOG_TIMER/5)
+  if (millis() - wdResetTimer > WATCHDOG_TIMER * 0.9)
+  {
     watchdogReset();
+    wdResetTimer = millis();
+  }
 
   loopTimeNow = (micros() - loopTime) / 1000.0;
   loopTimeMin = min(loopTimeNow, loopTimeMin); 
@@ -898,7 +896,7 @@ void run(){
   loopTime = micros();
 
   if (millis() > loopTimeTimer + 10000){
-    if (loopTimeMax > 500)
+    /*if (loopTimeMax > 500)
       CONSOLE.print("WARNING - LoopTime: ");
     else
       CONSOLE.print("Info - LoopTime: now: ");
@@ -910,11 +908,11 @@ void run(){
     CONSOLE.print(loopTimeMean);
     CONSOLE.print(" - max: ");
     CONSOLE.print(loopTimeMax);
-    CONSOLE.println(" (ms)");
+    CONSOLE.println(" (ms)");*/ 
     loopTimeMin = 99999; 
     loopTimeMax = 0;
     loopTimeTimer = millis();
-  }   
+  }
   //##############################################################################   
 }        
 
